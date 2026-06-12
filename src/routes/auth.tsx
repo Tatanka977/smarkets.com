@@ -48,7 +48,7 @@ function AuthPage() {
       }
       navigate({ to: "/" });
     } catch (e: any) {
-      setErr(e.message || "Errore di autenticazione");
+      setErr(e.message || "Authentication error");
     } finally { setLoading(false); }
   };
 
@@ -59,7 +59,7 @@ function AuthPage() {
       if (r.error) throw r.error;
       if (!r.redirected) navigate({ to: "/" });
     } catch (e: any) {
-      setErr(e.message || `Errore ${provider}`);
+      setErr(e.message || `${provider} error`);
       setLoading(false);
     }
   };
@@ -73,29 +73,29 @@ function AuthPage() {
         <div style={{ background: B.blue, padding: "10px 14px" }}>
           <div style={{ fontSize: 20, fontWeight: 700, color: B.white, letterSpacing: "0.18em" }}>MONETA</div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>
-            {mode === "signin" ? "ACCEDI AL TERMINALE" : "CREA ACCOUNT"}
+            {mode === "signin" ? "SIGN IN TO TERMINAL" : "CREATE ACCOUNT"}
           </div>
         </div>
 
         <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
           <button onClick={() => handleOAuth("google")} disabled={loading}
             style={btn(B.white, "#000")}>
-            ▶ Continua con Google
+            ▶ Continue with Google
           </button>
           <button onClick={() => handleOAuth("apple")} disabled={loading}
             style={btn("#fff", "#000")}>
-             Continua con Apple
+             Continue with Apple
           </button>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "6px 0" }}>
             <div style={{ flex: 1, height: 1, background: B.border }} />
-            <span style={{ fontSize: 9, color: B.gray2, letterSpacing: "0.1em" }}>OPPURE EMAIL</span>
+            <span style={{ fontSize: 9, color: B.gray2, letterSpacing: "0.1em" }}>OR EMAIL</span>
             <div style={{ flex: 1, height: 1, background: B.border }} />
           </div>
 
           <form onSubmit={handleEmail} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {mode === "signup" && (
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="NOME"
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="NAME"
                 style={inp} />
             )}
             <input value={email} onChange={(e) => setEmail(e.target.value)} type="email"
@@ -104,7 +104,7 @@ function AuthPage() {
               required minLength={6} placeholder="PASSWORD (MIN 6)" style={inp} />
             <button type="submit" disabled={loading}
               style={{ ...btn(B.blue, B.white), opacity: loading ? 0.5 : 1 }}>
-              {loading ? "..." : mode === "signin" ? "ACCEDI" : "REGISTRATI"}
+              {loading ? "..." : mode === "signin" ? "SIGN IN" : "SIGN UP"}
             </button>
           </form>
 
@@ -116,12 +116,12 @@ function AuthPage() {
           <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setErr(""); }}
             style={{ background: "none", border: "none", color: B.gray1, fontSize: 10,
               fontFamily: fontMono, cursor: "pointer", textDecoration: "underline", marginTop: 4 }}>
-            {mode === "signin" ? "Non hai un account? Registrati" : "Hai già un account? Accedi"}
+            {mode === "signin" ? "No account? Sign up" : "Already have an account? Sign in"}
           </button>
 
           <Link to="/" style={{ fontSize: 10, color: B.gray2, textAlign: "center",
             fontFamily: fontMono, textDecoration: "none", marginTop: 4 }}>
-            ← Torna al terminale
+            ← Back to terminal
           </Link>
         </div>
       </div>

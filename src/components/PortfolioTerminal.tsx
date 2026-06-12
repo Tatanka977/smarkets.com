@@ -177,7 +177,7 @@ function TopBar({time}:any) {
           fontSize:24,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
           textDecoration:"none",background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.4)",
           padding:"3px 8px",letterSpacing:"0.06em"}}>
-          {user ? "◉ PROFILO" : "▸ ACCEDI"}
+          {user ? "◉ PROFILE" : "▸ SIGN IN"}
         </Link>
       </div>
     </div>
@@ -245,7 +245,7 @@ function HomePage({holdings,setPage,onRefresh,refreshing}:any) {
   const [saveMsg,setSaveMsg]=useState("");
   const handleSave=async()=>{
     if(!user){ window.location.href="/auth"; return; }
-    const name=prompt("Nome del portafoglio:","Portafoglio "+new Date().toLocaleDateString());
+    const name=prompt("Portfolio name:","Portfolio "+new Date().toLocaleDateString());
     if(!name) return;
     setSaving(true);
     try {
@@ -425,7 +425,7 @@ function SearchPage({onAdd,portfolio}:any) {
     setWatchBusy(true); setWatchMsg("");
     try {
       await srvAddWatch({ data: { symbol: detail.ticker || detail.symbol, name: detail.shortName, category: detail.category } });
-      setWatchMsg("✓ AGGIUNTO");
+      setWatchMsg("✓ ADDED");
     } catch(e:any) {
       setWatchMsg("ERR: " + (e.message || "").slice(0, 30));
     } finally {
@@ -814,12 +814,12 @@ global markets, ETFs, bonds, commodities, crypto, macro economics, financial reg
 # STYLE
 Concise, data-driven, professional terminal style.
 Use CAPS for key terms. Max 280 words. Bold **key metrics** with asterisks.
-Respond in the user's language.`;
+ALWAYS respond in ENGLISH.`;
 
 const QUICK_Q=["ANALYZE PORTFOLIO","DIVERSIFICATION CHECK","RISK ASSESSMENT","IMPROVE ALLOCATION","EXPLAIN SHARPE","VAR ANALYSIS","SECTOR EXPOSURE","REDUCE VOLATILITY"];
 
 function AIAdvisorPage({holdings}:any) {
-  const [msgs,setMsgs]=useState<any[]>([{role:"assistant",content:"**MONETA AI TERMINAL ONLINE**\n\nQuesto è un terminale di ANALISI EDUCATIVA con accesso ai tuoi dati di portafoglio simulato (azioni, obbligazioni, ETF, commodity, crypto, REIT, FX).\n\nPosso fornire osservazioni quantitative su diversificazione, metriche di rischio, esposizione settoriale, attribuzione di performance e scenari ipotetici di allocazione.\n\n**Non fornisco raccomandazioni di investimento personalizzate** né consulenza finanziaria ai sensi MiFID II. Tutte le analisi sono a scopo educativo e informativo.\n\nMONETA>_"}]);
+  const [msgs,setMsgs]=useState<any[]>([{role:"assistant",content:"**MONETA AI TERMINAL ONLINE**\n\nThis is an EDUCATIONAL analytics terminal with access to your simulated portfolio data (stocks, bonds, ETFs, commodities, crypto, REITs, FX).\n\nI can provide quantitative observations on diversification, risk metrics, sector exposure, performance attribution and hypothetical allocation scenarios.\n\n**I do not provide personalized investment recommendations** nor financial advice under MiFID II. All analyses are for educational and informational purposes only.\n\nMONETA>_"}]);
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
   const [showQ,setShowQ]=useState(true);
@@ -1012,11 +1012,11 @@ function NewsPage({holdings,setPage}:any) {
     setSentBusy(true); setSentiment("");
     try {
       const headlines = list.slice(0, 12).map((n, i) => `${i+1}. ${n.headline}${n.summary ? " — " + n.summary.slice(0, 140) : ""}`).join("\n");
-      const sys = `Sei MONETA AI, un assistente EDUCATIVO di analisi di mercato. NON fornisci raccomandazioni di investimento personalizzate, "buy/sell calls" o consulenza finanziaria ai sensi MiFID II.
-Analizza le news fornendo: SENTIMENT generale (BULLISH/BEARISH/NEUTRAL) come osservazione statistica sui titoli, 3 osservazioni quantitative con asterischi **bold**, e una riga finale BOTTOM LINE come sintesi educativa.
-Termina SEMPRE con: "DISCLAIMER: Solo a scopo educativo e informativo. Non costituisce consulenza finanziaria."
-Max 180 parole. Rispondi in italiano.`;
-      const prompt = `Analizza il sentiment dei seguenti titoli di news (${tab === "symbol" ? "su " + symActive : tab === "holdings" ? "del mio portafoglio" : "di mercato"}):\n\n${headlines}`;
+      const sys = `You are MONETA AI, an EDUCATIONAL market-analysis assistant. You do NOT provide personalized investment recommendations, buy/sell calls or financial advice under MiFID II.
+Analyze the news headlines and produce: overall SENTIMENT (BULLISH/BEARISH/NEUTRAL) as a statistical observation across the titles, 3 quantitative observations with **bold** key terms, and a final BOTTOM LINE line as an educational summary.
+ALWAYS end with: "DISCLAIMER: For educational and informational purposes only. Not investment advice."
+Max 180 words. Respond in ENGLISH.`;
+      const prompt = `Analyze the sentiment of these news headlines (${tab === "symbol" ? "for " + symActive : tab === "holdings" ? "from my portfolio" : "market-wide"}):\n\n${headlines}`;
       const { reply } = await aiChat({ data: { messages: [{role:"user", content: prompt}], system: sys } });
       setSentiment(reply);
     } catch (e:any) {
@@ -1115,7 +1115,7 @@ Max 180 parole. Rispondi in italiano.`;
 
         {list.map((n:any, i:number) => {
           const dt = new Date((n.datetime || 0) * 1000);
-          const dateStr = dt.toLocaleString("it-IT", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+          const dateStr = dt.toLocaleString("en-US", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false });
           return (
             <a key={(n.id || i) + "_" + i} href={n.url && n.url !== "#" ? n.url : undefined}
                target="_blank" rel="noreferrer noopener"
@@ -1278,28 +1278,31 @@ function DisclaimerModal({onAccept}:{onAccept:()=>void}) {
       }}>
         <div style={{background:B.yellow,padding:"6px 10px",color:"#000",fontWeight:700,
           fontSize:16,letterSpacing:"0.1em"}}>
-          ⚠ MONETA — INFORMATIVA REGOLAMENTARE
+          ⚠ MONETA — REGULATORY NOTICE
         </div>
         <div style={{padding:"14px 16px",color:B.gray1,fontSize:14,lineHeight:1.55}}>
           <div style={{color:B.yellow,fontWeight:700,marginBottom:6,letterSpacing:"0.05em"}}>
-            ▸ NON È CONSULENZA FINANZIARIA
+            ▸ NOT FINANCIAL ADVICE
           </div>
           <p style={{margin:"0 0 10px 0"}}>
-            Moneta è un <b style={{color:B.cyan}}>terminale di analisi educativa e informativa</b>.
-            I dati di mercato, le simulazioni di portafoglio, le metriche di rischio
-            e le analisi generate dall'AI sono forniti <b>esclusivamente a scopo didattico</b>
-            e non costituiscono — né devono essere interpretati come — consulenza in
-            materia di investimenti ai sensi di <b>MiFID II</b>, <b>SEC</b> o <b>ESMA</b>.
+            Moneta is an <b style={{color:B.cyan}}>educational and informational
+            analytics terminal</b>. Market data, portfolio simulations, risk
+            metrics and AI-generated analyses are provided <b>solely for
+            educational purposes</b> and do not constitute — and must not be
+            interpreted as — investment advice under <b>MiFID II</b>,
+            <b> SEC</b> or <b>ESMA</b> regulations.
           </p>
           <p style={{margin:"0 0 10px 0"}}>
-            L'AI di Moneta produce <b>scenari ipotetici</b> e <b>osservazioni quantitative</b>;
-            <b> non fornisce raccomandazioni personalizzate</b> di acquisto, vendita o detenzione
-            di strumenti finanziari. Le performance passate non sono indicative di risultati futuri.
-            Ogni decisione di investimento è di esclusiva responsabilità dell'utente, che è
-            invitato a consultare un consulente abilitato.
+            Moneta's AI produces <b>hypothetical scenarios</b> and
+            <b> quantitative observations</b>;
+            <b> it does not provide personalized recommendations</b> to buy,
+            sell or hold any financial instrument. Past performance is not
+            indicative of future results. Every investment decision is the
+            sole responsibility of the user, who is encouraged to consult a
+            licensed financial advisor.
           </p>
           <p style={{margin:"0 0 12px 0",color:B.gray2,fontSize:13}}>
-            Cliccando "ACCETTO" dichiari di aver letto e compreso questa informativa.
+            By clicking "ACCEPT" you confirm that you have read and understood this notice.
           </p>
           <div style={{display:"flex",gap:8}}>
             <button onClick={onAccept} data-testid="disclaimer-accept-btn" style={{
@@ -1307,7 +1310,7 @@ function DisclaimerModal({onAccept}:{onAccept:()=>void}) {
               fontFamily:"'Courier New',monospace",fontSize:16,fontWeight:700,
               letterSpacing:"0.1em",cursor:"pointer",
             }}>
-              ACCETTO E CONTINUO
+              ACCEPT &amp; CONTINUE
             </button>
             <Link to="/disclaimer" style={{
               background:"transparent",border:`1px solid ${B.gray3}`,color:B.gray1,
@@ -1315,7 +1318,7 @@ function DisclaimerModal({onAccept}:{onAccept:()=>void}) {
               letterSpacing:"0.08em",cursor:"pointer",textDecoration:"none",
               display:"flex",alignItems:"center",justifyContent:"center",
             }}>
-              LEGGI TUTTO
+              READ FULL TERMS
             </Link>
           </div>
         </div>

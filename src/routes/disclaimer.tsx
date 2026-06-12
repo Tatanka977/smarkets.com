@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/disclaimer")({
-  head: () => ({ meta: [{ title: "Moneta — Informativa Regolamentare" }] }),
+  head: () => ({ meta: [{ title: "Moneta — Regulatory Notice" }] }),
   component: DisclaimerPage,
 });
 
@@ -44,14 +44,14 @@ function DisclaimerPage() {
               MONETA
             </div>
             <div style={{ fontSize: 12, color: B.white, letterSpacing: "0.1em", opacity: 0.85 }}>
-              INFORMATIVA REGOLAMENTARE — TERMS & DISCLAIMER
+              REGULATORY NOTICE — TERMS &amp; DISCLAIMER
             </div>
           </div>
           <Link to="/" style={{
             color: B.white, textDecoration: "none", fontSize: 14, fontWeight: 700,
             border: `1px solid ${B.white}`, padding: "4px 10px", letterSpacing: "0.08em",
           }}>
-            ← TORNA AL TERMINALE
+            ← BACK TO TERMINAL
           </Link>
         </div>
 
@@ -60,91 +60,93 @@ function DisclaimerPage() {
           padding: "10px 14px", margin: "14px 0", color: B.yellow,
           fontSize: 14, lineHeight: 1.5, letterSpacing: "0.02em",
         }}>
-          ⚠ <b>NOTA INFORMATIVA — LEGGERE ATTENTAMENTE.</b> Moneta è un terminale di
-          analisi educativa e informativa. Il contenuto non costituisce, né deve
-          essere interpretato come, consulenza finanziaria, raccomandazione di
-          investimento, sollecitazione, offerta o invito ad acquistare o vendere
-          strumenti finanziari ai sensi della <b>Direttiva 2014/65/UE (MiFID II)</b>,
-          del <b>D.Lgs. 58/1998 (TUF)</b>, del <b>Regolamento UE 2017/565</b>,
-          del <b>Securities Act of 1933</b>, del <b>Securities Exchange Act of 1934</b>
-          o di altra normativa applicabile.
+          ⚠ <b>IMPORTANT NOTICE — PLEASE READ CAREFULLY.</b> Moneta is an
+          educational and informational analytics terminal. The content does
+          not constitute, and must not be interpreted as, financial advice,
+          an investment recommendation, a solicitation, an offer or an
+          invitation to buy or sell financial instruments under{" "}
+          <b>Directive 2014/65/EU (MiFID II)</b>, <b>EU Regulation 2017/565</b>,
+          the <b>Securities Act of 1933</b>, the{" "}
+          <b>Securities Exchange Act of 1934</b>, the UK Financial Services and
+          Markets Act 2000, or any other applicable law.
         </div>
 
-        <Section title="1. Natura del Servizio">
-          Moneta è una piattaforma di <b>educazione finanziaria</b>, simulazione di
-          portafogli e visualizzazione di dati di mercato. I prezzi e le metriche
-          mostrate provengono da provider terzi (Finnhub, dati di mercato pubblici)
-          e possono essere ritardate, mock, o inesatte. L'AI integrata produce
-          osservazioni quantitative e scenari ipotetici a scopo didattico.
+        <Section title="1. Nature of the Service">
+          Moneta is a <b>financial education</b> platform offering portfolio
+          simulation and market data visualization. The prices and metrics
+          shown are sourced from third-party providers (Finnhub, public market
+          feeds) and may be delayed, mocked, or inaccurate. The integrated AI
+          produces quantitative observations and hypothetical scenarios for
+          educational purposes only.
         </Section>
 
-        <Section title="2. Assenza di Consulenza Finanziaria">
+        <Section title="2. No Financial Advice">
           <p style={{ margin: "0 0 8px 0" }}>
-            Moneta <b>non è un consulente finanziario abilitato</b>, non è iscritta
-            all'albo OCF, non è autorizzata da CONSOB, SEC, FCA, BaFin o altra
-            autorità di vigilanza ad esercitare servizi di:
+            Moneta is <b>not a licensed financial advisor</b>, is not registered
+            with the OCF, CONSOB, SEC, FCA, BaFin, FINMA or any other
+            supervisory authority, and is not authorized to provide:
           </p>
           <ul style={{ margin: "0 0 8px 18px", padding: 0 }}>
-            <li>consulenza in materia di investimenti (art. 1, c. 5-septies TUF);</li>
-            <li>gestione di portafogli;</li>
-            <li>ricezione e trasmissione di ordini;</li>
-            <li>collocamento o sollecitazione del pubblico risparmio.</li>
+            <li>investment advice (within the meaning of MiFID II Art. 4(1)(4));</li>
+            <li>portfolio management services;</li>
+            <li>reception or transmission of orders;</li>
+            <li>placement or public solicitation of savings.</li>
           </ul>
           <p style={{ margin: 0 }}>
-            Tutte le indicazioni numeriche, le analisi statistiche, gli scenari di
-            allocazione e le risposte dell'AI sono <b>per scopi educativi e
-            informativi</b>. Frasi come "compra", "vendi", "investi", "buy/sell",
-            ove dovessero apparire nei risultati AI, sono da intendersi come parte
-            di esempi didattici o citazioni di notizie, e <b>non</b> come
-            raccomandazioni personalizzate.
+            All numerical indications, statistical analyses, allocation
+            scenarios and AI responses are <b>for educational and informational
+            purposes only</b>. Phrases such as "buy", "sell", "invest", if
+            present in AI outputs, are part of educational examples or news
+            citations and <b>do not</b> constitute personalized
+            recommendations.
           </p>
         </Section>
 
-        <Section title="3. Rischi degli Investimenti">
-          Gli strumenti finanziari (azioni, ETF, obbligazioni, derivati, crypto,
-          valute) comportano <b>rischi significativi</b>, inclusa la possibile
-          perdita totale del capitale investito. Le performance passate <b>non
-          sono indicative</b> di risultati futuri. Volatilità, illiquidità,
-          rischio emittente, rischio cambio, rischio paese e rischio
-          regolamentare possono influenzare materialmente i rendimenti.
+        <Section title="3. Investment Risks">
+          Financial instruments (equities, ETFs, bonds, derivatives, crypto
+          assets, currencies) carry <b>significant risks</b>, including the
+          possible total loss of invested capital. Past performance is{" "}
+          <b>not indicative</b> of future results. Volatility, illiquidity,
+          issuer risk, currency risk, country risk and regulatory risk can
+          materially affect returns.
         </Section>
 
-        <Section title="4. Limitazione di Responsabilità">
-          Nei limiti consentiti dalla legge applicabile, Moneta, i suoi sviluppatori,
-          fornitori di dati e affiliati declinano qualsiasi responsabilità per
-          danni diretti, indiretti, incidentali, consequenziali o punitivi
-          derivanti dall'uso o dall'impossibilità di utilizzo della piattaforma,
-          inclusi (a titolo esemplificativo) perdite finanziarie, perdita di
-          opportunità, danni reputazionali o interruzioni di servizio.
+        <Section title="4. Limitation of Liability">
+          To the maximum extent permitted by applicable law, Moneta, its
+          developers, data providers and affiliates disclaim all liability
+          for direct, indirect, incidental, consequential or punitive damages
+          arising from the use of or inability to use the platform, including
+          (without limitation) financial losses, lost opportunities,
+          reputational damage or service interruptions.
         </Section>
 
-        <Section title="5. Dati e Cookie">
-          I dati di mercato sono forniti da Finnhub.io e fonti pubbliche e
-          potrebbero essere ritardati o non accurati. Le sessioni utente e le
-          configurazioni di portafoglio sono memorizzate su Supabase
-          (UE/USA-hosted). Per dettagli sul trattamento dei dati personali
-          consultare la Privacy Policy (in elaborazione).
+        <Section title="5. Data and Cookies">
+          Market data is provided by Finnhub.io and other public sources and
+          may be delayed or inaccurate. User sessions and portfolio settings
+          are stored on Supabase (EU/US-hosted). For details on personal data
+          processing please refer to the Privacy Policy (in preparation).
         </Section>
 
-        <Section title="6. AI Generativa">
-          Le risposte AI sono generate da modelli di linguaggio (Gemini 2.5 Flash)
-          e possono contenere errori, allucinazioni o informazioni datate. Non
-          fare affidamento sulle risposte AI per decisioni finanziarie reali.
-          Verifica sempre con fonti ufficiali e consulta un professionista
-          abilitato prima di assumere qualsiasi decisione di investimento.
+        <Section title="6. Generative AI">
+          AI responses are produced by large language models (Gemini 2.5
+          Flash) and may contain errors, hallucinations or out-of-date
+          information. Do not rely on AI responses for real financial
+          decisions. Always verify with official sources and consult a
+          licensed professional before making any investment decision.
         </Section>
 
-        <Section title="7. Consulta un Professionista Abilitato">
-          Per consulenza personalizzata su investimenti, fiscalità o pianificazione
-          finanziaria rivolgiti a un <b>consulente finanziario abilitato</b>
-          (iscritto OCF in Italia o equivalente nella tua giurisdizione),
-          un commercialista o un avvocato esperto della materia.
+        <Section title="7. Consult a Licensed Professional">
+          For personalized advice on investments, taxation or financial
+          planning please consult a <b>licensed financial advisor</b>
+          (registered with the OCF in Italy, FINRA/SEC in the US, FCA in the
+          UK, or the equivalent body in your jurisdiction), a chartered
+          accountant or a qualified attorney.
         </Section>
 
-        <Section title="8. Giurisdizione">
-          Questa informativa è disciplinata dalla legge italiana. Qualsiasi
-          controversia sarà di competenza esclusiva del Foro del consumatore
-          ove applicabile, o del Foro di Milano in via residuale.
+        <Section title="8. Governing Law">
+          This notice is governed by Italian law. Any dispute shall fall
+          under the exclusive jurisdiction of the consumer forum where
+          applicable, or the Court of Milan on a residual basis.
         </Section>
 
         <div style={{
@@ -168,7 +170,7 @@ function DisclaimerPage() {
             padding: "8px 20px", textDecoration: "none", fontSize: 14,
             fontWeight: 700, letterSpacing: "0.1em",
           }}>
-            ← TORNA AL TERMINALE
+            ← BACK TO TERMINAL
           </Link>
         </div>
       </div>

@@ -10,7 +10,7 @@ import {
 } from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/_authenticated/profile")({
-  head: () => ({ meta: [{ title: "Moneta — Il mio profilo" }] }),
+  head: () => ({ meta: [{ title: "Moneta — My profile" }] }),
   component: ProfilePage,
 });
 
@@ -55,7 +55,7 @@ function ProfilePage() {
   const save = async () => {
     setMsg("");
     await fUpd({ data: { display_name: name } });
-    setMsg("Salvato");
+    setMsg("Saved");
     setTimeout(() => setMsg(""), 1500);
   };
 
@@ -70,17 +70,17 @@ function ProfilePage() {
         justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: B.white, letterSpacing: "0.18em" }}>MONETA</div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>PROFILO UTENTE</div>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>USER PROFILE</div>
         </div>
         <Link to="/" style={{ fontSize: 11, color: B.white, textDecoration: "none", fontWeight: 700 }}>
-          ← TERMINALE
+          ← TERMINAL
         </Link>
       </div>
 
       <div style={{ display: "flex", borderBottom: `1px solid ${B.border}`, background: B.panel2 }}>
         {[
-          { id: "profile", l: "PROFILO" },
-          { id: "portfolios", l: `PORTAFOGLI (${ports.length})` },
+          { id: "profile", l: "PROFILE" },
+          { id: "portfolios", l: `PORTFOLIOS (${ports.length})` },
           { id: "watchlist", l: `WATCHLIST (${watch.length})` },
           { id: "ai", l: `AI CHAT (${convs.length})` },
         ].map((t: any) => (
@@ -98,13 +98,13 @@ function ProfilePage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <Field label="EMAIL" value={email} readOnly />
             <div>
-              <div style={{ fontSize: 9, color: B.gray2, marginBottom: 4, letterSpacing: "0.08em" }}>NOME VISUALIZZATO</div>
+              <div style={{ fontSize: 9, color: B.gray2, marginBottom: 4, letterSpacing: "0.08em" }}>DISPLAY NAME</div>
               <input value={name} onChange={(e) => setName(e.target.value)} style={inp} />
             </div>
-            <button onClick={save} style={btn(B.blue, B.white)}>SALVA</button>
+            <button onClick={save} style={btn(B.blue, B.white)}>SAVE</button>
             {msg && <div style={{ fontSize: 10, color: B.yellow }}>✓ {msg}</div>}
             <button onClick={logout} style={{ ...btn("transparent", B.red), borderColor: B.red, marginTop: 16 }}>
-              ESCI
+              SIGN OUT
             </button>
           </div>
         )}
@@ -112,12 +112,12 @@ function ProfilePage() {
         {tab === "portfolios" && (
           <List
             items={ports}
-            empty="Nessun portafoglio salvato. Costruiscine uno dal terminale e premi SAVE."
+            empty="No portfolios saved. Build one in the terminal and press SAVE."
             render={(p) => (
               <>
                 <div style={{ fontSize: 12, color: B.yellow, fontWeight: 700 }}>{p.name}</div>
                 <div style={{ fontSize: 9, color: B.gray2 }}>
-                  {(p.holdings as any[]).length} titoli · {new Date(p.updated_at).toLocaleDateString()}
+                  {(p.holdings as any[]).length} holdings · {new Date(p.updated_at).toLocaleDateString()}
                 </div>
               </>
             )}
@@ -128,7 +128,7 @@ function ProfilePage() {
         {tab === "watchlist" && (
           <List
             items={watch}
-            empty="Nessun titolo in osservazione."
+            empty="No tickers in your watchlist."
             render={(w) => (
               <>
                 <div style={{ fontSize: 12, color: B.yellow, fontWeight: 700 }}>{w.symbol}</div>
@@ -142,12 +142,12 @@ function ProfilePage() {
         {tab === "ai" && (
           <List
             items={convs}
-            empty="Nessuna conversazione salvata."
+            empty="No saved conversations."
             render={(c) => (
               <>
                 <div style={{ fontSize: 12, color: B.yellow, fontWeight: 700 }}>{c.title}</div>
                 <div style={{ fontSize: 9, color: B.gray2 }}>
-                  {(c.messages as any[]).length} messaggi · {new Date(c.updated_at).toLocaleDateString()}
+                  {(c.messages as any[]).length} messages · {new Date(c.updated_at).toLocaleDateString()}
                 </div>
               </>
             )}
