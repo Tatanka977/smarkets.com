@@ -12,7 +12,15 @@ import {
   batchRefresh as srvBatch,
 } from "@/lib/finance.functions";
 import { aiChat } from "@/lib/ai.functions";
-import { savePortfolio, saveConversation } from "@/lib/profile.functions";
+import {
+  fetchMarketNews as srvMarketNews,
+  fetchCompanyNews as srvCompanyNews,
+} from "@/lib/news.functions";
+import {
+  savePortfolio,
+  saveConversation,
+  addToWatchlist as srvAddWatch,
+} from "@/lib/profile.functions";
 import { useUser } from "@/hooks/useUser";
 import { Link } from "@tanstack/react-router";
 
@@ -70,6 +78,8 @@ const pMet = (hs) => {
 const searchSecurities = (q, category) => srvSearch({ data: { q, category } });
 const fetchQuote = (sym) => srvQuote({ data: { symbol: sym } });
 const batchRefresh = (symbols) => srvBatch({ data: { symbols } });
+const fetchMarketNews = (category) => srvMarketNews({ data: { category } });
+const fetchCompanyNews = (symbol, days=14) => srvCompanyNews({ data: { symbol, days } });
 
 const CATEGORY_TABS = [
   { id: undefined, label: "ALL" },
@@ -181,6 +191,7 @@ function FKeyBar({page,setPage}:any) {
     {n:"F3",l:"PORT",    id:"portfolio"},
     {n:"F4",l:"ANALYSIS",id:"analysis"},
     {n:"F5",l:"AI ADVSR",id:"ai"},
+    {n:"F6",l:"NEWS",    id:"news"},
   ];
   return (
     <div style={{background:B.panel2,borderBottom:`1px solid ${B.border}`,
@@ -202,6 +213,7 @@ function BottomNav({page,setPage,badge}:any) {
     {id:"portfolio",fn:"F3",label:"PORT",badge},
     {id:"analysis",fn:"F4",label:"ANLY"},
     {id:"ai",      fn:"F5",label:"AI"},
+    {id:"news",    fn:"F6",label:"NEWS"},
   ];
   return (
     <div style={{background:B.panel2,borderTop:`1px solid ${B.borderB}`,
@@ -336,6 +348,7 @@ function HomePage({holdings,setPage,onRefresh,refreshing}:any) {
           {l:"PORTFOLIO",   f:"F3",action:()=>setPage("portfolio")},
           {l:"RISK ANALYSIS",f:"F4",action:()=>setPage("analysis")},
           {l:"AI ADVISOR",  f:"F5",action:()=>setPage("ai")},
+          {l:"MARKET NEWS", f:"F6",action:()=>setPage("news")},
         ].map((b,i)=>(
           <button key={i} onClick={b.action} style={{
             background:B.panel2,border:`1px solid ${B.border}`,
@@ -401,6 +414,24 @@ function SearchPage({onAdd,portfolio}:any) {
     } catch(e:any) {
       setError(`QUOTE ERROR: ${e.message}`);
     } finally { setLoad(false); }
+  };
+
+  const { user } = useUser();
+  const [watchMsg, setWatchMsg] = useState("");
+  const [watchBusy, setWatchBusy] = useState(false);
+  const addWatch = async () => {
+    if (!detail) return;
+    if (!user) { window.location.href = "/auth"; return; }
+    setWatchBusy(true); setWatchMsg("");
+    try {
+      await srvAddWatch({ data: { symbol: detail.ticker || detail.symbol, name: detail.shortName, category: detail.category } });
+      setWatchMsg("✓ AGGIUNTO");
+    } catch(e:any) {
+      setWatchMsg("ERR: " + (e.message || "").slice(0, 30));
+    } finally {
+      setWatchBusy(false);
+      setTimeout(() => setWatchMsg(""), 2000);
+    }
   };
 
   const add = () => {
@@ -472,6 +503,12 @@ function SearchPage({onAdd,portfolio}:any) {
             padding:"6px",cursor:"pointer",fontFamily:"'Courier New',monospace",
             fontSize:24,fontWeight:700,letterSpacing:"0.08em"}}>
             ADD POSITION
+          </button>
+          <button onClick={addWatch} disabled={watchBusy} style={{
+            width:"100%",marginTop:6,background:"transparent",border:`1px solid ${B.yellow}`,color:B.yellow,
+            padding:"6px",cursor:watchBusy?"wait":"pointer",fontFamily:"'Courier New',monospace",
+            fontSize:18,fontWeight:700,letterSpacing:"0.08em"}}>
+            {watchBusy ? "..." : watchMsg || "★ ADD TO WATCHLIST"}
           </button>
         </div>
       </div>
@@ -903,6 +940,191 @@ function AIAdvisorPage({holdings}:any) {
   );
 }
 
+function NewsPage({holdings,setPage}:any) {
+  const [tab, setTab] = useState<"market"|"holdings"|"symbol">("market");
+  const [marketCat, setMarketCat] = useState("general");
+  const [marketNews, setMarketNews] = useState<any[]>([]);
+  const [holdNews, setHoldNews] = useState<any[]>([]);
+  const [symInput, setSymInput] = useState("");
+  const [symActive, setSymActive] = useState("");
+  const [symNews, setSymNews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [sentiment, setSentiment] = useState("");
+  const [sentBusy, setSentBusy] = useState(false);
+
+  const loadMarket = useCallback(async (cat: string) => {
+    setLoading(true);
+    try {
+      const data = await fetchMarketNews(cat);
+      setMarketNews(data || []);
+    } catch (e:any) {
+      console.error(e);
+    } finally { setLoading(false); }
+  }, []);
+
+  const loadHoldings = useCallback(async () => {
+    if (!holdings.length) { setHoldNews([]); return; }
+    setLoading(true);
+    try {
+      const symbols = Array.from(new Set(holdings.map(h => h.asset.ticker || h.asset.symbol).filter(Boolean))).slice(0, 6);
+      const lists = await Promise.all(symbols.map(s => fetchCompanyNews(s, 7).catch(() => [])));
+      const merged = symbols.flatMap((s, i) => (lists[i] || []).slice(0, 4).map(n => ({...n, _sym: s})));
+      merged.sort((a, b) => (b.datetime || 0) - (a.datetime || 0));
+      setHoldNews(merged.slice(0, 30));
+    } catch (e:any) {
+      console.error(e);
+    } finally { setLoading(false); }
+  }, [holdings]);
+
+  const loadSymbol = useCallback(async (sym: string) => {
+    if (!sym) return;
+    setLoading(true); setSymActive(sym); setSentiment("");
+    try {
+      const data = await fetchCompanyNews(sym, 14);
+      setSymNews(data || []);
+    } catch (e:any) {
+      console.error(e);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { loadMarket(marketCat); }, [marketCat, loadMarket]);
+  useEffect(() => { if (tab === "holdings") loadHoldings(); }, [tab, loadHoldings]);
+
+  const runSentiment = async () => {
+    const list = tab === "symbol" ? symNews : tab === "holdings" ? holdNews : marketNews;
+    if (!list.length) return;
+    setSentBusy(true); setSentiment("");
+    try {
+      const headlines = list.slice(0, 12).map((n, i) => `${i+1}. ${n.headline}${n.summary ? " — " + n.summary.slice(0, 140) : ""}`).join("\n");
+      const sys = "Sei MONETA AI, esperto di mercati finanziari. Analizza i titoli e fornisci: SENTIMENT (BULLISH/BEARISH/NEUTRAL), 3 punti chiave con asterischi **bold**, e una riga finale BOTTOM LINE. Max 150 parole. Rispondi in italiano.";
+      const prompt = `Analizza il sentiment dei seguenti titoli di news (${tab === "symbol" ? "su " + symActive : tab === "holdings" ? "del mio portafoglio" : "di mercato"}):\n\n${headlines}`;
+      const { reply } = await aiChat({ data: { messages: [{role:"user", content: prompt}], system: sys } });
+      setSentiment(reply);
+    } catch (e:any) {
+      setSentiment("Errore AI: " + e.message);
+    } finally { setSentBusy(false); }
+  };
+
+  const list = tab === "symbol" ? symNews : tab === "holdings" ? holdNews : marketNews;
+
+  return (
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{display:"flex",gap:2,padding:"3px 4px",borderBottom:`1px solid ${B.border}`,background:B.panel2,flexShrink:0}}>
+        {[
+          {id:"market", l:"MARKET"},
+          {id:"holdings", l:`MY HOLDINGS (${holdings.length})`},
+          {id:"symbol", l:"SYMBOL"},
+        ].map((t:any) => (
+          <FKey key={t.id} label={t.l} active={tab===t.id} onClick={()=>setTab(t.id)}/>
+        ))}
+      </div>
+
+      {tab === "market" && (
+        <div style={{display:"flex",gap:3,padding:"4px 6px",overflowX:"auto",borderBottom:`1px solid ${B.border}`,background:B.panel}}>
+          {["general","forex","crypto","merger"].map(c => (
+            <button key={c} onClick={()=>setMarketCat(c)} style={{
+              background: marketCat===c ? B.blue : B.panel2, border:`1px solid ${marketCat===c?B.blue:B.border}`,
+              color: marketCat===c ? B.white : B.gray1, padding:"3px 10px", cursor:"pointer",
+              fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, letterSpacing:"0.06em",
+              whiteSpace:"nowrap", textTransform:"uppercase",
+            }}>{c}</button>
+          ))}
+        </div>
+      )}
+
+      {tab === "symbol" && (
+        <div style={{padding:"6px",borderBottom:`1px solid ${B.border}`,background:B.panel2,display:"flex",gap:6}}>
+          <input value={symInput} onChange={e=>setSymInput(e.target.value.toUpperCase())}
+            onKeyDown={e=>{ if(e.key==="Enter") loadSymbol(symInput.trim()); }}
+            placeholder="ENTER TICKER (AAPL, MSFT, NVDA)..."
+            style={{flex:1,background:B.bg,border:`1px solid ${B.blue}`,color:B.yellow,
+              padding:"6px 10px",fontSize:16,fontFamily:"'Courier New',monospace",outline:"none",
+              letterSpacing:"0.04em",textTransform:"uppercase"}}/>
+          <button onClick={()=>loadSymbol(symInput.trim())} style={{
+            background:B.blue,border:"none",color:B.white,padding:"6px 16px",cursor:"pointer",
+            fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700,letterSpacing:"0.06em"}}>
+            ▶ FETCH
+          </button>
+        </div>
+      )}
+
+      <div style={{padding:"4px 6px",borderBottom:`1px solid ${B.border}`,background:B.panel,
+        display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+        <span style={{fontSize:14,color:B.gray2,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em"}}>
+          {tab === "symbol" && symActive ? `${symActive} — ` : ""}{list.length} HEADLINES
+        </span>
+        <button onClick={runSentiment} disabled={sentBusy || !list.length} style={{
+          background:"transparent", border:`1px solid ${B.cyan}`, color:B.cyan,
+          padding:"3px 10px", cursor:list.length?"pointer":"not-allowed",
+          fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, letterSpacing:"0.06em",
+          opacity: list.length ? 1 : 0.4,
+        }}>
+          {sentBusy ? "ANALYZING..." : "✦ AI SENTIMENT"}
+        </button>
+      </div>
+
+      <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
+        {sentiment && (
+          <div style={{padding:"8px 10px",borderBottom:`1px solid ${B.cyan}`,background:"#001a1a"}}>
+            <div style={{fontSize:14,color:B.cyan,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:4,letterSpacing:"0.08em"}}>
+              ✦ MONETA AI SENTIMENT
+            </div>
+            {sentiment.split("\n").map((line, i) => {
+              const parts = line.split(/(\*\*[^*]+\*\*)/g);
+              return (
+                <div key={i} style={{fontSize:14,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5,marginBottom:2}}>
+                  {parts.map((p, j) =>
+                    p.startsWith("**") && p.endsWith("**")
+                      ? <span key={j} style={{color:B.yellow,fontWeight:700}}>{p.slice(2,-2)}</span>
+                      : p
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {loading && <Spinner text="FETCHING NEWS..."/>}
+
+        {!loading && list.length === 0 && (
+          <div style={{padding:"14px 10px",fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
+            {tab === "symbol" ? "ENTER A TICKER ABOVE TO LOAD COMPANY NEWS" :
+             tab === "holdings" ? "NO HOLDINGS YET — ADD SECURITIES VIA F2" :
+             "NO NEWS AVAILABLE"}
+          </div>
+        )}
+
+        {list.map((n:any, i:number) => {
+          const dt = new Date((n.datetime || 0) * 1000);
+          const dateStr = dt.toLocaleString("it-IT", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+          return (
+            <a key={(n.id || i) + "_" + i} href={n.url && n.url !== "#" ? n.url : undefined}
+               target="_blank" rel="noreferrer noopener"
+               style={{display:"block",textDecoration:"none",padding:"6px 10px",
+                       borderBottom:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
+                {n._sym && <span style={{fontSize:14,color:B.blue,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{n._sym}</span>}
+                <span style={{fontSize:12,color:B.cyan,fontFamily:"'Courier New',monospace"}}>{dateStr}</span>
+                {n.source && <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>· {n.source}</span>}
+                {n.category && <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",border:`1px solid ${B.gray4}`,padding:"0 4px",textTransform:"uppercase",marginLeft:"auto"}}>{n.category}</span>}
+              </div>
+              <div style={{fontSize:16,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:2,lineHeight:1.3}}>
+                {n.headline}
+              </div>
+              {n.summary && (
+                <div style={{fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace",lineHeight:1.4,
+                             overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+                  {n.summary}
+                </div>
+              )}
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function PortfolioTerminal() {
   const [page,setPage]     = useState("home");
   const [holdings,setHoldings] = useState<any[]>([]);
@@ -983,6 +1205,7 @@ export default function PortfolioTerminal() {
             {page==="portfolio"  && <PortfolioPage holdings={holdings} onRemove={removeFromPortfolio}/>}
             {page==="analysis"   && <AnalysisPage  holdings={holdings}/>}
             {page==="ai"         && <AIAdvisorPage holdings={holdings}/>}
+            {page==="news"       && <NewsPage holdings={holdings} setPage={setPage}/>}
           </div>
           <BottomNav page={page} setPage={setPage} badge={holdings.length}/>
         </>
