@@ -417,6 +417,7 @@ function SearchPage({onAdd,portfolio}:any) {
   const { user } = useUser();
   const [watchMsg, setWatchMsg] = useState("");
   const [watchBusy, setWatchBusy] = useState(false);
+  const [addMsg, setAddMsg] = useState("");
   const addWatch = async () => {
     if (!detail) return;
     if (!user) { window.location.href = "/auth"; return; }
@@ -438,7 +439,10 @@ function SearchPage({onAdd,portfolio}:any) {
     const px = parseFloat(buyPx);
     const costPrice = isFinite(px) && px>0 ? px : (detail.price || 0);
     onAdd(detail, q1, costPrice, buyDt);
-    setSel(null); setDetail(null); setQ(""); setRes([]);
+    // Keep search results & detail view open so user can continue browsing.
+    // Just give a clear confirmation that the position was added.
+    setAddMsg(`✓ ADDED ${q1} ${detail.ticker || detail.symbol} @ ${costPrice.toFixed(2)}`);
+    setTimeout(() => setAddMsg(""), 3000);
   };
 
   const inP = (sym) => portfolio.some(h => h.asset.ticker===sym || h.asset.symbol===sym);
@@ -496,6 +500,17 @@ function SearchPage({onAdd,portfolio}:any) {
             COST = ${fmtM((parseFloat(qty)||0)*(parseFloat(buyPx)||detail.price||0))}
             {" · "}MKT = ${fmtM((parseFloat(qty)||0)*(detail.price||0))}
           </div>
+          {addMsg && (
+            <div style={{
+              padding:"6px 8px", marginBottom:6,
+              background:"#003300", border:`1px solid ${B.green || "#00FF66"}`,
+              color: B.green || "#00FF66",
+              fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700,
+              letterSpacing:"0.06em", textAlign:"center",
+            }}>
+              {addMsg}
+            </div>
+          )}
           <button onClick={add} style={{
             width:"100%",background:B.blue,border:"none",color:B.white,
             padding:"6px",cursor:"pointer",fontFamily:"'Courier New',monospace",
@@ -1381,7 +1396,11 @@ export default function PortfolioTerminal() {
   const [holdings,setHoldings] = useState<any[]>([]);
   const [refreshing,setRefreshing] = useState(false);
 
-  const addToPortfolio = (asset, qty, costPrice?, buyDate?) => {
+  // Ref keeps the latest holdings without invalidating callbacks/intervals
+  const holdingsRef = useRef<any[]>(holdings);
+  useEffect(() => { holdingsRef.current = holdings; }, [holdings]);
+
+  const addToPortfolio = useCallback((asset:any, qty:number, costPrice?:number, buyDate?:string) => {
     setHoldings(prev => {
       const key = asset.ticker || asset.symbol;
       const idx = prev.findIndex(h => h.asset.ticker===key || h.asset.symbol===key);
@@ -1410,18 +1429,20 @@ export default function PortfolioTerminal() {
         costPrice:cp, costBasis:cost, buyDate:bd,
         lots:[{qty,price:cp,date:bd}]}];
     });
-  };
+  }, []);
 
-  const removeFromPortfolio = (key) =>
-    setHoldings(h => h.filter(x => x.isin!==key && x.asset.ticker!==key));
+  const removeFromPortfolio = useCallback((key:string) =>
+    setHoldings(h => h.filter(x => x.isin!==key && x.asset.ticker!==key)), []);
 
+  // Stable callback — no holdings dep, reads from ref. Won't recreate on each price tick.
   const refreshPrices = useCallback(async () => {
-    if (!holdings.length || refreshing) return;
+    const cur = holdingsRef.current;
+    if (!cur.length) return;
     setRefreshing(true);
     try {
-      const symbols = holdings.map(h => h.asset.ticker);
+      const symbols = cur.map((h:any) => h.asset.ticker);
       const data    = await batchRefresh(symbols);
-      const bySymbol = Object.fromEntries(data.map(d=>[d.symbol,d]));
+      const bySymbol = Object.fromEntries(data.map((d:any)=>[d.symbol,d]));
       setHoldings(prev => prev.map(h => {
         const live = bySymbol[h.asset.ticker];
         if (!live) return h;
@@ -1436,13 +1457,16 @@ export default function PortfolioTerminal() {
     } catch(e:any) {
       console.error("Refresh failed:", e.message);
     } finally { setRefreshing(false); }
-  }, [holdings, refreshing]);
+  }, []);
 
+  // Single interval that does NOT reset on every price tick — only when
+  // crossing the empty/non-empty boundary of holdings.
+  const hasHoldings = holdings.length > 0;
   useEffect(() => {
-    if (!holdings.length) return;
+    if (!hasHoldings) return;
     const t = setInterval(refreshPrices, 60000);
     return () => clearInterval(t);
-  }, [refreshPrices, holdings.length]);
+  }, [hasHoldings, refreshPrices]);
 
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   useEffect(() => {
