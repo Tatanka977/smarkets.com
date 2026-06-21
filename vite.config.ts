@@ -8,8 +8,6 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
     server: { entry: "server" },
   },
   vite: {
@@ -18,10 +16,12 @@ export default defineConfig({
       port: 3000,
       strictPort: true,
       allowedHosts: true,
-      hmr: {
-        clientPort: 443,
-        protocol: "wss",
-      },
+      // Disable HMR entirely. The preview is served behind a Cloudflare/ingress proxy
+      // that closes idle WebSockets after ~50s; Vite's HMR then forces a full
+      // browser reload (which wipes UI state and infuriates the user).
+      // Without HMR the dev server still serves files normally; users just
+      // refresh manually to pull new changes.
+      hmr: false,
     },
   },
 });

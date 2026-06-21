@@ -22,6 +22,7 @@ import {
   addToWatchlist as srvAddWatch,
 } from "@/lib/profile.functions";
 import { useUser } from "@/hooks/useUser";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { Link } from "@tanstack/react-router";
 
 const B = {
@@ -249,8 +250,8 @@ function HomePage({holdings,setPage,onRefresh,refreshing}:any) {
     setSaving(true);
     try {
       await savePortfolio({ data: { name, holdings } });
-      setSaveMsg("✓ SALVATO");
-    } catch(e:any){ setSaveMsg("ERRORE: "+e.message); }
+      setSaveMsg("✓ SAVED");
+    } catch(e:any){ setSaveMsg("ERROR: "+e.message); }
     finally { setSaving(false); setTimeout(()=>setSaveMsg(""),2000); }
   };
 
@@ -363,17 +364,17 @@ function HomePage({holdings,setPage,onRefresh,refreshing}:any) {
 }
 
 function SearchPage({onAdd,portfolio}:any) {
-  const [q,setQ]         = useState("");
+  const [q,setQ]         = usePersistentState<string>("search_q", "");
   const [results,setRes] = useState<any[]>([]);
   const [searching,setSrch]=useState(false);
-  const [sel,setSel]     = useState<any>(null);
+  const [sel,setSel]     = usePersistentState<any>("search_sel", null);
   const [loading,setLoad]= useState(false);
-  const [detail,setDetail]=useState<any>(null);
+  const [detail,setDetail]=usePersistentState<any>("search_detail", null);
   const [error,setError] = useState("");
-  const [qty,setQty]     = useState("1");
-  const [buyPx,setBuyPx] = useState("");
-  const [buyDt,setBuyDt] = useState(()=>new Date().toISOString().slice(0,10));
-  const [cat,setCat]     = useState<any>(undefined);
+  const [qty,setQty]     = usePersistentState<string>("search_qty", "1");
+  const [buyPx,setBuyPx] = usePersistentState<string>("search_buyPx", "");
+  const [buyDt,setBuyDt] = usePersistentState<string>("search_buyDt", new Date().toISOString().slice(0,10));
+  const [cat,setCat]     = usePersistentState<any>("search_cat", undefined);
   const debounce         = useRef<any>(null);
 
   const doSearch = useCallback(async (val, category) => {
@@ -970,25 +971,25 @@ function AIAdvisorPage({holdings}:any) {
 }
 
 function NewsPage({holdings,setPage}:any) {
-  const [tab, setTab] = useState<"market"|"holdings"|"symbol">("market");
-  const [marketCat, setMarketCat] = useState("general");
+  const [tab, setTab] = usePersistentState<"market"|"holdings"|"symbol">("news_tab", "market");
+  const [marketCat, setMarketCat] = usePersistentState<string>("news_marketCat", "general");
   const [marketNews, setMarketNews] = useState<any[]>([]);
   const [holdNews, setHoldNews] = useState<any[]>([]);
-  const [symInput, setSymInput] = useState("");
-  const [symActive, setSymActive] = useState("");
+  const [symInput, setSymInput] = usePersistentState<string>("news_symInput", "");
+  const [symActive, setSymActive] = usePersistentState<string>("news_symActive", "");
   const [symNews, setSymNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [sentiment, setSentiment] = useState("");
   const [sentBusy, setSentBusy] = useState(false);
 
-  // Filter state
-  const [keyword, setKeyword] = useState("");
-  const [dateRange, setDateRange] = useState<"24h"|"3d"|"7d"|"14d"|"30d"|"all"|"custom">("7d");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("ALL");
-  const [sortMode, setSortMode] = useState<"newest"|"oldest"|"relevance">("newest");
-  const [showFilters, setShowFilters] = useState(false);
+  // Filter state (persisted)
+  const [keyword, setKeyword] = usePersistentState<string>("news_keyword", "");
+  const [dateRange, setDateRange] = usePersistentState<"24h"|"3d"|"7d"|"14d"|"30d"|"all"|"custom">("news_dateRange", "7d");
+  const [customFrom, setCustomFrom] = usePersistentState<string>("news_customFrom", "");
+  const [customTo, setCustomTo] = usePersistentState<string>("news_customTo", "");
+  const [sourceFilter, setSourceFilter] = usePersistentState<string>("news_sourceFilter", "ALL");
+  const [sortMode, setSortMode] = usePersistentState<"newest"|"oldest"|"relevance">("news_sortMode", "newest");
+  const [showFilters, setShowFilters] = usePersistentState<boolean>("news_showFilters", false);
 
   const loadMarket = useCallback(async (cat: string) => {
     setLoading(true);
@@ -1395,6 +1396,51 @@ export default function PortfolioTerminal() {
   const [page,setPage]     = useState("home");
   const [holdings,setHoldings] = useState<any[]>([]);
   const [refreshing,setRefreshing] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  // ── PERSISTENCE ─────────────────────────────────────────────────────────
+  // Hydrate from localStorage on mount (client only). This survives HMR,
+  // navigation away/back, hard reloads, route invalidations, etc.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem("moneta_holdings_v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setHoldings(parsed);
+      }
+      const p = localStorage.getItem("moneta_page_v1");
+      if (p && ["home","search","portfolio","analysis","ai","news"].includes(p)) setPage(p);
+    } catch (e) {
+      console.warn("[Moneta] hydration error:", e);
+    } finally {
+      setHydrated(true);
+    }
+    // Diagnostic: log mount/unmount in dev so we can spot accidental remounts.
+    const id = Math.random().toString(36).slice(2, 8);
+    // eslint-disable-next-line no-console
+    console.info("[Moneta] PortfolioTerminal MOUNT", id);
+    return () => {
+      // eslint-disable-next-line no-console
+      console.info("[Moneta] PortfolioTerminal UNMOUNT", id);
+    };
+  }, []);
+
+  // Persist holdings whenever they change (after first hydration).
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+    try {
+      localStorage.setItem("moneta_holdings_v1", JSON.stringify(holdings));
+    } catch (e) {
+      console.warn("[Moneta] persist holdings error:", e);
+    }
+  }, [holdings, hydrated]);
+
+  // Persist active page so even a hard reload puts the user back where they were.
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+    try { localStorage.setItem("moneta_page_v1", page); } catch {}
+  }, [page, hydrated]);
 
   // Ref keeps the latest holdings without invalidating callbacks/intervals
   const holdingsRef = useRef<any[]>(holdings);
