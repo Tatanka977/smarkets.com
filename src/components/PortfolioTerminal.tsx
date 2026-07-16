@@ -96,12 +96,12 @@ const CATEGORY_TABS = [
 const FKey = ({num,label,active,onClick}) => (
   <button onClick={onClick} style={{
     background:active?B.blue:B.panel2, border:`1px solid ${active?B.blue:B.border}`,
-    borderRadius:0, padding:"4px 8px", cursor:"pointer",
-    display:"flex", alignItems:"center", gap:0,
-    fontFamily:"'Courier New',Courier,monospace", minWidth:60,
+    borderRadius:0, padding:"5px 10px", cursor:"pointer",
+    display:"flex", alignItems:"center", gap:4,
+    fontFamily:"'Courier New',Courier,monospace", flexShrink:0,
   }}>
-    {num&&<span style={{fontSize:18,color:active?B.white:B.gray2,fontWeight:700,marginRight:4}}>{num}</span>}
-    <span style={{fontSize:18,color:active?B.white:B.gray2,fontWeight:700,
+    {num&&<span style={{fontSize:11,color:active?B.white:B.gray3,fontWeight:700}}>{num}</span>}
+    <span style={{fontSize:12,color:active?B.white:B.gray2,fontWeight:700,
       letterSpacing:"0.05em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{label}</span>
   </button>
 );
@@ -111,7 +111,7 @@ const BPanel = ({title,children,style,accent}:any) => (
     {title&&(
       <div style={{background:accent?B.blue:B.blue,padding:"3px 8px",
         display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontSize:18,fontWeight:700,color:B.white,
+        <span style={{fontSize:13,fontWeight:700,color:B.white,
           fontFamily:"'Courier New',monospace",letterSpacing:"0.08em",textTransform:"uppercase"}}>{title}</span>
       </div>
     )}
@@ -147,7 +147,7 @@ function PhoneShell({children}:any) {
     return()=>clearInterval(t);
   },[]);
   return (
-    <div style={{background:B.bg,minHeight:"100vh",display:"flex",flexDirection:"column",
+    <div className="sm-shell" style={{background:B.bg,minHeight:"100vh",display:"flex",flexDirection:"column",
       fontFamily:"'Courier New',Courier,monospace"}}>
       {children(time)}
       <style>{`
@@ -157,6 +157,50 @@ function PhoneShell({children}:any) {
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width:6px; background:#000; }
         ::-webkit-scrollbar-thumb { background:${B.blue}; }
+
+        /* ── Responsive shell ──────────────────────────────────────────── */
+        .sm-shell { width:100%; margin:0 auto; }
+        @media (min-width: 768px)  { .sm-shell { max-width: 820px;  border-left:1px solid ${B.border}; border-right:1px solid ${B.border}; } }
+        @media (min-width: 1200px) { .sm-shell { max-width: 980px; } }
+        @media (min-width: 1600px) { .sm-shell { max-width: 1080px; } }
+
+        /* ── Global responsive font-size overrides ─────────────────────
+           The app was originally sized for a mid-size phone. Below we
+           dial the largest inline sizes down on small screens to prevent
+           overlap on narrow viewports (≤480 px).                        */
+        @media (max-width: 480px) {
+          .sm-shell [style*="font-size: 32"] { font-size: 20px !important; }
+          .sm-shell [style*="font-size: 28"] { font-size: 18px !important; }
+          .sm-shell [style*="font-size: 26"] { font-size: 17px !important; }
+          .sm-shell [style*="font-size: 24"] { font-size: 16px !important; }
+          .sm-shell [style*="font-size: 22"] { font-size: 15px !important; }
+          .sm-shell [style*="font-size: 20"] { font-size: 14px !important; }
+          .sm-shell [style*="font-size: 18"] { font-size: 13px !important; }
+          .sm-shell [style*="font-size: 16"] { font-size: 12px !important; }
+          .sm-shell [style*="font-size: 15"] { font-size: 12px !important; }
+          .sm-shell [style*="font-size: 14"] { font-size: 11px !important; }
+          .sm-shell [style*="font-size: 13"] { font-size: 11px !important; }
+          .sm-shell [style*="font-size: 12"] { font-size: 10px !important; }
+          .sm-shell [style*="font-size: 11"] { font-size: 10px !important; }
+        }
+        /* Slightly bigger on desktop for readability */
+        @media (min-width: 1400px) {
+          .sm-shell [style*="font-size: 32"] { font-size: 36px !important; }
+          .sm-shell [style*="font-size: 24"] { font-size: 22px !important; }
+        }
+
+        /* Allow the horizontal top nav to scroll on very narrow screens */
+        .sm-topbar { flex-wrap: wrap; gap: 6px; }
+        .sm-fkeys, .sm-bottomnav { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .sm-fkeys::-webkit-scrollbar, .sm-bottomnav::-webkit-scrollbar { height: 0; }
+
+        /* Hide secondary tagline on very narrow screens to avoid overlap */
+        @media (max-width: 480px) {
+          .sm-tagline { display: none !important; }
+          .sm-topbar { padding: 6px 8px !important; }
+        }
+
+        ::selection { background: ${B.blue}; color: ${B.white}; }
       `}</style>
     </div>
   );
@@ -165,19 +209,24 @@ function PhoneShell({children}:any) {
 function TopBar({time}:any) {
   const { user } = useUser();
   return (
-    <div style={{background:B.blue,display:"flex",alignItems:"center",
-      justifyContent:"space-between",padding:"4px 10px",flexShrink:0}}>
-      <div style={{display:"flex",alignItems:"center",gap:12}}>
-        <span style={{fontSize:24,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",letterSpacing:"0.18em"}}>MONETA</span>
-        <span style={{fontSize:18,color:"rgba(255,255,255,0.85)",fontFamily:"'Courier New',monospace"}}>PORTFOLIO TERMINAL</span>
+    <div className="sm-topbar" style={{background:B.blue,display:"flex",alignItems:"center",
+      justifyContent:"space-between",padding:"6px 12px",flexShrink:0,gap:8,flexWrap:"wrap"}}>
+      <div style={{display:"flex",alignItems:"baseline",gap:10,minWidth:0}}>
+        <span style={{fontSize:16,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
+          letterSpacing:"0.14em",whiteSpace:"nowrap"}}>STRATEGIC MARKETS</span>
+        <span className="sm-tagline" style={{fontSize:12,color:"rgba(255,255,255,0.75)",
+          fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>
+          PORTFOLIO TERMINAL
+        </span>
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontSize:24,color:B.yellow,fontFamily:"'Courier New',monospace",fontWeight:700}}>● LIVE</span>
-        <span style={{fontSize:18,color:B.white,fontFamily:"'Courier New',monospace"}}>{time}</span>
+      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        <span style={{fontSize:12,color:B.yellow,fontFamily:"'Courier New',monospace",
+          fontWeight:700,letterSpacing:"0.06em"}}>● LIVE</span>
+        <span style={{fontSize:12,color:B.white,fontFamily:"'Courier New',monospace",opacity:0.85}}>{time}</span>
         <Link to={user ? "/profile" : "/auth"} style={{
-          fontSize:24,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
+          fontSize:12,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
           textDecoration:"none",background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.4)",
-          padding:"3px 8px",letterSpacing:"0.06em"}}>
+          padding:"4px 10px",letterSpacing:"0.08em",whiteSpace:"nowrap"}}>
           {user ? "◉ PROFILE" : "▸ SIGN IN"}
         </Link>
       </div>
@@ -195,14 +244,14 @@ function FKeyBar({page,setPage}:any) {
     {l:"NEWS",    id:"news"},
   ];
   return (
-    <div style={{background:B.panel2,borderBottom:`1px solid ${B.border}`,
-      display:"flex",alignItems:"stretch",padding:"3px 4px",gap:3,flexShrink:0}}>
+    <div className="sm-fkeys" style={{background:B.panel2,borderBottom:`1px solid ${B.border}`,
+      display:"flex",alignItems:"stretch",padding:"4px 6px",gap:4,flexShrink:0}}>
       {keys.map(k=>(
         <FKey key={k.id} label={k.l} active={page===k.id} onClick={()=>setPage(k.id)}/>
       ))}
       <div style={{flex:1}}/>
-      <span style={{fontSize:24,color:B.gray3,fontFamily:"'Courier New',monospace",
-        alignSelf:"center",paddingRight:4}}>HELP</span>
+      <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",
+        alignSelf:"center",paddingRight:4,letterSpacing:"0.06em"}}>HELP</span>
     </div>
   );
 }
@@ -217,20 +266,20 @@ function BottomNav({page,setPage,badge}:any) {
     {id:"news",     label:"NEWS"},
   ];
   return (
-    <div style={{background:B.panel2,borderTop:`1px solid ${B.borderB}`,
-      display:"flex",paddingBottom:20,flexShrink:0}}>
+    <div className="sm-bottomnav" style={{background:B.panel2,borderTop:`1px solid ${B.borderB}`,
+      display:"flex",paddingBottom:"env(safe-area-inset-bottom, 8px)",flexShrink:0}}>
       {tabs.map(t=>{
         const active=page===t.id;
         return (
           <button key={t.id} onClick={()=>setPage(t.id)} style={{
             flex:1,background:"none",border:"none",cursor:"pointer",
-            padding:"8px 0 4px",display:"flex",flexDirection:"column",alignItems:"center",gap:1,
-            borderTop:`2px solid ${active?B.blue:"transparent"}`,position:"relative"}}>
-            {t.badge>0&&<div style={{position:"absolute",top:3,right:"18%",
-              background:B.blue,color:B.white,fontSize:24,fontWeight:700,
-              fontFamily:"'Courier New',monospace",padding:"0 5px",lineHeight:"16px"}}>{t.badge}</div>}
-            <span style={{fontSize:24,color:active?B.blue:B.gray2,fontWeight:700,
-              fontFamily:"'Courier New',monospace",letterSpacing:"0.06em"}}>{t.label}</span>
+            padding:"8px 4px 6px",display:"flex",flexDirection:"column",alignItems:"center",gap:2,
+            borderTop:`2px solid ${active?B.blue:"transparent"}`,position:"relative",minWidth:0}}>
+            {t.badge>0&&<div style={{position:"absolute",top:2,right:"20%",
+              background:B.blue,color:B.white,fontSize:10,fontWeight:700,
+              fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"14px",borderRadius:2}}>{t.badge}</div>}
+            <span style={{fontSize:11,color:active?B.blue:B.gray2,fontWeight:700,
+              fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{t.label}</span>
           </button>
         );
       })}
@@ -262,14 +311,14 @@ function HomePage({holdings,setPage,onRefresh,refreshing}:any) {
         <div style={{padding:"6px 8px"}}>
           {!m?(
             <div style={{padding:"12px 0",textAlign:"center"}}>
-              <div style={{fontSize:18,color:B.gray2,fontFamily:"'Courier New',monospace",marginBottom:8}}>NO ACTIVE PORTFOLIO</div>
+              <div style={{fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace",marginBottom:8}}>NO ACTIVE PORTFOLIO</div>
               <div style={{fontSize:15,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:12}}>
                 USE SEARCH TO FIND SECURITIES BY ISIN OR TICKER
               </div>
               <button onClick={()=>setPage("search")} style={{
                 background:B.blue,border:"none",color:B.white,
                 padding:"6px 20px",cursor:"pointer",
-                fontFamily:"'Courier New',monospace",fontSize:24,fontWeight:700,letterSpacing:"0.08em"}}>
+                fontFamily:"'Courier New',monospace",fontSize:17,fontWeight:700,letterSpacing:"0.08em"}}>
                 {"> SEARCH SECURITIES"}
               </button>
             </div>
@@ -278,11 +327,11 @@ function HomePage({holdings,setPage,onRefresh,refreshing}:any) {
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginBottom:6}}>
                 <div style={{borderLeft:`3px solid ${B.blue}`,paddingLeft:6}}>
                   <div style={{fontSize:14,color:B.gray2,textTransform:"uppercase",marginBottom:1}}>TOTAL MKT VALUE</div>
-                  <div style={{fontSize:32,color:B.yellow,fontWeight:700,letterSpacing:"-0.02em"}}>${fmtM(m.total)}</div>
+                  <div style={{fontSize:16,color:B.yellow,fontWeight:700,letterSpacing:"-0.02em"}}>${fmtM(m.total)}</div>
                 </div>
                 <div style={{borderLeft:`3px solid ${pCol(m.wRet)}`,paddingLeft:6}}>
                   <div style={{fontSize:14,color:B.gray2,textTransform:"uppercase",marginBottom:1}}>PORT EXP RETURN</div>
-                  <div style={{fontSize:32,color:pCol(m.wRet),fontWeight:700}}>{pSign(fmt(m.wRet,1))}%</div>
+                  <div style={{fontSize:16,color:pCol(m.wRet),fontWeight:700}}>{pSign(fmt(m.wRet,1))}%</div>
                 </div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:0,
@@ -294,8 +343,8 @@ function HomePage({holdings,setPage,onRefresh,refreshing}:any) {
                   {l:"DIV YIELD", v:`${fmt(m.wDiv,1)}%`,col:B.cyan},
                 ].map((k,i)=>(
                   <div key={i} style={{padding:"3px 4px",borderRight:i<3?`1px solid ${B.border}`:"none"}}>
-                    <div style={{fontSize:22,color:B.gray3,textTransform:"uppercase",marginBottom:1}}>{k.l}</div>
-                    <div style={{fontSize:22,color:k.col,fontWeight:700}}>{k.v}</div>
+                    <div style={{fontSize:16,color:B.gray3,textTransform:"uppercase",marginBottom:1}}>{k.l}</div>
+                    <div style={{fontSize:16,color:k.col,fontWeight:700}}>{k.v}</div>
                   </div>
                 ))}
               </div>
@@ -330,9 +379,9 @@ function HomePage({holdings,setPage,onRefresh,refreshing}:any) {
             <div key={h.isin} style={{display:"flex",alignItems:"center",gap:8,
               padding:"4px 8px",borderBottom:`1px solid ${B.border}`,
               fontFamily:"'Courier New',monospace"}}>
-              <span style={{fontSize:24,color:B.blue,fontWeight:700,minWidth:52}}>{h.asset.ticker}</span>
-              <span style={{fontSize:24,color:B.yellow,minWidth:70}}>{h.asset.price!=null?h.asset.price.toLocaleString(undefined,{maximumFractionDigits:2}):"---"}</span>
-              <span style={{fontSize:24,color:pCol(h.asset.dayChangePct),minWidth:50,fontWeight:700}}>
+              <span style={{fontSize:17,color:B.blue,fontWeight:700,minWidth:52}}>{h.asset.ticker}</span>
+              <span style={{fontSize:17,color:B.yellow,minWidth:70}}>{h.asset.price!=null?h.asset.price.toLocaleString(undefined,{maximumFractionDigits:2}):"---"}</span>
+              <span style={{fontSize:17,color:pCol(h.asset.dayChangePct),minWidth:50,fontWeight:700}}>
                 {h.asset.dayChangePct!=null?`${pSign(fmt(h.asset.dayChangePct,2))}%`:"---"}
               </span>
               <span style={{fontSize:15,color:B.gray2,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{h.asset.shortName||h.asset.ticker}</span>
@@ -452,13 +501,13 @@ function SearchPage({onAdd,portfolio}:any) {
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{background:B.blue,padding:"4px 8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
-          <span style={{fontSize:18,color:B.white,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{detail.ticker}</span>
+          <span style={{fontSize:13,color:B.white,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{detail.ticker}</span>
           <span style={{fontSize:14,color:"rgba(255,255,255,0.7)",marginLeft:6,fontFamily:"'Courier New',monospace"}}>{detail.exchange}</span>
         </div>
-        <button onClick={()=>{setSel(null);setDetail(null);}} style={{background:"none",border:"none",color:B.white,cursor:"pointer",fontSize:24,fontFamily:"'Courier New',monospace"}}>X CLOSE</button>
+        <button onClick={()=>{setSel(null);setDetail(null);}} style={{background:"none",border:"none",color:B.white,cursor:"pointer",fontSize:17,fontFamily:"'Courier New',monospace"}}>X CLOSE</button>
       </div>
       <div style={{flex:1,overflowY:"auto",paddingBottom:80,padding:8}}>
-        <div style={{fontSize:24,color:B.gray1,fontFamily:"'Courier New',monospace",marginBottom:8}}>{detail.shortName}</div>
+        <div style={{fontSize:17,color:B.gray1,fontFamily:"'Courier New',monospace",marginBottom:8}}>{detail.shortName}</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
           {[
             {l:"PRICE",v:detail.price!=null?detail.price.toFixed(2):"---",col:B.yellow},
@@ -469,8 +518,8 @@ function SearchPage({onAdd,portfolio}:any) {
             {l:"SECTOR",v:detail.sector||"N/A",col:B.gray1},
           ].map((k,i)=>(
             <div key={i} style={{border:`1px solid ${B.border}`,padding:"4px 6px"}}>
-              <div style={{fontSize:22,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>{k.l}</div>
-              <div style={{fontSize:32,color:k.col,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{k.v}</div>
+              <div style={{fontSize:16,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>{k.l}</div>
+              <div style={{fontSize:16,color:k.col,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{k.v}</div>
             </div>
           ))}
         </div>
@@ -481,20 +530,20 @@ function SearchPage({onAdd,portfolio}:any) {
               <div style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>QUANTITY</div>
               <input value={qty} onChange={e=>setQty(e.target.value)} type="number" min="0" step="any"
                 style={{width:"100%",background:B.bg,border:`1px solid ${B.border}`,color:B.yellow,
-                  padding:"4px 6px",fontSize:18,fontFamily:"'Courier New',monospace",outline:"none"}}/>
+                  padding:"4px 6px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
             </div>
             <div>
               <div style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>BUY PRICE</div>
               <input value={buyPx} onChange={e=>setBuyPx(e.target.value)} type="number" min="0" step="any"
                 placeholder={detail.price!=null?detail.price.toFixed(2):""}
                 style={{width:"100%",background:B.bg,border:`1px solid ${B.border}`,color:B.yellow,
-                  padding:"4px 6px",fontSize:18,fontFamily:"'Courier New',monospace",outline:"none"}}/>
+                  padding:"4px 6px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
             </div>
             <div>
               <div style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>PURCHASE DATE</div>
               <input value={buyDt} onChange={e=>setBuyDt(e.target.value)} type="date"
                 style={{width:"100%",background:B.bg,border:`1px solid ${B.border}`,color:B.cyan,
-                  padding:"4px 6px",fontSize:18,fontFamily:"'Courier New',monospace",outline:"none"}}/>
+                  padding:"4px 6px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
             </div>
           </div>
           <div style={{fontSize:15,color:B.gray2,fontFamily:"'Courier New',monospace",marginBottom:6}}>
@@ -515,13 +564,13 @@ function SearchPage({onAdd,portfolio}:any) {
           <button onClick={add} style={{
             width:"100%",background:B.blue,border:"none",color:B.white,
             padding:"6px",cursor:"pointer",fontFamily:"'Courier New',monospace",
-            fontSize:24,fontWeight:700,letterSpacing:"0.08em"}}>
+            fontSize:17,fontWeight:700,letterSpacing:"0.08em"}}>
             ADD POSITION
           </button>
           <button onClick={addWatch} disabled={watchBusy} style={{
             width:"100%",marginTop:6,background:"transparent",border:`1px solid ${B.yellow}`,color:B.yellow,
             padding:"6px",cursor:watchBusy?"wait":"pointer",fontFamily:"'Courier New',monospace",
-            fontSize:18,fontWeight:700,letterSpacing:"0.08em"}}>
+            fontSize:13,fontWeight:700,letterSpacing:"0.08em"}}>
             {watchBusy ? "..." : watchMsg || "★ ADD TO WATCHLIST"}
           </button>
         </div>
@@ -535,7 +584,7 @@ function SearchPage({onAdd,portfolio}:any) {
         <input value={q} onChange={e=>handleInput(e.target.value)}
           placeholder="SEARCH TICKER, ISIN OR NAME..."
           style={{width:"100%",background:B.bg,border:`1px solid ${B.blue}`,color:B.yellow,
-            padding:"8px 10px",fontSize:22,fontFamily:"'Courier New',monospace",outline:"none",
+            padding:"8px 10px",fontSize:16,fontFamily:"'Courier New',monospace",outline:"none",
             letterSpacing:"0.04em",textTransform:"uppercase"}}/>
         <div style={{display:"flex",gap:3,marginTop:6,overflowX:"auto",paddingBottom:2}}>
           {CATEGORY_TABS.map(c=>{
@@ -544,7 +593,7 @@ function SearchPage({onAdd,portfolio}:any) {
               <button key={c.label} onClick={()=>setCat(c.id)} style={{
                 background:active?B.blue:B.panel,border:`1px solid ${active?B.blue:B.border}`,
                 color:active?B.white:B.gray1,padding:"4px 10px",cursor:"pointer",
-                fontFamily:"'Courier New',monospace",fontSize:18,fontWeight:700,
+                fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,
                 letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{c.label}</button>
             );
           })}
@@ -562,21 +611,21 @@ function SearchPage({onAdd,portfolio}:any) {
               style={{display:"grid",gridTemplateColumns:"72px 1fr 70px",
                 padding:"8px 10px",cursor:"pointer",borderBottom:`1px solid ${B.border}`,
                 background:added?"#001122":"transparent",alignItems:"center",gap:6}}>
-              <span style={{fontSize:22,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>
+              <span style={{fontSize:16,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>
                 {r.symbol}{added?" ✓":""}
               </span>
               <div style={{minWidth:0}}>
-                <div style={{fontSize:32,color:B.gray1,fontFamily:"'Courier New',monospace",
+                <div style={{fontSize:16,color:B.gray1,fontFamily:"'Courier New',monospace",
                   overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.shortName}</div>
-                <div style={{fontSize:24,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{r.exchange}</div>
+                <div style={{fontSize:17,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{r.exchange}</div>
               </div>
-              <span style={{fontSize:24,color:B.yellow,fontFamily:"'Courier New',monospace",
+              <span style={{fontSize:17,color:B.yellow,fontFamily:"'Courier New',monospace",
                 textAlign:"right",fontWeight:700}}>{r.category||r.type}</span>
             </div>
           );
         })}
         {!searching&&q.trim()&&results.length===0&&(
-          <div style={{padding:"14px 10px",fontSize:18,color:B.gray3,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
+          <div style={{padding:"14px 10px",fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
             NO RESULTS FOR "{q.toUpperCase()}"
           </div>
         )}
@@ -604,15 +653,15 @@ function PortfolioPage({holdings,onRemove}:any) {
           {l:"SHARPE",    v:fmt(m.sharpe,2)},
         ].map((k,i)=>(
           <div key={i} style={{padding:"3px 6px",borderRight:i<3?`1px solid rgba(255,255,255,0.2)`:"none"}}>
-            <div style={{fontSize:22,color:"rgba(255,255,255,0.65)",textTransform:"uppercase",letterSpacing:"0.08em"}}>{k.l}</div>
-            <div style={{fontSize:18,color:B.white,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{k.v}</div>
+            <div style={{fontSize:16,color:"rgba(255,255,255,0.65)",textTransform:"uppercase",letterSpacing:"0.08em"}}>{k.l}</div>
+            <div style={{fontSize:13,color:B.white,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{k.v}</div>
           </div>
         ))}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"50px 1fr 52px 40px 46px 22px",
         padding:"2px 6px",background:B.panel2,borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
         {["TICKER","NAME","VALUE","WT%","DAY%",""].map((h,i)=>(
-          <span key={i} style={{fontSize:22,color:B.gray3,fontFamily:"'Courier New',monospace",
+          <span key={i} style={{fontSize:16,color:B.gray3,fontFamily:"'Courier New',monospace",
             fontWeight:700,letterSpacing:"0.08em",textAlign:i>1?"right":"left"}}>{h}</span>
         ))}
       </div>
@@ -626,7 +675,7 @@ function PortfolioPage({holdings,onRemove}:any) {
             <div key={h.isin||h.asset.ticker} style={{borderBottom:`1px solid ${B.border}`}}>
               <div style={{display:"grid",gridTemplateColumns:"50px 1fr 52px 40px 46px 22px",
                 padding:"5px 6px",gap:0,alignItems:"center"}}>
-                <span style={{fontSize:24,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>{h.asset.ticker}</span>
+                <span style={{fontSize:17,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>{h.asset.ticker}</span>
                 <span style={{fontSize:14,color:B.gray2,fontFamily:"'Courier New',monospace",
                   overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:4}}>
                   {(h.asset.shortName||h.asset.name||"").slice(0,20)}
@@ -640,7 +689,7 @@ function PortfolioPage({holdings,onRemove}:any) {
                 </span>
                 <button onClick={()=>onRemove(h.isin||h.asset.ticker)} style={{
                   background:"none",border:"none",color:B.gray3,cursor:"pointer",
-                  fontSize:24,fontFamily:"'Courier New',monospace",textAlign:"right"}}>X</button>
+                  fontSize:17,fontFamily:"'Courier New',monospace",textAlign:"right"}}>X</button>
               </div>
               <div style={{display:"flex",flexWrap:"wrap",gap:8,padding:"0 6px 4px",
                 fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace"}}>
@@ -742,7 +791,7 @@ function AnalysisPage({holdings}:any) {
                   </RadarChart>
                 </ResponsiveContainer>
                 <div style={{textAlign:"center",marginTop:4}}>
-                  <div style={{fontSize:32,color:score>70?B.green:score>40?B.yellow:B.red,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{score}/100</div>
+                  <div style={{fontSize:16,color:score>70?B.green:score>40?B.yellow:B.red,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{score}/100</div>
                   <div style={{fontSize:14,color:B.gray2,fontFamily:"'Courier New',monospace"}}>PORT SCORE</div>
                 </div>
               </div>
@@ -759,7 +808,7 @@ function AnalysisPage({holdings}:any) {
                   <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",
                     borderBottom:i<4?`1px solid ${B.border}`:"none"}}>
                     <span style={{fontSize:14,color:B.gray2,fontFamily:"'Courier New',monospace"}}>{r.l}</span>
-                    <span style={{fontSize:18,color:r.col,fontFamily:"'Courier New',monospace",fontWeight:700}}>{r.v}</span>
+                    <span style={{fontSize:13,color:r.col,fontFamily:"'Courier New',monospace",fontWeight:700}}>{r.v}</span>
                   </div>
                 ))}
               </div>
@@ -805,7 +854,7 @@ function AnalysisPage({holdings}:any) {
   );
 }
 
-const SYS_PROMPT=`You are MONETA AI, an EDUCATIONAL financial-markets terminal assistant.
+const SYS_PROMPT=`You are STRATEGIC MARKETS AI, an EDUCATIONAL financial-markets terminal assistant.
 
 # REGULATORY FRAMEWORK (HARD CONSTRAINTS — NEVER VIOLATE)
 - You DO NOT provide investment advice, personal recommendations, solicitations or financial planning under MiFID II / SEC / ESMA frameworks.
@@ -833,7 +882,7 @@ ALWAYS respond in ENGLISH.`;
 const QUICK_Q=["ANALYZE PORTFOLIO","DIVERSIFICATION CHECK","RISK ASSESSMENT","IMPROVE ALLOCATION","EXPLAIN SHARPE","VAR ANALYSIS","SECTOR EXPOSURE","REDUCE VOLATILITY"];
 
 function AIAdvisorPage({holdings}:any) {
-  const [msgs,setMsgs]=useState<any[]>([{role:"assistant",content:"**MONETA AI TERMINAL ONLINE**\n\nThis is an EDUCATIONAL analytics terminal with access to your simulated portfolio data (stocks, bonds, ETFs, commodities, crypto, REITs, FX).\n\nI can provide quantitative observations on diversification, risk metrics, sector exposure, performance attribution and hypothetical allocation scenarios.\n\n**I do not provide personalized investment recommendations** nor financial advice under MiFID II. All analyses are for educational and informational purposes only.\n\nMONETA>_"}]);
+  const [msgs,setMsgs]=useState<any[]>([{role:"assistant",content:"**STRATEGIC MARKETS AI TERMINAL ONLINE**\n\nThis is an EDUCATIONAL analytics terminal with access to your simulated portfolio data (stocks, bonds, ETFs, commodities, crypto, REITs, FX).\n\nI can provide quantitative observations on diversification, risk metrics, sector exposure, performance attribution and hypothetical allocation scenarios.\n\n**I do not provide personalized investment recommendations** nor financial advice under MiFID II. All analyses are for educational and informational purposes only.\n\nSMKT>_"}]);
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
   const [showQ,setShowQ]=useState(true);
@@ -874,7 +923,7 @@ function AIAdvisorPage({holdings}:any) {
       p.startsWith("**")&&p.endsWith("**")
         ?<span key={j} style={{color:B.yellow,fontWeight:700}}>{p.slice(2,-2)}</span>:p
     );
-    return <div key={i} style={{fontSize:24,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.6}}>{rendered}</div>;
+    return <div key={i} style={{fontSize:17,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.6}}>{rendered}</div>;
   });
 
   return (
@@ -882,7 +931,7 @@ function AIAdvisorPage({holdings}:any) {
       <div style={{background:B.panel2,borderBottom:`1px solid ${B.border}`,padding:"4px 8px",
         display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
         <div>
-          <span style={{fontSize:18,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>MONETA</span>
+          <span style={{fontSize:13,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>STRATEGIC MARKETS</span>
           <span style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:8}}>AI FINANCIAL TERMINAL  LOVABLE AI</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -911,14 +960,14 @@ function AIAdvisorPage({holdings}:any) {
           <div key={i} style={{padding:"4px 8px",borderBottom:`1px solid ${B.border}`,
             background:m.role==="user"?"#000822":"transparent"}}>
             <div style={{fontSize:14,color:m.role==="user"?B.blue:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2,fontWeight:700}}>
-              {m.role==="user"?"USER>":"MONETA>"}
+              {m.role==="user"?"USER>":"SMKT>"}
             </div>
             <div>{renderMsg(m.content)}</div>
           </div>
         ))}
         {loading&&(
           <div style={{padding:"6px 8px",borderBottom:`1px solid ${B.border}`}}>
-            <div style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>MONETA{">"}</div>
+            <div style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>STRATEGIC MARKETS{">"}</div>
             <div style={{display:"flex",gap:3,alignItems:"center"}}>
               {[0,1,2].map(j=>(
                 <div key={j} style={{width:5,height:5,background:B.blue,
@@ -932,7 +981,7 @@ function AIAdvisorPage({holdings}:any) {
       </div>
       {showQ&&(
         <div style={{padding:"3px 4px",borderTop:`1px solid ${B.border}`,background:B.panel2,flexShrink:0}}>
-          <div style={{fontSize:22,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:3,paddingLeft:2}}>QUICK COMMANDS:</div>
+          <div style={{fontSize:16,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:3,paddingLeft:2}}>QUICK COMMANDS:</div>
           <div style={{display:"flex",gap:2,flexWrap:"wrap"}}>
             {QUICK_Q.map((q,i)=>(
               <button key={i} onClick={()=>send(q)} disabled={loading} style={{
@@ -947,12 +996,12 @@ function AIAdvisorPage({holdings}:any) {
       )}
       <div style={{borderTop:`1px solid ${B.blue}`,background:B.panel2,flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center"}}>
-          <span style={{fontSize:24,color:B.blue,fontFamily:"'Courier New',monospace",padding:"8px 8px",fontWeight:700}}>{">"}</span>
+          <span style={{fontSize:17,color:B.blue,fontFamily:"'Courier New',monospace",padding:"8px 8px",fontWeight:700}}>{">"}</span>
           <input value={input} onChange={e=>setInput(e.target.value)}
             onKeyDown={e=>{ if(e.key==="Enter") send(); }}
             placeholder="ENTER COMMAND OR QUERY..."
             style={{flex:1,background:"transparent",border:"none",
-              padding:"8px 0",color:B.yellow,fontSize:24,
+              padding:"8px 0",color:B.yellow,fontSize:17,
               fontFamily:"'Courier New',monospace",outline:"none",
               letterSpacing:"0.04em",textTransform:"uppercase"}}/>
           <button onClick={()=>send()} disabled={loading||!input.trim()} style={{
@@ -961,7 +1010,7 @@ function AIAdvisorPage({holdings}:any) {
             fontFamily:"'Courier New',monospace",fontSize:15,fontWeight:700,
             cursor:loading||!input.trim()?"not-allowed":"pointer",textTransform:"uppercase"}}>GO</button>
         </div>
-        <div style={{fontSize:22,color:B.gray4,fontFamily:"'Courier New',monospace",
+        <div style={{fontSize:16,color:B.gray4,fontFamily:"'Courier New',monospace",
           padding:"0 8px 4px",letterSpacing:"0.04em"}}>
           FOR INFORMATIONAL PURPOSES ONLY. NOT FINANCIAL ADVICE.
         </div>
@@ -1110,7 +1159,7 @@ function NewsPage({holdings,setPage}:any) {
     setSentBusy(true); setSentiment("");
     try {
       const headlines = list.slice(0, 12).map((n, i) => `${i+1}. ${n.headline}${n.summary ? " — " + n.summary.slice(0, 140) : ""}`).join("\n");
-      const sys = `You are MONETA AI, an EDUCATIONAL market-analysis assistant. You do NOT provide personalized investment recommendations, buy/sell calls or financial advice under MiFID II.
+      const sys = `You are STRATEGIC MARKETS AI, an EDUCATIONAL market-analysis assistant. You do NOT provide personalized investment recommendations, buy/sell calls or financial advice under MiFID II.
 Analyze the news headlines and produce: overall SENTIMENT (BULLISH/BEARISH/NEUTRAL) as a statistical observation across the titles, 3 quantitative observations with **bold** key terms, and a final BOTTOM LINE line as an educational summary.
 ALWAYS end with: "DISCLAIMER: For educational and informational purposes only. Not investment advice."
 Max 180 words. Respond in ENGLISH.`;
@@ -1310,7 +1359,7 @@ Max 180 words. Respond in ENGLISH.`;
         {sentiment && (
           <div style={{padding:"8px 10px",borderBottom:`1px solid ${B.cyan}`,background:"#001a1a"}}>
             <div style={{fontSize:14,color:B.cyan,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:4,letterSpacing:"0.08em"}}>
-              ✦ MONETA AI SENTIMENT
+              ✦ STRATEGIC MARKETS AI SENTIMENT
             </div>
             {sentiment.split("\n").map((line, i) => {
               const parts = line.split(/(\*\*[^*]+\*\*)/g);
@@ -1412,17 +1461,17 @@ export default function PortfolioTerminal() {
       const p = localStorage.getItem("moneta_page_v1");
       if (p && ["home","search","portfolio","analysis","ai","news"].includes(p)) setPage(p);
     } catch (e) {
-      console.warn("[Moneta] hydration error:", e);
+      console.warn("[Strategic Markets] hydration error:", e);
     } finally {
       setHydrated(true);
     }
     // Diagnostic: log mount/unmount in dev so we can spot accidental remounts.
     const id = Math.random().toString(36).slice(2, 8);
     // eslint-disable-next-line no-console
-    console.info("[Moneta] PortfolioTerminal MOUNT", id);
+    console.info("[Strategic Markets] PortfolioTerminal MOUNT", id);
     return () => {
       // eslint-disable-next-line no-console
-      console.info("[Moneta] PortfolioTerminal UNMOUNT", id);
+      console.info("[Strategic Markets] PortfolioTerminal UNMOUNT", id);
     };
   }, []);
 
@@ -1432,7 +1481,7 @@ export default function PortfolioTerminal() {
     try {
       localStorage.setItem("moneta_holdings_v1", JSON.stringify(holdings));
     } catch (e) {
-      console.warn("[Moneta] persist holdings error:", e);
+      console.warn("[Strategic Markets] persist holdings error:", e);
     }
   }, [holdings, hydrated]);
 
@@ -1580,14 +1629,14 @@ function DisclaimerModal({onAccept}:{onAccept:()=>void}) {
       }}>
         <div style={{background:B.yellow,padding:"6px 10px",color:"#000",fontWeight:700,
           fontSize:16,letterSpacing:"0.1em"}}>
-          ⚠ MONETA — REGULATORY NOTICE
+          ⚠ STRATEGIC MARKETS — REGULATORY NOTICE
         </div>
         <div style={{padding:"14px 16px",color:B.gray1,fontSize:14,lineHeight:1.55}}>
           <div style={{color:B.yellow,fontWeight:700,marginBottom:6,letterSpacing:"0.05em"}}>
             ▸ NOT FINANCIAL ADVICE
           </div>
           <p style={{margin:"0 0 10px 0"}}>
-            Moneta is an <b style={{color:B.cyan}}>educational and informational
+            Strategic Markets is an <b style={{color:B.cyan}}>educational and informational
             analytics terminal</b>. Market data, portfolio simulations, risk
             metrics and AI-generated analyses are provided <b>solely for
             educational purposes</b> and do not constitute — and must not be
@@ -1595,7 +1644,7 @@ function DisclaimerModal({onAccept}:{onAccept:()=>void}) {
             <b> SEC</b> or <b>ESMA</b> regulations.
           </p>
           <p style={{margin:"0 0 10px 0"}}>
-            Moneta's AI produces <b>hypothetical scenarios</b> and
+            Strategic Markets's AI produces <b>hypothetical scenarios</b> and
             <b> quantitative observations</b>;
             <b> it does not provide personalized recommendations</b> to buy,
             sell or hold any financial instrument. Past performance is not

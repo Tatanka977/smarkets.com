@@ -95,7 +95,7 @@ export const fetchCompanyNews = createServerFn({ method: "GET" })
         id: "fb-1",
         datetime: Math.floor(Date.now() / 1000) - 1800,
         headline: `${sym} — no live news available right now`,
-        source: "Moneta",
+        source: "Strategic Markets",
         summary: "Finnhub did not return company-specific news in the last few days. Try a major US ticker (AAPL, MSFT, NVDA) for live coverage.",
         url: "#",
       },

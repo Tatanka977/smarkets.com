@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/disclaimer")({
-  head: () => ({ meta: [{ title: "Moneta — Regulatory Notice" }] }),
+  head: () => ({ meta: [{ title: "Strategic Markets — Regulatory Notice" }] }),
   component: DisclaimerPage,
 });
 
@@ -41,7 +41,7 @@ function DisclaimerPage() {
         }}>
           <div>
             <div style={{ fontSize: 22, color: B.white, fontWeight: 700, letterSpacing: "0.16em" }}>
-              MONETA
+              STRATEGIC MARKETS
             </div>
             <div style={{ fontSize: 12, color: B.white, letterSpacing: "0.1em", opacity: 0.85 }}>
               REGULATORY NOTICE — TERMS &amp; DISCLAIMER
@@ -60,7 +60,7 @@ function DisclaimerPage() {
           padding: "10px 14px", margin: "14px 0", color: B.yellow,
           fontSize: 14, lineHeight: 1.5, letterSpacing: "0.02em",
         }}>
-          ⚠ <b>IMPORTANT NOTICE — PLEASE READ CAREFULLY.</b> Moneta is an
+          ⚠ <b>IMPORTANT NOTICE — PLEASE READ CAREFULLY.</b> Strategic Markets is an
           educational and informational analytics terminal. The content does
           not constitute, and must not be interpreted as, financial advice,
           an investment recommendation, a solicitation, an offer or an
@@ -72,7 +72,7 @@ function DisclaimerPage() {
         </div>
 
         <Section title="1. Nature of the Service">
-          Moneta is a <b>financial education</b> platform offering portfolio
+          Strategic Markets is a <b>financial education</b> platform offering portfolio
           simulation and market data visualization. The prices and metrics
           shown are sourced from third-party providers (Finnhub, public market
           feeds) and may be delayed, mocked, or inaccurate. The integrated AI
@@ -82,7 +82,7 @@ function DisclaimerPage() {
 
         <Section title="2. No Financial Advice">
           <p style={{ margin: "0 0 8px 0" }}>
-            Moneta is <b>not a licensed financial advisor</b>, is not registered
+            Strategic Markets is <b>not a licensed financial advisor</b>, is not registered
             with the OCF, CONSOB, SEC, FCA, BaFin, FINMA or any other
             supervisory authority, and is not authorized to provide:
           </p>
@@ -112,7 +112,7 @@ function DisclaimerPage() {
         </Section>
 
         <Section title="4. Limitation of Liability">
-          To the maximum extent permitted by applicable law, Moneta, its
+          To the maximum extent permitted by applicable law, Strategic Markets, its
           developers, data providers and affiliates disclaim all liability
           for direct, indirect, incidental, consequential or punitive damages
           arising from the use of or inability to use the platform, including
@@ -156,7 +156,7 @@ function DisclaimerPage() {
           <div style={{ color: B.yellow, fontWeight: 700, marginBottom: 6 }}>
             BOTTOM LINE
           </div>
-          The information provided by Moneta is for <b>educational and
+          The information provided by Strategic Markets is for <b>educational and
           informational purposes only</b> and does not constitute investment
           advice, a recommendation, or a solicitation to buy or sell any
           financial instrument. Past performance is not indicative of future

@@ -10,7 +10,7 @@ import {
 } from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/_authenticated/profile")({
-  head: () => ({ meta: [{ title: "Moneta — My profile" }] }),
+  head: () => ({ meta: [{ title: "Strategic Markets — My profile" }] }),
   component: ProfilePage,
 });
 
@@ -69,7 +69,7 @@ function ProfilePage() {
       <div style={{ background: B.blue, padding: "8px 14px", display: "flex",
         justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: B.white, letterSpacing: "0.18em" }}>MONETA</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: B.white, letterSpacing: "0.18em" }}>STRATEGIC MARKETS</div>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>USER PROFILE</div>
         </div>
         <Link to="/" style={{ fontSize: 11, color: B.white, textDecoration: "none", fontWeight: 700 }}>

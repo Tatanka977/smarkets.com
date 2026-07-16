@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Moneta — Accedi" }] }),
+  head: () => ({ meta: [{ title: "Strategic Markets — Accedi" }] }),
   component: AuthPage,
 });
 
@@ -71,7 +71,7 @@ function AuthPage() {
       alignItems: "center", justifyContent: "center", padding: 16, fontFamily: fontMono }}>
       <div style={{ width: "100%", maxWidth: 380, background: B.panel, border: `1px solid ${B.border}` }}>
         <div style={{ background: B.blue, padding: "10px 14px" }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: B.white, letterSpacing: "0.18em" }}>MONETA</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: B.white, letterSpacing: "0.18em" }}>STRATEGIC MARKETS</div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>
             {mode === "signin" ? "SIGN IN TO TERMINAL" : "CREATE ACCOUNT"}
           </div>
