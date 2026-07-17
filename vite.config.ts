@@ -7,6 +7,11 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  // Force-enable the Nitro deploy plugin outside the Lovable sandbox too.
+  // Without this, production builds (e.g. on Netlify) skip server bundling
+  // entirely and only produce a client-only build, breaking SSR/server functions.
+  // Nitro auto-detects the Netlify build environment and picks the right preset.
+  nitro: true,
   tanstackStart: {
     server: { entry: "server" },
   },
