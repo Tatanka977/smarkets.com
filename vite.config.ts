@@ -7,6 +7,10 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  // Force the Netlify deploy target: outside a Lovable sandbox, nitro is
+  // otherwise skipped entirely, so the build produced client assets only
+  // (no server function), and Netlify served a 404 for every route.
+  nitro: { preset: "netlify" },
   tanstackStart: {
     server: { entry: "server" },
   },
