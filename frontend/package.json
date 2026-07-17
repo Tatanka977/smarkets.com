@@ -61,8 +61,8 @@
     "zod": "3.24.4"
   },
   "scripts": {
-    "start": "cd /app && exec /root/.local/node22/bin/node /root/.local/node22/bin/npx --yes vite dev --host 0.0.0.0 --port 3000",
-    "build": "cd /app && /root/.local/node22/bin/npx vite build",
+    "start": "cd /app && exec yarn dev",
+    "build": "cd /app && yarn build",
     "test": "echo skip"
   },
   "browserslist": {
