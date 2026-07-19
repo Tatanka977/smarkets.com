@@ -31,23 +31,39 @@ const id  = () => "id_" + Math.random().toString(36).slice(2, 10);
 // These are declared as server functions to keep the type-signature compatible
 // with the previous Supabase-backed calls (`fn({ data: ... })`), but they
 // actually run on the client using localStorage.
-export const savePortfolio = createServerFn({ method: "POST" })
-  .inputValidator((d: { name: string; holdings: any[] }) => d)
-  .handler(async ({ data }) => {
-    if (typeof window === "undefined") return { id: id(), ...data, updated_at: now() };
-    const list = read<Portfolio>(K.ports);
-    const rec: Portfolio = { id: id(), name: data.name, holdings: data.holdings, updated_at: now() };
-    list.unshift(rec); write(K.ports, list);
-    return rec;
-  });
+import { supabase } from "@/integrations/supabase/client";
 
-export const listPortfolios = createServerFn({ method: "GET" }).handler(async () =>
-  read<Portfolio>(K.ports)
-);
+export async function savePortfolio({ data }: { data: { name: string; holdings: any[] } }): Promise<Portfolio> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const { data: row, error } = await supabase
+    .from("portfolios")
+    .insert({ user_id: user.id, name: data.name, holdings: data.holdings })
+    .select()
+    .single();
+  if (error) throw error;
+  return row as Portfolio;
+}
 
-export const deletePortfolio = createServerFn({ method: "POST" })
-  .inputValidator((d: { id: string }) => d)
-  .handler(async ({ data }) => { write(K.ports, read<Portfolio>(K.ports).filter(p => p.id !== data.id)); return { ok: true }; });
+export async function listPortfolios(): Promise<Portfolio[]> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from("portfolios")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data || []) as Portfolio[];
+}
+
+export async function deletePortfolio({ data }: { data: { id: string } }): Promise<{ ok: true }> {
+  const { error } = await supabase.from("portfolios").delete().eq("id", data.id);
+  if (error) throw error;
+  return { ok: true };
+}
 
 export const addToWatchlist = createServerFn({ method: "POST" })
   .inputValidator((d: { symbol: string; name?: string; category?: string }) => d)
