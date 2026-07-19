@@ -10,6 +10,16 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  // Force-pin Nitro's preset to Vercel for production builds.
+  // According to the @lovable.dev/vite-tanstack-config typings:
+  //   - Inside a Lovable/Emergent sandbox build the preset is force-forced to
+  //     Cloudflare, so this override is ignored (the preview here keeps working).
+  //   - Outside the sandbox (Vercel's CI build) this override is honored and
+  //     Nitro emits Vercel-compatible output (`.vercel/output`).
+  // NITRO_PRESET env var (if set on the Vercel project) still takes precedence.
+  nitro: {
+    preset: "vercel",
+  },
   vite: {
     server: {
       host: "0.0.0.0",
