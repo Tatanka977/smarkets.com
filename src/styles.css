@@ -193,13 +193,14 @@
   --sm-blueL:   #4A7CFF;
   --sm-blueD:   #1E4BC4;
   --sm-white:   #FFFFFF;
-  --sm-yellow:  #F59E0B;
-  --sm-green:   #22C55E;
-  --sm-red:     #EF4444;
-  --sm-cyan:    #06B6D4;
+  /* Deeper amber so labels/prices read well on white (was #F59E0B — too loud) */
+  --sm-yellow:  #B45309;
+  --sm-green:   #15803D;
+  --sm-red:     #DC2626;
+  --sm-cyan:    #0891B2;
   --sm-gray1:   #0F172A;
-  --sm-gray2:   #64748B;
-  --sm-gray3:   #94A3B8;
+  --sm-gray2:   #475569;
+  --sm-gray3:   #64748B;
   --sm-gray4:   #CBD5E1;
   --sm-font:    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Segoe UI', system-ui, sans-serif;
   --sm-radius:  16px;
@@ -320,4 +321,65 @@
 /* Top bar stays blue but gets a subtle shadow for depth */
 [data-theme="aurora"] .sm-topbar {
   box-shadow: 0 2px 12px rgba(44,95,235,0.15);
+}
+
+/* LIVE badge (amber on top-bar blue) — force white for legibility on blue */
+[data-theme="aurora"] .sm-topbar [style*="var(--sm-yellow)"] {
+  color: #FFFFFF !important;
+  opacity: 0.95;
+}
+
+/* ---- Contrast fixes for hardcoded dark backgrounds in the source ---- */
+/* AI quick-command buttons (source uses background:"#000" + color:B.gray2). */
+[data-theme="aurora"] [style*="background:#000"]:not(.sm-topbar):not([style*="background:#000822"]),
+[data-theme="aurora"] [style*="background: #000"]:not(.sm-topbar):not([style*="background: #000822"]) {
+  background: var(--sm-panel) !important;
+  color: var(--sm-gray1) !important;
+  border-color: var(--sm-border) !important;
+}
+[data-theme="aurora"] [style*="background:#000"] span,
+[data-theme="aurora"] [style*="background: #000"] span {
+  color: inherit !important;
+}
+
+/* Chat user message bubble (source: background:"#000822") — soft blue tint */
+[data-theme="aurora"] [style*="background:#000822"],
+[data-theme="aurora"] [style*="background: #000822"] {
+  background: #EEF2FF !important;
+  color: var(--sm-gray1) !important;
+}
+
+/* Tooltip / dark cyan / dark green backgrounds → light tinted panels */
+[data-theme="aurora"] [style*="background:#111"] { background: var(--sm-panel2) !important; color: var(--sm-gray1) !important; }
+[data-theme="aurora"] [style*="background:#001a1a"] { background: #ECFEFF !important; }
+[data-theme="aurora"] [style*="background:#003300"] { background: #DCFCE7 !important; color: var(--sm-gray1) !important; }
+[data-theme="aurora"] [style*="background:#1a0000"] { background: #FEE2E2 !important; color: var(--sm-gray1) !important; }
+[data-theme="aurora"] [style*="background:#1a0f00"] { background: #FEF3C7 !important; color: var(--sm-gray1) !important; }
+
+/* Yellow-marker <mark> highlight — softer peach */
+[data-theme="aurora"] mark[style*="background:#FFFF0033"] {
+  background: #FEF3C7 !important;
+  color: var(--sm-gray1) !important;
+}
+
+/* Regulatory notice: yellow header on modal — deep amber bg + dark text stay OK */
+[data-theme="aurora"] [style*="background:var(--sm-yellow)"] {
+  color: #FFFFFF !important;
+}
+
+/* Placeholders — softer neutral, not amber */
+[data-theme="aurora"] input::placeholder,
+[data-theme="aurora"] textarea::placeholder {
+  color: var(--sm-gray3) !important;
+  opacity: 0.9;
+}
+
+/* Boost bottom nav & fkey labels for legibility on light bg */
+[data-theme="aurora"] .sm-bottomnav button span,
+[data-theme="aurora"] .sm-fkeys span {
+  color: var(--sm-gray1) !important;
+  opacity: 0.75;
+}
+[data-theme="aurora"] .sm-bottomnav button[style*="var(--sm-blue)"] span {
+  opacity: 1;
 }

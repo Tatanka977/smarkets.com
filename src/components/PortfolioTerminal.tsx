@@ -1491,8 +1491,8 @@ function AIAdvisorPage({holdings}:any) {
           <div style={{display:"flex",gap:2,flexWrap:"wrap"}}>
             {QUICK_Q.map((q,i)=>(
               <button key={i} onClick={()=>send(q)} disabled={loading} style={{
-                background:"#000",border:`1px solid ${B.border}`,padding:"3px 6px",
-                color:B.gray2,fontSize:14,cursor:"pointer",
+                background:B.panel,border:`1px solid ${B.border}`,padding:"3px 6px",
+                color:B.gray1,fontSize:14,cursor:"pointer",
                 fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>
                 {q}
               </button>
