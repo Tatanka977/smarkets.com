@@ -616,13 +616,12 @@ function SearchPage({onAdd,portfolio}:any) {
       const res = await fetchHistoricalPrice(sym, newDate);
       if (res.price != null) {
         setBuyPx(res.price.toFixed(2));
-        const sourceLbl = res.source === "finnhub" ? "Finnhub" : "Yahoo Finance";
         const sameDay = res.actualDate === newDate;
         setHistInfo({
           kind:"ok",
           text: sameDay
-            ? `Historical close from ${sourceLbl} (${res.actualDate})`
-            : `No trading on ${newDate}. Using ${sourceLbl} close of ${res.actualDate}`,
+            ? `Historical close (${res.actualDate})`
+            : `No trading on ${newDate}. Using close of ${res.actualDate}`,
         });
       } else {
         // Fallback to live price + warn the user (option B).
