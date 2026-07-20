@@ -50,8 +50,7 @@ export default function LandingPage() {
 
             </div>
 
-
-            <div className="stats">
+<div className="stats">
 
               <div>
                 <h2>7+</h2>
