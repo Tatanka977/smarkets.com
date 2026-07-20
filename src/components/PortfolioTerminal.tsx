@@ -51,22 +51,34 @@ const B = {
 const SERIES_COLS = ["#0066FF","#00FF00","#FFFF00","#00FFFF","#FF3333","#FF00FF","#FF8800","#AAAAAA","#66CCFF","#88FF88"];
 const PIE_COLS    = SERIES_COLS;
 
-const fmt    = (n,d=2) => n==null||isNaN(n) ? "N/A" : (+n).toFixed(d);
-const fmtM   = (n) => {
+const fmt = (n: number | null | undefined, d = 2) =>
+  n == null || isNaN(n) ? "N/A" : n.toFixed(d);
+const fmtM = (n: number | null | undefined) => {
   if (n==null) return "N/A";
   if (n>=1e12) return `${(n/1e12).toFixed(2)}T`;
   if (n>=1e9)  return `${(n/1e9).toFixed(2)}B`;
   if (n>=1e6)  return `${(n/1e6).toFixed(2)}M`;
   return `${Math.round(n).toLocaleString()}`;
 };
-const pCol   = (v) => v>0 ? B.green : v<0 ? B.red : B.gray2;
-const pSign  = (v) => v==null ? "N/A" : v>0 ? `+${v}` : `${v}`;
-const groupBy = (arr, key, total) => {
+const pCol = (v: number) =>
+  v > 0 ? B.green : v < 0 ? B.red : B.gray2;
+const pSign = (v: number | null | undefined) =>
+  v == null ? "N/A" : v > 0 ? `+${v}` : `${v}`;
+type Holding = {
+  value: number;
+  asset: Record<string, any>;
+};
+
+const groupBy = (
+  arr: Holding[],
+  key: string,
+  total: number
+) => {
   const m={};
   arr.forEach(h=>{ const k=h.asset[key]||"N/A"; m[k]=(m[k]||0)+h.value; });
   return Object.entries(m).map(([name,value])=>({name,value,pct:+(value/total*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
 };
-const pMet = (hs) => {
+const pMet = (hs: Holding[]) => {
   if (!hs.length) return null;
   const total = hs.reduce((s,h)=>s+h.value,0);
   const wRet  = hs.reduce((s,h)=>s+(h.value/total)*(h.asset.er??0),0);
@@ -81,13 +93,13 @@ const pMet = (hs) => {
   return {total,wRet,wVol,wBeta,wDiv,wDay,sharpe,sectors,geos,hhi};
 };
 
-const searchSecurities = (q, category) => srvSearch({ data: { q, category } });
-const fetchQuote = (sym) => srvQuote({ data: { symbol: sym } });
-const batchRefresh = (symbols) => srvBatch({ data: { symbols } });
+const searchSecurities = (q: string, category?: string) => srvSearch({ data: { q, category } });
+const fetchQuote = (sym: string) => srvQuote({ data: { symbol: sym } });
+const batchRefresh = (symbols: string[]) => srvBatch({ data: { symbols } });
 const fetchMarketStatus = (exchanges?:string[]) => srvMarketStatus({ data: { exchanges } });
-const fetchHistoricalPrice = (symbol, date) => srvHistorical({ data: { symbol, date } });
-const fetchMarketNews = (category) => srvMarketNews({ data: { category } });
-const fetchCompanyNews = (symbol, days=14) => srvCompanyNews({ data: { symbol, days } });
+const fetchHistoricalPrice = (symbol: string, date: string) => srvHistorical({ data: { symbol, date } });
+const fetchMarketNews = (category?: string) => srvMarketNews({ data: { category } });
+const fetchCompanyNews = (symbol: string, days = 14) => srvCompanyNews({ data: { symbol, days } });
 
 const CATEGORY_TABS = [
   { id: undefined, label: "ALL" },
@@ -100,7 +112,17 @@ const CATEGORY_TABS = [
   { id: "FX", label: "FX" },
 ];
 
-const FKey = ({num,label,active,onClick}) => (
+const FKey = ({
+  num,
+  label,
+  active,
+  onClick,
+}: {
+  num?: string | number;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) => (
   <button onClick={onClick} style={{
     background:active?B.blue:B.panel2, border:`1px solid ${active?B.blue:B.border}`,
     borderRadius:0, padding:"5px 10px", cursor:"pointer",
