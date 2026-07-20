@@ -564,11 +564,12 @@ function SearchPage({onAdd,portfolio}:any) {
     } finally { setSrch(false); }
   },[]);
 
-  // Load category results immediately when category changes (even without query)
-  useEffect(()=>{
-    clearTimeout(debounce.current);
-    doSearch(q, cat);
-  },[cat]);
+// Search only when there is an actual query — never on mount or on category-only change
+useEffect(()=>{
+  clearTimeout(debounce.current);
+  if (!q.trim()) { setRes([]); return; }
+  doSearch(q, cat);
+},[cat]);
 
   const handleInput = (v) => {
     setQ(v); setSel(null); setDetail(null);
