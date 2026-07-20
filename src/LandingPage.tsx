@@ -82,9 +82,57 @@ export default function LandingPage() {
               </div>
 
               <div className="chart">
-                <div className="line"></div>
-              </div>
+  <svg
+    viewBox="0 0 500 180"
+    className="performance-chart"
+  >
 
+    <defs>
+      <linearGradient id="area" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stopColor="#22c55e" stopOpacity="0.35" />
+        <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+      </linearGradient>
+    </defs>
+
+
+    {/* area sotto la linea */}
+    <path
+      d="
+      M0 140
+      C40 120, 70 130, 100 110
+      C140 80, 170 100, 210 75
+      C250 55, 280 90, 320 50
+      C370 20, 420 45, 500 15
+      L500 180
+      L0 180
+      Z"
+      fill="url(#area)"
+    />
+
+
+    {/* linea crescita */}
+    <path
+      d="
+      M0 140
+      C40 120, 70 130, 100 110
+      C140 80, 170 100, 210 75
+      C250 55, 280 90, 320 50
+      C370 20, 420 45, 500 15"
+      fill="none"
+      stroke="#22c55e"
+      strokeWidth="4"
+      strokeLinecap="round"
+    />
+
+
+    {/* punti */}
+    <circle cx="100" cy="110" r="5" fill="#22c55e"/>
+    <circle cx="210" cy="75" r="5" fill="#22c55e"/>
+    <circle cx="320" cy="50" r="5" fill="#22c55e"/>
+    <circle cx="500" cy="15" r="5" fill="#22c55e"/>
+
+  </svg>
+</div>
 
               <div className="portfolio">
 
