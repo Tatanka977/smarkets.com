@@ -1294,7 +1294,7 @@ Max 250 words. Respond in ENGLISH.`;
 
             {/* Alerts list */}
             <BPanel title="EXPOSURE ALERTS &amp; RISK CHECKS" style={{marginTop:1}}>
-              <div style={{padding:"6px 12px",background:B.panel,borderBottom:`1px solid ${B.border}`,
+              <div style={{padding:"6px 12px",background:B.panel2,borderBottom:`1px solid ${B.border}`,
                 display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                 <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em"}}>
                   {alerts.length} CHECK{alerts.length!==1?"S":""} EVALUATED
