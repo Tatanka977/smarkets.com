@@ -411,34 +411,44 @@ const EXCHANGE_LABELS: Record<string, string> = {
   PA: "PARIS",
 };
 
+interface ExchangeHours { timezone: string; openMin: number; closeMin: number; }
+
+const EXCHANGE_HOURS: Record<string, ExchangeHours> = {
+  US: { timezone: "America/New_York", openMin: 9 * 60 + 30, closeMin: 16 * 60 },
+  L:  { timezone: "Europe/London",     openMin: 8 * 60,      closeMin: 16 * 60 + 30 },
+  MI: { timezone: "Europe/Rome",       openMin: 9 * 60,      closeMin: 17 * 60 + 30 },
+};
+
+function getLocalMinutesAndWeekday(timezone: string, now: Date): { minutes: number; weekday: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find(p => p.type === t)?.value || "";
+  const hour = parseInt(get("hour"), 10);
+  const minute = parseInt(get("minute"), 10);
+  const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return { minutes: hour * 60 + minute, weekday: weekdayMap[get("weekday")] ?? -1 };
+}
+
 async function fetchExchangeStatus(code: string): Promise<MarketStatus> {
-  const key = process.env.FINNHUB_API_KEY;
-  const fallback: MarketStatus = {
-    code,
-    label: EXCHANGE_LABELS[code] || code,
-    isOpen: false,
-    session: "unknown",
-    timezone: "UTC",
-    holiday: null,
-  };
-  if (!key) return fallback;
-  try {
-    const r = await fetch(
-      `https://finnhub.io/api/v1/stock/market-status?exchange=${encodeURIComponent(code)}&token=${key}`,
-    );
-    if (!r.ok) return fallback;
-    const j = (await r.json()) as FhMarketStatus;
-    return {
-      code,
-      label: EXCHANGE_LABELS[code] || code,
-      isOpen: !!j.isOpen,
-      session: (j.session || (j.isOpen ? "regular" : "closed")).toString(),
-      timezone: j.timezone || "UTC",
-      holiday: j.holiday || null,
-    };
-  } catch {
-    return fallback;
+  const hours = EXCHANGE_HOURS[code];
+  const label = EXCHANGE_LABELS[code] || code;
+  if (!hours) {
+    return { code, label, isOpen: false, session: "unknown", timezone: "UTC", holiday: null };
   }
+  const now = new Date();
+  const { minutes, weekday } = getLocalMinutesAndWeekday(hours.timezone, now);
+  const isWeekday = weekday >= 1 && weekday <= 5;
+  const isOpen = isWeekday && minutes >= hours.openMin && minutes < hours.closeMin;
+  return {
+    code,
+    label,
+    isOpen,
+    session: isOpen ? "regular" : "closed",
+    timezone: hours.timezone,
+    holiday: null, // public holidays not accounted for yet — see note below
+  };
 }
 
 export const fetchMarketStatus = createServerFn({ method: "GET" })
