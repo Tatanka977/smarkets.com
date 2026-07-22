@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { getInvestorProfile } from "@/lib/profile.functions";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
   PieChart, Pie, Cell,
@@ -1188,11 +1189,18 @@ function AnalysisPage({holdings}:any) {
       const positionsText = holdings.map((h:any) =>
         `${h.asset.ticker} — ${((h.value/m.total)*100).toFixed(1)}% weight, sector: ${h.asset.sector || "N/A"}`
       ).join("\n");
+      let profileText = "";
+try {
+  const p = await getInvestorProfile();
+  if (p && (p.age_range || p.investment_goal)) {
+    profileText = `\nInvestor context (self-reported, use to tailor scenario relevance, never as a reason to give personalized advice): age ${p.age_range||"N/A"}, goal ${p.investment_goal||"N/A"}, horizon ${p.time_horizon||"N/A"}, risk tolerance ${p.risk_tolerance||"N/A"}, experience ${p.experience_level||"N/A"}.`;
+  }
+} catch {}
       const sys = `You are STRATEGIC MARKETS AI, an EDUCATIONAL analytics assistant. NO personalized investment advice under MiFID II. Frame everything as HYPOTHETICAL SCENARIOS and QUANTITATIVE OBSERVATIONS.
 Given a set of exposure alerts, explain what they mean educationally and describe HYPOTHETICAL rebalancing SCENARIOS (not recommendations) that would statistically reduce the flagged risks — e.g. "a scenario where MSFT weight was reduced from 66% to 25% would lower HHI by ~X points and reduce single-name concentration".
 Structure: 1) brief overview 2) 2-3 key hypothetical scenarios with quantitative rationale 3) BOTTOM LINE. Use **bold** for key metrics.
 ALWAYS end with: "DISCLAIMER: For educational and informational purposes only. Not investment advice."
-Max 250 words. Respond in ENGLISH.`;
+Max 250 words. Respond in ENGLISH.${profileText}`;
       const prompt = `My hypothetical portfolio positions:\n${positionsText}\n\nActive risk alerts flagged by the system:\n${alertsText}\n\nExplain these alerts and outline hypothetical rebalancing scenarios (educational only).`;
       const { reply } = await aiChat({ data: { messages: [{role:"user", content: prompt}], system: sys } });
       setAiExplain(reply);
@@ -1519,7 +1527,13 @@ Max 250 words. Respond in ENGLISH.`;
     </div>
   );
 }
-
+let profileText = "";
+try {
+  const p = await getInvestorProfile();
+  if (p && (p.age_range || p.investment_goal)) {
+    profileText = `\nInvestor context (self-reported, use to tailor scenario relevance, never as a reason to give personalized advice): age ${p.age_range||"N/A"}, goal ${p.investment_goal||"N/A"}, horizon ${p.time_horizon||"N/A"}, risk tolerance ${p.risk_tolerance||"N/A"}, experience ${p.experience_level||"N/A"}.`;
+  }
+} catch {}
 const SYS_PROMPT=`You are STRATEGIC MARKETS AI, an EDUCATIONAL financial-markets terminal assistant.
 
 # REGULATORY FRAMEWORK (HARD CONSTRAINTS — NEVER VIOLATE)
@@ -1543,7 +1557,7 @@ global markets, ETFs, bonds, commodities, crypto, macro economics, financial reg
 # STYLE
 Concise, data-driven, professional terminal style.
 Use CAPS for key terms. Max 280 words. Bold **key metrics** with asterisks.
-ALWAYS respond in ENGLISH.`;
+ALWAYS respond in ENGLISH.${profileText}`;
 
 const QUICK_Q=["ANALYZE PORTFOLIO","DIVERSIFICATION CHECK","RISK ASSESSMENT","IMPROVE ALLOCATION","EXPLAIN SHARPE","VAR ANALYSIS","SECTOR EXPOSURE","REDUCE VOLATILITY"];
 
