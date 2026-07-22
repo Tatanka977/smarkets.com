@@ -151,17 +151,17 @@ export default function LandingPage() {
               <div className="portfolio">
 
                 <div>
-                  <span>🌐 Global Equity</span>
+                  <span>Global Equity</span>
                   <strong>+12.4%</strong>
                 </div>
 
                 <div>
-                  <span>🧠 AI Strategy</span>
+                  <span>AI Strategy</span>
                   <strong>+18.9%</strong>
                 </div>
 
                 <div>
-                  <span>₿ Crypto Index</span>
+                  <span>Crypto Index</span>
                   <strong>+7.2%</strong>
                 </div>
 
@@ -202,9 +202,9 @@ export default function LandingPage() {
                 ⚡
               </div>
 
-              <h3>
+              <h2>
                 AI Advisor
-              </h3>
+              </h2>
 
               <p>
                 Get intelligent market analysis and portfolio suggestions.
@@ -220,9 +220,9 @@ export default function LandingPage() {
                 📊
               </div>
 
-              <h3>
+              <h2>
                 Multi Asset Analytics
-              </h3>
+              </h2>
 
               <p>
                 Track equities, crypto, commodities and alternative assets.
@@ -238,9 +238,9 @@ export default function LandingPage() {
                 🔒
               </div>
 
-              <h3>
+              <h2>
                 Secure Platform
-              </h3>
+              </h2>
 
               <p>
                 Built on Supabase with row-level security, so your data stays yours.
