@@ -239,26 +239,16 @@ function TopBar({time}:any) {
         <button
           data-testid="theme-toggle-button"
           onClick={toggleTheme}
-          title={isAurora ? "Switch to Terminal theme" : "Switch to Aurora theme"}
-          aria-label="Toggle theme"
+          title={isAurora ? "Switch to dark mode" : "Switch to light mode"}
+          aria-label="Toggle light/dark mode"
           style={{
-            fontSize:11,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
             background:"rgba(0,0,0,0.25)",border:"1px solid rgba(255,255,255,0.4)",
-            padding:"3px 8px",letterSpacing:"0.08em",cursor:"pointer",
-            display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",
+            borderRadius:"50%",width:28,height:28,cursor:"pointer",
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:15,flexShrink:0,
           }}
         >
-          <span style={{
-            display:"inline-block",width:22,height:12,borderRadius:12,
-            background:isAurora?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.25)",
-            position:"relative",transition:"background 0.2s",
-          }}>
-            <span style={{
-              position:"absolute",top:1,left:isAurora?11:1,width:10,height:10,borderRadius:"50%",
-              background:isAurora?B.blue:B.white,transition:"left 0.2s",
-            }}/>
-          </span>
-          <span>{isAurora ? "AURORA" : "TERMINAL"}</span>
+          {isAurora ? "☀️" : "🌙"}
         </button>
         <Link to={user ? "/profile" : "/auth"} style={{
           fontSize:12,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
