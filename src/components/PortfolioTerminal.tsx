@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import AnalysisPage from "./AnalysisPage";
 import { getInvestorProfile } from "@/lib/profile.functions";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
@@ -31,7 +32,7 @@ import { usePersistentState } from "@/hooks/usePersistentState";
 import { useTheme } from "@/hooks/useTheme";
 import { Link } from "@tanstack/react-router";
 
-const B = {
+export const B = {
   bg:      "var(--sm-bg)",
   panel:   "var(--sm-panel)",
   panel2:  "var(--sm-panel2)",
@@ -51,24 +52,24 @@ const B = {
   gray4:   "var(--sm-gray4)",
 };
 const SERIES_COLS = ["#0066FF","#00FF00","#FFFF00","#00FFFF","#FF3333","#FF00FF","#FF8800","#AAAAAA","#66CCFF","#88FF88"];
-const PIE_COLS    = SERIES_COLS;
+export const PIE_COLS    = SERIES_COLS;
 
-const fmt    = (n,d=2) => n==null||isNaN(n) ? "N/A" : (+n).toFixed(d);
-const fmtM   = (n) => {
+export const fmt    = (n,d=2) => n==null||isNaN(n) ? "N/A" : (+n).toFixed(d);
+export const fmtM   = (n) => {
   if (n==null) return "N/A";
   if (n>=1e12) return `${(n/1e12).toFixed(2)}T`;
   if (n>=1e9)  return `${(n/1e9).toFixed(2)}B`;
   if (n>=1e6)  return `${(n/1e6).toFixed(2)}M`;
   return `${Math.round(n).toLocaleString()}`;
 };
-const pCol   = (v) => v>0 ? B.green : v<0 ? B.red : B.gray2;
-const pSign  = (v) => v==null ? "N/A" : v>0 ? `+${v}` : `${v}`;
-const groupBy = (arr, key, total) => {
+export const pCol   = (v) => v>0 ? B.green : v<0 ? B.red : B.gray2;
+export const pSign  = (v) => v==null ? "N/A" : v>0 ? `+${v}` : `${v}`;
+export const groupBy = (arr, key, total) => {
   const m={};
   arr.forEach(h=>{ const k=h.asset[key]||"N/A"; m[k]=(m[k]||0)+h.value; });
   return Object.entries(m).map(([name,value])=>({name,value,pct:+(value/total*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
 };
-const pMet = (hs) => {
+export const pMet = (hs) => {
   if (!hs.length) return null;
   const total = hs.reduce((s,h)=>s+h.value,0);
   const wRet  = hs.reduce((s,h)=>s+(h.value/total)*(h.asset.er??0),0);
@@ -102,7 +103,7 @@ const CATEGORY_TABS = [
   { id: "FX", label: "FX" },
 ];
 
-const FKey = ({num,label,active,onClick}) => (
+export const FKey = ({num,label,active,onClick}) => (
   <button onClick={onClick} style={{
     background:active?B.blue:B.panel2, border:`1px solid ${active?B.blue:B.border}`,
     borderRadius:0, padding:"5px 10px", cursor:"pointer",
@@ -115,7 +116,7 @@ const FKey = ({num,label,active,onClick}) => (
   </button>
 );
 
-const BPanel = ({title,children,style,accent}:any) => (
+export const BPanel = ({title,children,style,accent}:any) => (
   <div style={{border:`1px solid ${accent?B.blue:B.border}`,background:B.panel,...style}}>
     {title&&(
       <div style={{background:accent?B.blue:B.blue,padding:"3px 8px",
@@ -1083,7 +1084,7 @@ function PortfolioPage({holdings,onRemove,onLoadPortfolio}:any) {
   );
 }
 
-function computeAlerts(holdings:any[], m:any) {
+export function computeAlerts(holdings:any[], m:any) {
   const alerts: {sev:"HIGH"|"MED"|"LOW"|"OK", title:string, detail:string, metric:string}[] = [];
   if (!holdings.length) return alerts;
 
@@ -1154,55 +1155,49 @@ function computeAlerts(holdings:any[], m:any) {
   return alerts;
 }
 
-const SEV_STYLE:any = {
+export const SEV_STYLE:any = {
   HIGH: { border: "#FF3333", bg: "rgba(255,51,51,0.08)", text: "#FF3333", icon: "⚠", label: "HIGH RISK" },
   MED:  { border: "#FFA500", bg: "rgba(255,165,0,0.08)", text: "#FFA500", icon: "◆", label: "MEDIUM" },
   LOW:  { border: "#00FFFF", bg: "rgba(0,255,255,0.06)", text: "#00FFFF", icon: "ℹ", label: "INFO" },
   OK:   { border: "#00FF66", bg: "rgba(0,255,102,0.06)", text: "#00FF66", icon: "✓", label: "OK" },
 };
 
-function AnalysisPage({holdings}:any) {
-  const m=useMemo(()=>pMet(holdings),[holdings]);
-  const [sub,setSub]=usePersistentState<string>("analysis_sub", "alloc");
-  const [aiExplain, setAiExplain] = useState("");
-  const [aiBusy, setAiBusy] = useState(false);
-  if (!holdings.length) return (
-    <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <span style={{fontSize:15,color:B.gray3,fontFamily:"'Courier New',monospace"}}>NO DATA — ADD SECURITIES VIA SEARCH</span>
-    </div>
-  );
-  const sD=groupBy(holdings,"sector",m.total);
-  const gD=groupBy(holdings,"geo",m.total);
-  const tD=groupBy(holdings,"type",m.total);
+async function buildSysPrompt(): Promise<string> {
+  let profileText = "";
+  try {
+    const p = await getInvestorProfile();
+    if (p && (p.age_range || p.investment_goal)) {
+      profileText = `\nInvestor context (self-reported, use to tailor scenario relevance, never as a reason to give personalized advice): age ${p.age_range||"N/A"}, goal ${p.investment_goal||"N/A"}, horizon ${p.time_horizon||"N/A"}, risk tolerance ${p.risk_tolerance||"N/A"}, experience ${p.experience_level||"N/A"}.`;
+    }
+  } catch {}
+  return `You are STRATEGIC MARKETS AI, an EDUCATIONAL financial-markets terminal assistant.
 
-  const alerts = useMemo(() => computeAlerts(holdings, m), [holdings, m]);
-  const highCount = alerts.filter(a => a.sev==="HIGH").length;
-  const medCount  = alerts.filter(a => a.sev==="MED").length;
+# REGULATORY FRAMEWORK (HARD CONSTRAINTS — NEVER VIOLATE)
+- You DO NOT provide investment advice, personal recommendations, solicitations or financial planning under MiFID II / SEC / ESMA frameworks.
+- You DO NOT say "buy", "sell", "you should invest", "I recommend you to...", "this is a good investment for you", or any equivalent personalized advice.
+- You frame all output as: educational analysis, quantitative scenarios, hypothetical case studies, statistical observations, or theoretical examples.
+- When discussing the user's portfolio data, treat it as a HYPOTHETICAL DATASET for illustrative analysis, NEVER as a basis for personalized recommendations.
+- Replace prescriptive phrasing with descriptive/analytic phrasing:
+  • "buy X" → "historically, allocations to X have shown..."
+  • "you should reduce Y" → "from a quantitative diversification perspective, lowering exposure to Y would reduce HHI by..."
+  • "this is a good ETF" → "this ETF exhibits characteristics such as..."
+- ALWAYS end every response with:
+  "BOTTOM LINE: [educational summary]
+   DISCLAIMER: For educational and informational purposes only. Not investment advice."
 
-  const explainAlerts = async () => {
-    if (!alerts.length || aiBusy) return;
-    setAiBusy(true); setAiExplain("");
-    try {
-      const alertsText = alerts.map((a, i) =>
-        `${i+1}. [${a.sev}] ${a.title} (${a.metric}): ${a.detail}`
-      ).join("\n");
-      const positionsText = holdings.map((h:any) =>
-        `${h.asset.ticker} — ${((h.value/m.total)*100).toFixed(1)}% weight, sector: ${h.asset.sector || "N/A"}`
-      ).join("\n");
-      let profileText = "";
-try {
-  const p = await getInvestorProfile();
-  if (p && (p.age_range || p.investment_goal)) {
-    profileText = `\nInvestor context (self-reported, use to tailor scenario relevance, never as a reason to give personalized advice): age ${p.age_range||"N/A"}, goal ${p.investment_goal||"N/A"}, horizon ${p.time_horizon||"N/A"}, risk tolerance ${p.risk_tolerance||"N/A"}, experience ${p.experience_level||"N/A"}.`;
-  }
-} catch {}
-      const sys = `You are STRATEGIC MARKETS AI, an EDUCATIONAL analytics assistant. NO personalized investment advice under MiFID II. Frame everything as HYPOTHETICAL SCENARIOS and QUANTITATIVE OBSERVATIONS.
-Given a set of exposure alerts, explain what they mean educationally and describe HYPOTHETICAL rebalancing SCENARIOS (not recommendations) that would statistically reduce the flagged risks — e.g. "a scenario where MSFT weight was reduced from 66% to 25% would lower HHI by ~X points and reduce single-name concentration".
-Structure: 1) brief overview 2) 2-3 key hypothetical scenarios with quantitative rationale 3) BOTTOM LINE. Use **bold** for key metrics.
-ALWAYS end with: "DISCLAIMER: For educational and informational purposes only. Not investment advice."
-Max 250 words. Respond in ENGLISH.${profileText}`;
+# EXPERTISE
+Portfolio theory (MPT, CAPM, Fama-French), fundamental analysis (DCF, P/E, EV/EBITDA),
+technical analysis, risk management (VaR, CVaR, drawdown), asset allocation,
+global markets, ETFs, bonds, commodities, crypto, macro economics, financial regulations.
+
+# STYLE
+Concise, data-driven, professional terminal style.
+Use CAPS for key terms. Max 280 words. Bold **key metrics** with asterisks.
+ALWAYS respond in ENGLISH.${profileText}`;
+}
       const prompt = `My hypothetical portfolio positions:\n${positionsText}\n\nActive risk alerts flagged by the system:\n${alertsText}\n\nExplain these alerts and outline hypothetical rebalancing scenarios (educational only).`;
-      const { reply } = await aiChat({ data: { messages: [{role:"user", content: prompt}], system: sys } });
+      const sys = await buildSysPrompt();
+const { reply } = await aiChat({ data: { messages: apiMsgs, system: sys } });
       setAiExplain(reply);
     } catch (e:any) {
       setAiExplain("AI error: " + e.message);
