@@ -28,7 +28,7 @@ function AuthPage() {
     setErr("");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin + "/" },
+      options: { redirectTo: window.location.origin + "/terminal" },
     });
     if (error) setErr(error.message);
   };
@@ -52,7 +52,7 @@ function AuthPage() {
         });
         if (error) throw error;
       }
-      navigate({ to: "/" });
+      navigate({ to: "/terminal" });
     } catch (e: any) {
       setErr(e.message || "Authentication error");
     } finally {
