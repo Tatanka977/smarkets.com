@@ -1612,7 +1612,7 @@ function AIAdvisorPage({holdings}:any) {
         display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
         <div>
           <span style={{fontSize:13,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>STRATEGIC MARKETS</span>
-          <span style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:8}}>AI FINANCIAL TERMINAL  LOVABLE AI</span>
+          <span style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:8}}>AI FINANCIAL TERMINAL</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={async()=>{
