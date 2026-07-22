@@ -314,20 +314,24 @@ export const fetchQuote = createServerFn({ method: "GET" })
       try {
         const q = await buildQuote(sym);
         if (q.price != null) {
-          // Preserve mock category/industry hints if Finnhub doesn't supply them
           if (mock) {
             q.category = mock.category;
             q.sector = q.sector || mock.industry;
             q.industry = q.industry || mock.industry;
             q.type = q.type || mock.type;
           }
+          const ySec = await fetchYahooSector(sym);
+          if (ySec) { q.sector = ySec.sector; q.industry = ySec.industry; }
           return q;
         }
       } catch (e) {
         console.warn("[Finnhub quote] falling back to mock:", (e as Error).message);
       }
     }
-    return findMock(sym);
+    const m = findMock(sym);
+    const ySec = await fetchYahooSector(sym);
+    if (ySec) { m.sector = ySec.sector; m.industry = ySec.industry; }
+    return m;
   });
 
 export const batchRefresh = createServerFn({ method: "POST" })
