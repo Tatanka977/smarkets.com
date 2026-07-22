@@ -459,6 +459,26 @@ async function fetchYahooQuote(symbol: string): Promise<{ price: number; currenc
     return null;
   }
 }
+interface YahooProfileResult {
+  quoteSummary?: {
+    result?: Array<{ assetProfile?: { sector?: string; industry?: string } }>;
+  };
+}
+
+async function fetchYahooSector(symbol: string): Promise<{ sector: string; industry: string } | null> {
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=assetProfile`;
+  try {
+    const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 (StrategicMarkets)" } });
+    if (!r.ok) return null;
+    const j = (await r.json()) as YahooProfileResult;
+    const profile = j.quoteSummary?.result?.[0]?.assetProfile;
+    if (!profile?.sector) return null;
+    return { sector: profile.sector, industry: profile.industry || profile.sector };
+  } catch (e) {
+    console.warn("[Yahoo profile]", symbol, (e as Error).message);
+    return null;
+  }
+}
 /** Convert 'YYYY-MM-DD' → unix seconds at 00:00 UTC. */
 function ymdToUnix(ymd: string): number {
   const [y, m, d] = ymd.split("-").map(Number);
