@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   B, fmt, fmtM, pCol, pSign, pMet, BPanel,
-} from "./PortfolioTerminal";
+} from "@/lib/uiShared";
 import { fetchMarketStatus as srvMarketStatus, batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
 import { fetchMarketNews as srvMarketNews } from "@/lib/news.functions";
 import { savePortfolio } from "@/lib/profile.functions";
