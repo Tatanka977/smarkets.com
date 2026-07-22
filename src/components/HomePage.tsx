@@ -131,6 +131,7 @@ function StatField({ label, value, sub, color }: any) {
 }
 
 function PortfolioOverview({ holdings, m, onSave, saving, saveMsg }: any) {
+  const hasHoldings = holdings.length > 0;
   const totalCost = holdings.reduce((s: number, h: any) => s + (h.costBasis ?? (h.costPrice || 0) * h.qty), 0);
   const totalPL = holdings.reduce((s: number, h: any) => s + (h.value - (h.costBasis ?? (h.costPrice || 0) * h.qty)), 0);
   const totalPLPct = totalCost > 0 ? (totalPL / totalCost * 100) : 0;
@@ -139,24 +140,25 @@ function PortfolioOverview({ holdings, m, onSave, saving, saveMsg }: any) {
     <div style={{ ...CARD, padding: "16px 18px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>PORTFOLIO OVERVIEW</span>
-        <button onClick={onSave} disabled={saving} style={{
+        <button onClick={onSave} disabled={saving || !hasHoldings} style={{
           background: "none", border: `1px solid ${B.border}`, color: B.blue, fontFamily: FONT,
           fontSize: 12, cursor: saving ? "wait" : "pointer", padding: "4px 10px", borderRadius: 6,
+          opacity: hasHoldings ? 1 : 0.4,
         }}>{saving ? "..." : saveMsg || "SAVE"}</button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16, marginBottom: 16 }}>
-        <StatField label="Total Portfolio Value" value={`$${fmtM(m.total)}`} />
-        <StatField label="Portfolio Return (Exp.)" value={`${pSign(fmt(m.wRet,1))}%`} color={pCol(m.wRet)} />
-        <StatField label="Day Change" value={`${pSign(fmt(m.wDay,2))}%`} color={pCol(m.wDay)} />
+        <StatField label="Total Portfolio Value" value={hasHoldings ? `$${fmtM(m.total)}` : "—"} />
+        <StatField label="Portfolio Return (Exp.)" value={hasHoldings ? `${pSign(fmt(m.wRet,1))}%` : "—"} color={hasHoldings ? pCol(m.wRet) : undefined} />
+        <StatField label="Day Change" value={hasHoldings ? `${pSign(fmt(m.wDay,2))}%` : "—"} color={hasHoldings ? pCol(m.wDay) : undefined} />
         <StatField label="Cash" value="—" sub="Not tracked yet" />
       </div>
 
       <div style={{ borderTop: `1px solid ${B.border}`, paddingTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16 }}>
-        <StatField label="Unrealized P/L" value={`${totalPL>=0?"+":"−"}$${fmtM(Math.abs(totalPL))}`} sub={`(${pSign(fmt(totalPLPct,1))}%)`} color={pCol(totalPL)} />
+        <StatField label="Unrealized P/L" value={hasHoldings ? `${totalPL>=0?"+":"−"}$${fmtM(Math.abs(totalPL))}` : "—"} sub={hasHoldings ? `(${pSign(fmt(totalPLPct,1))}%)` : undefined} color={hasHoldings ? pCol(totalPL) : undefined} />
         <StatField label="Realized P/L (YTD)" value="—" sub="Not tracked yet" />
         <StatField label="Buying Power" value="—" sub="Not tracked yet" />
-        <StatField label="Portfolio Status" value={<span style={{ color: B.green }}>● Active</span>} />
+        <StatField label="Portfolio Status" value={hasHoldings ? <span style={{ color: B.green }}>● Active</span> : <span style={{ color: B.gray3 }}>— Empty</span>} />
       </div>
     </div>
   );
@@ -280,34 +282,31 @@ export default function HomePage({ holdings, setPage, onRefresh, refreshing }: a
       <GlobalMarketStatus />
       <KeyIndices />
 
-      {!holdings.length ? (
-        <div style={{ ...CARD, padding: "30px 20px", textAlign: "center" }}>
-          <div style={{ fontSize: 13, color: B.gray2, fontFamily: FONT, marginBottom: 12 }}>NO ACTIVE PORTFOLIO</div>
+      {!holdings.length && (
+        <div style={{ ...CARD, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <span style={{ fontSize: 13, color: B.gray2, fontFamily: FONT }}>No securities in your portfolio yet.</span>
           <button onClick={() => setPage("search")} style={{
             background: B.blue, border: "none", color: B.white, padding: "8px 20px", cursor: "pointer",
             fontFamily: FONT, fontSize: 14, fontWeight: 700, borderRadius: 8,
           }}>SEARCH SECURITIES</button>
         </div>
-      ) : (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
-            <PortfolioOverview holdings={holdings} m={m} onSave={handleSave} saving={saving} saveMsg={saveMsg} />
-            <PerformancePanel />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
-            <RecentActivity holdings={holdings} />
-            <MarketNewsCard />
-          </div>
-
-          <div style={{ textAlign: "right" }}>
-            <button onClick={onRefresh} disabled={refreshing} style={{
-              background: "none", border: `1px solid ${B.border}`, color: refreshing ? B.gray3 : B.blue,
-              fontFamily: FONT, fontSize: 12, cursor: refreshing ? "not-allowed" : "pointer", padding: "4px 10px", borderRadius: 6,
-            }}>{refreshing ? "UPDATING..." : "↻ REFRESH"}</button>
-          </div>
-        </>
       )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
+        <PortfolioOverview holdings={holdings} m={m} onSave={handleSave} saving={saving} saveMsg={saveMsg} />
+        <PerformancePanel />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
+        <RecentActivity holdings={holdings} />
+        <MarketNewsCard />
+      </div>
+
+      <div style={{ textAlign: "right" }}>
+        <button onClick={onRefresh} disabled={refreshing || !holdings.length} style={{
+          background: "none", border: `1px solid ${B.border}`, color: (refreshing || !holdings.length) ? B.gray3 : B.blue,
+          fontFamily: FONT, fontSize: 12, cursor: (refreshing || !holdings.length) ? "not-allowed" : "pointer", padding: "4px 10px", borderRadius: 6,
+        }}>{refreshing ? "UPDATING..." : "↻ REFRESH"}</button>
+      </div>
     </div>
   );
-}
