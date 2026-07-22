@@ -1,0 +1,340 @@
+/* ==========================================================================
+ * Strategic Markets — Bottom Navigation (Sticky Footer)
+ * 
+ * Fixed to bottom on mobile, sticky on desktop to always show nav
+ * ========================================================================== */
+
+/* STICKY BOTTOM NAVIGATION */
+.sm-bottomnav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  width: 100%;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.1);
+  
+  /* Support for notch/safe area */
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  
+  /* Smooth transitions */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* When nav is visible, adjust main content */
+body:has(.sm-bottomnav) {
+  padding-bottom: 80px;
+}
+
+/* On small screens (mobile), make it more prominent */
+@media (max-width: 768px) {
+  .sm-bottomnav {
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+
+  body:has(.sm-bottomnav) {
+    padding-bottom: 70px;
+  }
+}
+
+/* Desktop - also sticky but less aggressive */
+@media (min-width: 1024px) {
+  .sm-bottomnav {
+    position: sticky;
+    bottom: 0;
+  }
+
+  body:has(.sm-bottomnav) {
+    padding-bottom: 70px;
+  }
+}
+
+/* BOTTOM NAV BUTTONS */
+.sm-bottomnav button {
+  flex: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: clamp(8px, 2vw, 12px) 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border-top: 2px solid transparent;
+  position: relative;
+  min-width: 0;
+  min-height: 48px;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+
+/* Active button state */
+.sm-bottomnav button[style*="borderTop"] {
+  border-top-color: var(--sm-blue, #0066FF);
+}
+
+.sm-bottomnav button:active:not(:disabled) {
+  opacity: 0.7;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* Badge on nav buttons */
+.sm-bottomnav button span {
+  font-size: clamp(10px, 1.5vw, 12px);
+  font-weight: 700;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Badge counter */
+.sm-bottomnav button div[style*="position:absolute"] {
+  position: absolute !important;
+  top: 2px;
+  right: 20%;
+  background: var(--sm-blue, #0066FF);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  padding: 0 4px;
+  line-height: 14px;
+  border-radius: 2px;
+  z-index: 10;
+}
+
+/* TOP BAR (f-keys) */
+.sm-fkeys {
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  display: flex;
+  align-items: stretch;
+  padding: 4px 6px;
+  gap: 4px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: var(--sm-panel2);
+  border-bottom: 1px solid var(--sm-border);
+}
+
+/* F-Key buttons */
+.sm-fkeys button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: clamp(9px, 1.25vw, 11px);
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.06em;
+  transition: all 0.12s ease;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.sm-fkeys button:hover {
+  opacity: 0.8;
+  transform: scale(1.02);
+}
+
+.sm-fkeys button:active {
+  transform: scale(0.98);
+}
+
+/* HELP text in f-keys */
+.sm-fkeys span {
+  font-size: clamp(9px, 1vw, 11px);
+  color: var(--sm-gray3);
+  font-family: 'Courier New', monospace;
+  align-self: center;
+  padding-right: 4px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* MAIN CONTENT ADJUSTMENT FOR STICKY FOOTERS */
+main, .main-content, [role="main"] {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 70px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Scrollable container */
+.content-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: clamp(1rem, 2vw, 2rem);
+}
+
+/* RESPONSIVE ADJUSTMENTS */
+
+/* Tablet */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .sm-bottomnav {
+    padding: clamp(8px, 1.5vw, 12px) 4px 6px;
+  }
+
+  .sm-bottomnav button {
+    min-height: 44px;
+    padding: clamp(6px, 1.5vw, 10px) 2px 4px;
+  }
+
+  .sm-fkeys {
+    padding: 3px 4px;
+    gap: 2px;
+  }
+
+  .sm-fkeys button {
+    padding: 2px 4px;
+    font-size: 10px;
+    min-height: 24px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .sm-bottomnav {
+    background: var(--sm-panel2);
+    border-top: 1px solid var(--sm-border);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .sm-bottomnav button {
+    min-height: 50px;
+    padding: clamp(6px, 1.5vw, 10px) 2px 4px;
+    gap: 3px;
+  }
+
+  .sm-bottomnav button span {
+    font-size: clamp(9px, 1vw, 11px);
+  }
+
+  .sm-bottomnav button div[style*="position:absolute"] {
+    right: 18%;
+  }
+
+  .sm-fkeys {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 2px 4px;
+    gap: 2px;
+  }
+
+  .sm-fkeys button {
+    padding: 2px 4px;
+    font-size: 9px;
+    min-height: 24px;
+    flex-shrink: 0;
+  }
+
+  .sm-fkeys span {
+    font-size: 9px;
+    padding-right: 2px;
+  }
+
+  main, .main-content, [role="main"] {
+    min-height: calc(100vh - 60px);
+  }
+}
+
+/* Small Phone */
+@media (max-width: 480px) {
+  .sm-bottomnav {
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+  }
+
+  body:has(.sm-bottomnav) {
+    padding-bottom: 60px;
+  }
+
+  .sm-bottomnav button {
+    min-height: 44px;
+    padding: 4px 1px 3px;
+    gap: 2px;
+  }
+
+  .sm-bottomnav button span {
+    font-size: 8px;
+    line-height: 1;
+  }
+
+  .sm-fkeys {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 2px 2px;
+    gap: 1px;
+  }
+
+  .sm-fkeys button {
+    padding: 1px 3px;
+    font-size: 8px;
+    min-height: 22px;
+  }
+
+  main, .main-content, [role="main"] {
+    min-height: calc(100vh - 50px);
+  }
+}
+
+/* PREVENT SCROLLING UNDER FIXED NAV */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 50px;
+  scroll-padding-bottom: 70px;
+}
+
+@media (max-width: 768px) {
+  html {
+    scroll-padding-bottom: 60px;
+  }
+}
+
+/* ACCESSIBILITY - KEYBOARD NAVIGATION */
+.sm-bottomnav button:focus-visible,
+.sm-fkeys button:focus-visible {
+  outline: 2px solid var(--sm-blue, #0066FF);
+  outline-offset: 2px;
+}
+
+/* LANDSCAPE MODE ON MOBILE */
+@media (max-width: 768px) and (max-height: 500px) {
+  .sm-bottomnav {
+    position: sticky;
+    bottom: auto;
+    top: auto;
+  }
+
+  body:has(.sm-bottomnav) {
+    padding-bottom: 0;
+  }
+
+  main, .main-content, [role="main"] {
+    min-height: auto;
+  }
+}
+
+/* PRINT STYLES */
+@media print {
+  .sm-bottomnav,
+  .sm-fkeys {
+    display: none !important;
+  }
+
+  body:has(.sm-bottomnav) {
+    padding-bottom: 0;
+  }
+
+  main, .main-content, [role="main"] {
+    min-height: auto;
+  }
+}
