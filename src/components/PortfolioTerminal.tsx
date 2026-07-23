@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { LogoIcon } from "@/components/Logo";
 import AnalysisPage from "./AnalysisPage";
 import HomePage from "./HomePage";
@@ -575,6 +576,7 @@ function PricePerformancePanel({symbol, currency}:any) {
   );
 }
 function SearchPage({onAdd,portfolio}:any) {
+  const isMobile = useIsMobile();
   const [q,setQ] = useState<string>("");
   const [results,setRes] = useState<any[]>([]);
   const [searching,setSrch]=useState(false);
@@ -755,7 +757,7 @@ useEffect(()=>{
         </div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:14}}>
         <PricePerformancePanel symbol={detail.ticker} currency={detail.currency}/>
 
         {/* Key metrics */}
@@ -783,7 +785,7 @@ useEffect(()=>{
         </div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1.2fr",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1.2fr",gap:14}}>
         {/* Company overview */}
         <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
           <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
@@ -799,7 +801,7 @@ useEffect(()=>{
           <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
             POSITION IMPACT SIMULATOR
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1.3fr",gap:8,marginBottom:10}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1.3fr",gap:8,marginBottom:10}}>
             <div>
               <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>QUANTITY</div>
               <input value={qty} onChange={e=>setQty(e.target.value)} type="number" min="0" step="any"
@@ -958,6 +960,7 @@ function EditableCell({value, onSave, type="text", format}:any) {
   );
 }
 function PortfolioPage({holdings,onRemove,onUpdate,onLoadPortfolio,onAddCash}:any) {
+  const isMobile = useIsMobile();
   const m=useMemo(()=>pMet(holdings),[holdings]);
   const { user } = useUser();
   const [view, setView] = useState<"positions"|"saved">("positions");
@@ -1152,7 +1155,7 @@ const addCash = () => {
       </div>
 
       {/* Breakdown row */}
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:14}}>
         <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px"}}>
           <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:12}}>
             PORTFOLIO BREAKDOWN
@@ -1199,7 +1202,7 @@ const addCash = () => {
       </div>
 
       {/* Holdings table + Insights */}
-      <div style={{display:"grid",gridTemplateColumns:"2.2fr 1fr",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2.2fr 1fr",gap:14}}>
         <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px",overflowX:"auto"}}>
           <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
             HOLDINGS
