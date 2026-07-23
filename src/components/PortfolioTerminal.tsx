@@ -228,7 +228,7 @@ function TopBar({time}:any) {
     <div className="sm-topbar" style={{background:B.blue,display:"flex",alignItems:"center",
       justifyContent:"space-between",padding:"6px 12px",flexShrink:0,gap:8,flexWrap:"wrap"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
-        <div style={{filter:"brightness(0) invert(1)"}}><LogoIcon size={22} /></div>
+        <img src="/sm-icon.png" alt="" style={{height:22,width:"auto",filter:"brightness(0) invert(1)"}} />
         <span style={{fontSize:16,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
           letterSpacing:"0.14em",whiteSpace:"nowrap"}}>STRATEGIC MARKETS</span>
         <span className="sm-tagline" style={{fontSize:12,color:"rgba(255,255,255,0.75)",
