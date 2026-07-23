@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import {
   B, fmt, fmtM, pCol, pSign, groupBy, pMet, PIE_COLS,
@@ -6,8 +6,8 @@ import {
 } from "@/lib/uiShared";
 import { aiChat } from "@/lib/ai.functions";
 import { getInvestorProfile } from "@/lib/profile.functions";
-import { fetchQuote as srvQuote } from "@/lib/finance.functions";
-
+import { fetchQuote as srvQuote, searchSecurities as srvSearch } from "@/lib/finance.functions";
+import { usePersistentState } from "@/hooks/usePersistentState";
 const FONT = "'Courier New', Courier, monospace";
 
 function KpiCard({ icon, label, value, sub, subColor }: any) {
@@ -67,7 +67,7 @@ function AllocationPanel({ title, data }: { title: string; data: { name: string;
   );
 }
 
-export default function AnalysisPage({ holdings }: any) {
+export default function AnalysisPage({ holdings, setPage }: any) {
   const m = useMemo(() => pMet(holdings), [holdings]);
   const [sub, setSub] = useState<"alloc" | "risk" | "perf">("alloc");
   const [aiExplain, setAiExplain] = useState("");
@@ -77,6 +77,30 @@ export default function AnalysisPage({ holdings }: any) {
   const [whatIfQuote, setWhatIfQuote] = useState<any>(null);
   const [whatIfBusy, setWhatIfBusy] = useState(false);
   const [whatIfError, setWhatIfError] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [, setPendingAiPrompt] = usePersistentState<string>("ai_pending_prompt", "");
+  const suggestDebounce = useRef<any>(null);
+
+  const handleTickerInput = (v: string) => {
+    setWhatIfTicker(v.toUpperCase());
+    setWhatIfQuote(null);
+    clearTimeout(suggestDebounce.current);
+    if (!v.trim()) { setSuggestions([]); setShowSuggestions(false); return; }
+    suggestDebounce.current = setTimeout(async () => {
+      try {
+        const res = await srvSearch({ data: { q: v } });
+        setSuggestions(res || []);
+        setShowSuggestions(true);
+      } catch { setSuggestions([]); }
+    }, 350);
+  };
+
+  const pickSuggestion = (r: any) => {
+    setWhatIfTicker(r.symbol);
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
 
   const runWhatIf = async () => {
     if (!whatIfTicker.trim()) return;
@@ -91,7 +115,17 @@ export default function AnalysisPage({ holdings }: any) {
       setWhatIfBusy(false);
     }
   };
+const sendToAI = () => {
+    if (!whatIf) return;
+    const prompt = `Analyze this hypothetical scenario in depth: adding a $${whatIfAmount} position in ${whatIfTicker} (sector: ${whatIf.sector}) to my current portfolio.
 
+Before: ${whatIf.sector} exposure ${fmt(whatIf.beforeSectorPct,1)}%, HHI concentration ${whatIf.oldHHI.toFixed(0)}, ${holdings.length} positions.
+After: ${whatIf.sector} exposure would become ${fmt(whatIf.afterSectorPct,1)}%, HHI would become ${whatIf.newHHI.toFixed(0)}, ${whatIf.newPositionCount} positions.
+
+Give a deeper educational breakdown: what does this concentration/diversification change mean in practice, what hypothetical risks or benefits does it illustrate, and what alternative hypothetical allocations could achieve a similar goal with less concentration risk.`;
+    setPendingAiPrompt(prompt);
+    setPage("ai");
+  };
   const whatIf = useMemo(() => {
     if (!whatIfQuote) return null;
     const amount = parseFloat(whatIfAmount) || 0;
