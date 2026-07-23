@@ -288,9 +288,16 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                       </div>
                       <div>
                         <div style={{ fontSize: 9, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>{whatIf.sector} Exposure</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
-                          {fmt(whatIf.beforeSectorPct,1)}% → {fmt(whatIf.afterSectorPct,1)}%
-                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{holdings.length} → {whatIf.newPositionCount}</div>
+                      </div>
+                      <button onClick={sendToAI} style={{
+                        marginTop: 10, width: "100%", background: "transparent", border: `1px solid ${B.cyan}`,
+                        color: B.cyan, padding: "8px", borderRadius: 6, cursor: "pointer",
+                        fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em",
+                        gridColumn: "1 / -1",
+                      }}>
+                        ✦ AI ADVANCED ANALYSIS →
+                      </button>
                         <div style={{ fontSize: 11, fontWeight: 700, color: whatIf.afterSectorPct>whatIf.beforeSectorPct?B.yellow:B.green, fontFamily: FONT }}>
                           {pSign(fmt(whatIf.afterSectorPct-whatIf.beforeSectorPct,1))}%
                         </div>
