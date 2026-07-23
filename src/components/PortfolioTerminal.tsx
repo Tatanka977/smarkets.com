@@ -1,14 +1,5 @@
 // @ts-nocheck
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import {
-  searchSecurities as srvSearch,
-  fetchQuote as srvQuote,
-  batchRefresh as srvBatch,
-  fetchMarketStatus as srvMarketStatus,
-  fetchHistoricalPrice as srvHistorical,
-  fetchFxRates as srvFx,
-  fetchPriceHistory,
-} from "@/lib/finance.functions";
 import AnalysisPage from "./AnalysisPage";
 import HomePage from "./HomePage";
 import { getInvestorProfile } from "@/lib/profile.functions";
