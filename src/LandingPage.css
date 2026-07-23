@@ -663,3 +663,65 @@ footer {
 [data-theme="terminal"] .stat h2 {
   color: #f1f5f9;
 }
+/* Extra mobile fixes: prevent navbar overlap and tighten spacing on narrow phones */
+@media (max-width: 480px) {
+  .nav {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    min-height: auto;
+    padding: 10px 0;
+  }
+
+  .header .nav > div:first-child {
+    order: 1;
+  }
+  .header .nav > div:last-child {
+    order: 2;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .btn-primary {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+
+  .hero {
+    padding: 50px 0 40px;
+  }
+
+  .hero h1 {
+    font-size: 30px;
+  }
+
+  .hero p {
+    font-size: 15px;
+    margin: 16px 0;
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 5px 10px;
+  }
+
+  .stat span {
+    font-size: 12px;
+  }
+
+  .terminal {
+    padding: 16px;
+  }
+
+  .chart {
+    height: 120px;
+    margin: 16px 0;
+  }
+
+  .cta h2 {
+    font-size: 26px;
+  }
+
+  .features, .cta {
+    padding: 60px 0;
+  }
+}
