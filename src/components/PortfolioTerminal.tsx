@@ -1402,6 +1402,15 @@ const QUICK_Q=["ANALYZE PORTFOLIO","DIVERSIFICATION CHECK","RISK ASSESSMENT","IM
 
 function AIAdvisorPage({holdings}:any) {
   const [msgs,setMsgs]=useState<any[]>([{role:"assistant",content:"**STRATEGIC MARKETS AI TERMINAL ONLINE**\n\nThis is an EDUCATIONAL analytics terminal with access to your simulated portfolio data (stocks, bonds, ETFs, commodities, crypto, REITs, FX).\n\nI can provide quantitative observations on diversification, risk metrics, sector exposure, performance attribution and hypothetical allocation scenarios.\n\n**I do not provide personalized investment recommendations** nor financial advice under MiFID II. All analyses are for educational and informational purposes only.\n\nSMKT>_"}]);
+  const [pendingPrompt, setPendingPrompt] = usePersistentState<string>("ai_pending_prompt", "");
+
+  useEffect(() => {
+    if (pendingPrompt) {
+      const toSend = pendingPrompt;
+      setPendingPrompt("");
+      send(toSend);
+    }
+  }, []);
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
   const [showQ,setShowQ]=useState(true);
