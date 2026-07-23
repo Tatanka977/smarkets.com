@@ -638,3 +638,34 @@ export const fetchFxRates = createServerFn({ method: "GET" }).handler(async () =
     fetchedAt: Date.now(),
   };
 });
+interface YahooChartSeriesResult {
+  chart?: {
+    result?: Array<{
+      timestamp?: number[];
+      indicators?: { quote?: Array<{ close?: (number|null)[] }> };
+    }>;
+    error?: unknown;
+  };
+}
+
+export const fetchPriceHistory = createServerFn({ method: "GET" })
+  .inputValidator((d: { symbol: string; range: string; interval: string }) => d)
+  .handler(async ({ data }) => {
+    const { symbol, range, interval } = data;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
+    try {
+      const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 (StrategicMarkets)" } });
+      if (!r.ok) return [];
+      const j = (await r.json()) as YahooChartSeriesResult;
+      const result = j.chart?.result?.[0];
+      if (!result || j.chart?.error) return [];
+      const timestamps = result.timestamp || [];
+      const closes = result.indicators?.quote?.[0]?.close || [];
+      return timestamps
+        .map((t, i) => ({ t: t * 1000, close: closes[i] }))
+        .filter((p) => p.close != null);
+    } catch (e) {
+      console.warn("[Yahoo history]", symbol, (e as Error).message);
+      return [];
+    }
+  });
