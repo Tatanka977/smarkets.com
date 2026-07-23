@@ -1016,6 +1016,12 @@ const addCash = () => {
           {v==="positions" ? "POSITIONS" : "SAVED PORTFOLIOS"}
         </button>
       ))}
+      </div>
+      <button onClick={addCash} style={{
+        background:"transparent", border:`1px solid ${B.green}`, color:B.green,
+        padding:"6px 12px", borderRadius:6, cursor:"pointer",
+        fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, marginRight:4,
+      }}>+ ADD CASH</button>
     </div>
   );
 
