@@ -482,11 +482,11 @@ footer {
 }
 .stat-icon-purple {
   background: rgba(139, 92, 246, 0.12);
-}
 .stat h2 {
   font-size: 20px;
   margin: 0;
-  color: #f1f5f9;
+  color: #0f172a;
+}
 }
 .stat span {
   font-size: 13px;
@@ -660,3 +660,6 @@ footer {
 }
 [data-theme="terminal"] .glow { opacity: 1; }
 [data-theme="terminal"] .grid-overlay { opacity: 1; }
+[data-theme="terminal"] .stat h2 {
+  color: #f1f5f9;
+}
