@@ -507,8 +507,8 @@ function PricePerformancePanel({symbol, currency}:any) {
     const r = RANGES.find(x=>x.id===range)!;
     setLoading(true);
     Promise.all([
-      fetchPriceHistory({data:{symbol, range:r.id, interval:r.interval}}),
-      showBenchmark ? fetchPriceHistory({data:{symbol:"SPY", range:r.id, interval:r.interval}}) : Promise.resolve([]),
+      srvPriceHistory({data:{symbol, range:r.id, interval:r.interval}}),
+      showBenchmark ? srvPriceHistory({data:{symbol:"SPY", range:r.id, interval:r.interval}}) : Promise.resolve([]),
     ]).then(([s, b]) => {
       if (!alive) return;
       setSeries(s || []);
