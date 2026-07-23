@@ -88,7 +88,13 @@ export default function LandingPage() {
                 Launch Platform <span className="btn-arrow">→</span>
               </a>
 
-              <a href="#features" className="btn btn-secondary">
+              href="#features"
+                className="btn btn-secondary"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
                 Learn More
               </a>
 
