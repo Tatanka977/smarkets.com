@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { B } from "@/lib/uiShared";
+import { useTheme } from "@/hooks/useTheme";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Strategic Markets — Sign In" }] }),
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
+  useTheme(); // ensures data-theme is set on <html>, even if this is the first page visited
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
