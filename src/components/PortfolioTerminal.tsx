@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { LogoIcon } from "@/components/Logo";
 import AnalysisPage from "./AnalysisPage";
 import HomePage from "./HomePage";
 import { getInvestorProfile } from "@/lib/profile.functions";
@@ -226,7 +227,8 @@ function TopBar({time}:any) {
   return (
     <div className="sm-topbar" style={{background:B.blue,display:"flex",alignItems:"center",
       justifyContent:"space-between",padding:"6px 12px",flexShrink:0,gap:8,flexWrap:"wrap"}}>
-      <div style={{display:"flex",alignItems:"baseline",gap:10,minWidth:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+        <div style={{filter:"brightness(0) invert(1)"}}><LogoIcon size={22} /></div>
         <span style={{fontSize:16,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
           letterSpacing:"0.14em",whiteSpace:"nowrap"}}>STRATEGIC MARKETS</span>
         <span className="sm-tagline" style={{fontSize:12,color:"rgba(255,255,255,0.75)",
