@@ -1,4 +1,5 @@
 import "./LandingPage.css";
+import { LogoWithText, LogoIcon } from "@/components/Logo";
 import { useTheme } from "@/hooks/useTheme";
 
 export default function LandingPage() {
@@ -18,7 +19,7 @@ export default function LandingPage() {
         <div className="container nav">
 
           <div className="logo">
-            <span className="logo-accent">Strategic</span> <span className="logo-muted">Markets</span>
+            <LogoWithText />
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -337,7 +338,7 @@ export default function LandingPage() {
       <footer>
         <div className="container footer-grid">
           <div className="logo footer-logo">
-            <span className="logo-accent">Strategic</span> <span className="logo-muted-footer">Markets</span>
+            <LogoWithText iconSize={22} textSize={16} />
           </div>
 
           <div className="footer-copy">© 2026 Strategic Markets. All rights reserved.</div>
