@@ -1239,7 +1239,15 @@ function PortfolioPage({holdings,onRemove,onUpdate,onLoadPortfolio}:any) {
   <EditableCell
     value={h.buyDate ? h.buyDate.slice(0,10) : ""} type="date"
     format={(v:any)=>v?new Date(v).toLocaleDateString():"—"}
-    onSave={(v:string)=>{ if(v) onUpdate(h.isin||h.asset.ticker,{buyDate:v}); }}
+    onSave={async (v:string)=>{
+      if (!v) return;
+      const key = h.isin||h.asset.ticker;
+      onUpdate(key,{buyDate:v});
+      try {
+        const res = await fetchHistoricalPrice(h.asset.ticker, v);
+        if (res.price != null) onUpdate(key,{costPrice:res.price});
+      } catch {}
+    }}
   />
 </td>
                     <td style={{padding:"6px",textAlign:"center"}}>
