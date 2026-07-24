@@ -309,6 +309,50 @@ function BottomNav({page,setPage,badge}:any) {
   );
 }
 
+const SIDEBAR_TABS = [
+  {id:"home",     label:"HOME"},
+  {id:"search",   label:"SEARCH"},
+  {id:"portfolio",label:"PORTFOLIO",badgeKey:true},
+  {id:"analysis", label:"ANALYSIS"},
+  {id:"ai",       label:"AI ADVISOR"},
+  {id:"news",     label:"NEWS"},
+];
+
+function SidebarNav({page,setPage,badge}:any) {
+  return (
+    <div className="sm-sidebarnav" style={{width:200,flexShrink:0,background:B.panel2,borderRight:`1px solid ${B.border}`,
+      display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{padding:"16px 14px",display:"flex",alignItems:"center",gap:10,
+        borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
+        <LogoIcon size={26}/>
+        <span style={{fontSize:12,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
+          letterSpacing:"0.08em",lineHeight:1.3}}>STRATEGIC<br/>MARKETS</span>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"10px 8px",display:"flex",flexDirection:"column",gap:2}}>
+        {SIDEBAR_TABS.map(t=>{
+          const active=page===t.id;
+          return (
+            <button key={t.id} onClick={()=>setPage(t.id)} style={{
+              display:"flex",alignItems:"center",gap:10,padding:"9px 12px",
+              background:active?B.panel:"transparent",
+              border:"none",borderLeft:`2px solid ${active?B.blue:"transparent"}`,
+              borderRadius:4,cursor:"pointer",color:active?B.blue:B.gray2,position:"relative",
+              textAlign:"left",width:"100%",
+            }}>
+              {t.badgeKey && badge>0 && <div style={{position:"absolute",top:6,right:8,
+                background:B.blue,color:B.white,fontSize:10,fontWeight:700,
+                fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"14px",borderRadius:2}}>{badge}</div>}
+              {NAV_ICONS[t.id]}
+              <span style={{fontSize:13,fontWeight:700,
+                fontFamily:"'Courier New',monospace",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function MarketStatusBar() {
   const [statuses, setStatuses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2230,6 +2274,7 @@ export default function PortfolioTerminal() {
   const [transactions,setTransactions] = useState<any[]>([]);
   const [refreshing,setRefreshing] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const isMobile = useIsMobile();
 
   // ── PERSISTENCE ─────────────────────────────────────────────────────────
   // Hydrate from localStorage on mount (client only). This survives HMR,
@@ -2533,16 +2578,21 @@ export default function PortfolioTerminal() {
       {(time:string) => (
         <>
           <TopBar time={time}/>
-          <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-            {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing}/>}
-            {page==="search"     && <SearchPage   onAdd={addToPortfolio} portfolio={displayHoldings} onWatchlistChange={loadWatchlist}/>}
-            {page==="portfolio"  && <PortfolioPage holdings={holdings} onRemove={removeFromPortfolio} onUpdate={updateHolding} onSell={sellFromPortfolio} onLoadPortfolio={setHoldings} onAddCash={addToPortfolio}/>}
-            {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage}/>}
-            {page==="ai"         && <AIAdvisorPage holdings={displayHoldings}/>}
-            {page==="news"       && <NewsPage holdings={holdings} setPage={setPage}/>}
+          <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"row"}}>
+            {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length}/>}
+            <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",minWidth:0}}>
+              <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing}/>}
+                {page==="search"     && <SearchPage   onAdd={addToPortfolio} portfolio={displayHoldings} onWatchlistChange={loadWatchlist}/>}
+                {page==="portfolio"  && <PortfolioPage holdings={holdings} onRemove={removeFromPortfolio} onUpdate={updateHolding} onSell={sellFromPortfolio} onLoadPortfolio={setHoldings} onAddCash={addToPortfolio}/>}
+                {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage}/>}
+                {page==="ai"         && <AIAdvisorPage holdings={displayHoldings}/>}
+                {page==="news"       && <NewsPage holdings={holdings} setPage={setPage}/>}
+              </div>
+              <DisclaimerBar/>
+              {isMobile && <BottomNav page={page} setPage={setPage} badge={holdings.length}/>}
+            </div>
           </div>
-          <DisclaimerBar/>
-          <BottomNav page={page} setPage={setPage} badge={holdings.length}/>
           {showDisclaimerModal && <DisclaimerModal onAccept={acceptDisclaimer}/>}
         </>
       )}

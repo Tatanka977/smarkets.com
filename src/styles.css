@@ -318,6 +318,13 @@
   box-shadow: 0 -2px 12px rgba(15,23,42,0.04);
 }
 
+/* Sidebar nav (desktop) — same cleaner treatment as the bottom nav */
+[data-theme="aurora"] .sm-sidebarnav {
+  background: var(--sm-panel) !important;
+  border-right: 1px solid var(--sm-border) !important;
+  box-shadow: 2px 0 12px rgba(15,23,42,0.04);
+}
+
 /* Top bar stays blue but gets a subtle shadow for depth */
 [data-theme="aurora"] .sm-topbar {
   box-shadow: 0 2px 12px rgba(44,95,235,0.15);
