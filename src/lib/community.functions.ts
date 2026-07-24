@@ -1,8 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export interface CommunityChannel {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  created_by: string;
+  post_count: number;
+  created_at: string;
+}
+
 export interface CommunityPost {
   id: string;
   user_id: string;
+  channel_id: string | null;
   author_name: string;
   title: string;
   body: string;
@@ -20,8 +31,52 @@ export interface CommunityComment {
   created_at: string;
 }
 
-export async function listCommunityPosts({ data }: { data: { sort: "recent" | "top" } }): Promise<CommunityPost[]> {
-  let q = supabase.from("community_posts").select("*");
+function slugifyChannel(name: string): string {
+  const base = name
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 30);
+  return base.length >= 3 ? base : `canale-${base}`.slice(0, 30);
+}
+
+export async function listChannels(): Promise<CommunityChannel[]> {
+  const { data, error } = await supabase
+    .from("community_channels")
+    .select("*")
+    .order("post_count", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []) as CommunityChannel[];
+}
+
+export async function createChannel(
+  { data }: { data: { name: string; description?: string } }
+): Promise<CommunityChannel> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const name = data.name.trim();
+  if (!name) throw new Error("Il nome del canale è obbligatorio");
+  const { data: row, error } = await supabase
+    .from("community_channels")
+    .insert({ created_by: user.id, name, description: data.description?.trim() || null, slug: slugifyChannel(name) })
+    .select()
+    .single();
+  if (error) {
+    if ((error as any).code === "23505") throw new Error("Esiste già un canale con un nome molto simile — provane un altro.");
+    throw error;
+  }
+  return row as CommunityChannel;
+}
+
+export async function listCommunityPosts(
+  { data }: { data: { sort: "recent" | "top"; channelId: string } }
+): Promise<CommunityPost[]> {
+  let q = supabase.from("community_posts").select("*").eq("channel_id", data.channelId);
   q = data.sort === "top"
     ? q.order("score", { ascending: false }).order("created_at", { ascending: false })
     : q.order("created_at", { ascending: false });
@@ -41,7 +96,7 @@ export async function getCommunityPost({ data }: { data: { id: string } }): Prom
 }
 
 export async function createCommunityPost(
-  { data }: { data: { title: string; body: string } }
+  { data }: { data: { title: string; body: string; channelId: string } }
 ): Promise<CommunityPost> {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData?.user;
@@ -49,11 +104,13 @@ export async function createCommunityPost(
   const title = data.title.trim();
   const body = data.body.trim();
   if (!title || !body) throw new Error("Titolo e testo sono obbligatori");
+  if (!data.channelId) throw new Error("Seleziona un canale");
   // author_name is intentionally omitted: a DB trigger resolves it
-  // server-side from auth.users so a client can't impersonate another name.
+  // server-side from auth.users/profiles.username so a client can't
+  // impersonate another name.
   const { data: row, error } = await supabase
     .from("community_posts")
-    .insert({ user_id: user.id, title, body })
+    .insert({ user_id: user.id, title, body, channel_id: data.channelId })
     .select()
     .single();
   if (error) throw error;

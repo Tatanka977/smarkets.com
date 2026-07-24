@@ -123,6 +123,43 @@ export async function updateProfile({ data }: { data: { display_name: string } }
   if (error) throw error;
   return { display_name: data.display_name };
 }
+
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+
+export async function getMyUsername(): Promise<string | null> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as any)?.username ?? null;
+}
+
+export async function setUsername({ data }: { data: { username: string } }): Promise<{ username: string }> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const username = data.username.trim().toLowerCase();
+  if (!USERNAME_RE.test(username)) {
+    throw new Error("Lo username deve avere 3-20 caratteri: lettere minuscole, numeri, underscore.");
+  }
+  // upsert rather than update: a profiles row should always exist (created
+  // by the handle_new_user() signup trigger), but if one is ever missing
+  // for a given user an update() would silently affect zero rows instead
+  // of erroring, making the UI think the username saved when it didn't.
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ id: user.id, username, updated_at: new Date().toISOString() }, { onConflict: "id" });
+  if (error) {
+    if ((error as any).code === "23505") throw new Error("Username già in uso, scegline un altro.");
+    throw error;
+  }
+  return { username };
+}
 export interface InvestorProfile {
   age_range?: string;
   investment_goal?: string;

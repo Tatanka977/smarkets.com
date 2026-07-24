@@ -2,18 +2,32 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "@tanstack/react-router";
 import { B, FKey } from "@/lib/uiShared";
 import { useUser } from "@/hooks/useUser";
+import { getMyUsername, setUsername as srvSetUsername } from "@/lib/profile.functions";
 import {
+  listChannels, createChannel,
   listCommunityPosts, getCommunityPost, createCommunityPost, deleteCommunityPost,
   listCommunityComments, createCommunityComment, deleteCommunityComment,
   listMyVotes, setVote, removeVote,
 } from "@/lib/community.functions";
-import type { CommunityPost, CommunityComment } from "@/lib/community.functions";
+import type { CommunityChannel, CommunityPost, CommunityComment } from "@/lib/community.functions";
 
 const FONT = "'Courier New', Courier, monospace";
 
 const backBtnStyle: any = {
   background: "none", border: "none", color: B.blue, cursor: "pointer",
   fontFamily: FONT, fontSize: 12, fontWeight: 700, padding: 0, letterSpacing: "0.04em",
+};
+
+const primaryBtnStyle = (enabled: boolean): any => ({
+  background: enabled ? B.blue : B.panel2,
+  color: enabled ? B.white : B.gray3,
+  border: "none", padding: "8px 16px", borderRadius: 6, fontFamily: FONT, fontSize: 12, fontWeight: 700,
+  cursor: enabled ? "pointer" : "not-allowed",
+});
+
+const inputStyle: any = {
+  background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, borderRadius: 6,
+  padding: "8px 10px", fontSize: 13, fontFamily: FONT, outline: "none",
 };
 
 function fmtDate(iso: string) {
@@ -52,7 +66,161 @@ function VoteControl({ score, myVote, disabled, onVote }: {
   );
 }
 
-function PostList({ user, onOpen }: { user: any; onOpen: (id: string) => void }) {
+// Shown instead of any create/comment form whenever a signed-in user hasn't
+// picked a handle yet — participating (posting, commenting, creating a
+// channel) requires one, matching how the author_name DB trigger resolves
+// display identity (profiles.username first, auth-derived name as fallback).
+function UsernamePrompt({ onSet }: { onSet: (username: string) => void }) {
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const valid = /^[a-z0-9_]{3,20}$/.test(value);
+
+  const submit = async () => {
+    if (busy || !valid) return;
+    setBusy(true); setErr("");
+    try {
+      const { username } = await srvSetUsername({ data: { username: value } });
+      onSet(username);
+    } catch (e: any) {
+      setErr(e.message || "Errore");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ background: B.panel, border: `1px solid ${B.blue}`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, lineHeight: 1.5 }}>
+        Scegli uno username per partecipare alla community (3-20 caratteri: lettere minuscole, numeri, underscore).
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+          placeholder="es. mario_rossi" maxLength={20}
+          style={{ ...inputStyle, flex: "1 1 160px" }}
+        />
+        <button disabled={busy || !valid} onClick={submit} style={primaryBtnStyle(!busy && valid)}>
+          {busy ? "..." : "SALVA USERNAME"}
+        </button>
+      </div>
+      {err && <div style={{ fontSize: 11, color: B.red, fontFamily: FONT }}>{err}</div>}
+    </div>
+  );
+}
+
+function ChannelList({ user, username, onUsernameSet, onOpen }: {
+  user: any; username: string | null | undefined; onUsernameSet: (u: string) => void; onOpen: (c: CommunityChannel) => void;
+}) {
+  const [channels, setChannels] = useState<CommunityChannel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      setChannels(await listChannels());
+    } catch (e: any) {
+      setError(e.message || "Errore nel caricamento dei canali");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const submit = async () => {
+    if (creating || !name.trim()) return;
+    setCreating(true); setError("");
+    try {
+      const ch = await createChannel({ data: { name, description: desc } });
+      setName(""); setDesc(""); setShowForm(false);
+      await load();
+      onOpen(ch);
+    } catch (e: any) {
+      setError(e.message || "Errore nella creazione del canale");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 10, fontFamily: FONT }}>
+        COMMUNITY — CANALI
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>Scegli un canale per leggere o partecipare alle discussioni.</div>
+        {user ? (
+          <button disabled={username === undefined} onClick={() => setShowForm((s) => !s)} style={{
+            background: B.blue, border: "none", color: B.white, padding: "8px 14px", borderRadius: 6,
+            fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
+            cursor: username === undefined ? "default" : "pointer", opacity: username === undefined ? 0.5 : 1,
+          }}>{showForm ? "ANNULLA" : "+ NUOVO CANALE"}</button>
+        ) : (
+          <Link to="/auth" style={{ fontSize: 12, color: B.blue, fontFamily: FONT, fontWeight: 700, textDecoration: "none" }}>
+            ACCEDI PER PARTECIPARE →
+          </Link>
+        )}
+      </div>
+
+      {showForm && user && (
+        username === null
+          ? <div style={{ marginBottom: 12 }}><UsernamePrompt onSet={onUsernameSet} /></div>
+          : (
+            <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome canale (es. Azioni USA)" maxLength={60} style={inputStyle} />
+              <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Descrizione (opzionale)" rows={2} maxLength={300} style={{ ...inputStyle, resize: "vertical" }} />
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button disabled={!name.trim() || creating} onClick={submit} style={primaryBtnStyle(!!name.trim() && !creating)}>
+                  {creating ? "CREAZIONE..." : "CREA CANALE"}
+                </button>
+              </div>
+            </div>
+          )
+      )}
+
+      {error && (
+        <div style={{ padding: "8px 10px", fontSize: 12, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, marginBottom: 10, fontFamily: FONT }}>
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>CARICAMENTO...</div>
+      ) : channels.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
+          Nessun canale ancora, sii il primo a crearne uno.
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
+          {channels.map((c) => (
+            <div key={c.id} onClick={() => onOpen(c)} style={{
+              background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer",
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: B.blue, fontFamily: FONT, marginBottom: 4 }}>{c.name}</div>
+              {c.description && (
+                <div style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, marginBottom: 6 }}>{c.description}</div>
+              )}
+              <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{c.post_count} discussioni</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBack }: {
+  channel: CommunityChannel; user: any; username: string | null | undefined;
+  onUsernameSet: (u: string) => void; onOpenPost: (id: string) => void; onBack: () => void;
+}) {
   const [sort, setSort] = useState<"recent" | "top">("recent");
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [myVotes, setMyVotes] = useState<Record<string, number>>({});
@@ -66,7 +234,7 @@ function PostList({ user, onOpen }: { user: any; onOpen: (id: string) => void })
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const rows = await listCommunityPosts({ data: { sort } });
+      const rows = await listCommunityPosts({ data: { sort, channelId: channel.id } });
       setPosts(rows);
       if (user) {
         const votes = await listMyVotes({ data: { postIds: rows.map((r) => r.id) } });
@@ -79,7 +247,7 @@ function PostList({ user, onOpen }: { user: any; onOpen: (id: string) => void })
     } finally {
       setLoading(false);
     }
-  }, [sort, user]);
+  }, [sort, user, channel.id]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -87,7 +255,7 @@ function PostList({ user, onOpen }: { user: any; onOpen: (id: string) => void })
     if (!user || posting || !title.trim() || !body.trim()) return;
     setPosting(true); setError("");
     try {
-      await createCommunityPost({ data: { title, body } });
+      await createCommunityPost({ data: { title, body, channelId: channel.id } });
       setTitle(""); setBody(""); setShowForm(false);
       await load();
     } catch (e: any) {
@@ -113,9 +281,11 @@ function PostList({ user, onOpen }: { user: any; onOpen: (id: string) => void })
 
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 10, fontFamily: FONT }}>
-        COMMUNITY — DISCUSSIONI
-      </div>
+      <button onClick={onBack} style={backBtnStyle}>← CANALI</button>
+      <div style={{ fontSize: 16, fontWeight: 700, color: B.gray1, fontFamily: FONT, margin: "10px 0 2px" }}>{channel.name}</div>
+      {channel.description && (
+        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginBottom: 10 }}>{channel.description}</div>
+      )}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         <div style={{ display: "flex", gap: 4 }}>
@@ -123,9 +293,10 @@ function PostList({ user, onOpen }: { user: any; onOpen: (id: string) => void })
           <FKey label="PIÙ VOTATI" active={sort === "top"} onClick={() => setSort("top")} />
         </div>
         {user ? (
-          <button onClick={() => setShowForm((s) => !s)} style={{
+          <button disabled={username === undefined} onClick={() => setShowForm((s) => !s)} style={{
             background: B.blue, border: "none", color: B.white, padding: "8px 14px", borderRadius: 6,
-            fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em", cursor: "pointer",
+            fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
+            cursor: username === undefined ? "default" : "pointer", opacity: username === undefined ? 0.5 : 1,
           }}>{showForm ? "ANNULLA" : "+ NUOVA DISCUSSIONE"}</button>
         ) : (
           <Link to="/auth" style={{ fontSize: 12, color: B.blue, fontFamily: FONT, fontWeight: 700, textDecoration: "none" }}>
@@ -135,24 +306,19 @@ function PostList({ user, onOpen }: { user: any; onOpen: (id: string) => void })
       </div>
 
       {showForm && user && (
-        <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo" maxLength={200} style={{
-            background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, borderRadius: 6,
-            padding: "8px 10px", fontSize: 13, fontFamily: FONT, outline: "none",
-          }} />
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Scrivi qualcosa..." rows={4} maxLength={8000} style={{
-            background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, borderRadius: 6,
-            padding: "8px 10px", fontSize: 13, fontFamily: FONT, outline: "none", resize: "vertical",
-          }} />
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button disabled={!title.trim() || !body.trim() || posting} onClick={submitPost} style={{
-              background: (title.trim() && body.trim() && !posting) ? B.blue : B.panel2,
-              color: (title.trim() && body.trim() && !posting) ? B.white : B.gray3,
-              border: "none", padding: "8px 16px", borderRadius: 6, fontFamily: FONT, fontSize: 12, fontWeight: 700,
-              cursor: (title.trim() && body.trim() && !posting) ? "pointer" : "not-allowed",
-            }}>{posting ? "PUBBLICAZIONE..." : "PUBBLICA"}</button>
-          </div>
-        </div>
+        username === null
+          ? <div style={{ marginBottom: 12 }}><UsernamePrompt onSet={onUsernameSet} /></div>
+          : (
+            <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo" maxLength={200} style={inputStyle} />
+              <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Scrivi qualcosa..." rows={4} maxLength={8000} style={{ ...inputStyle, resize: "vertical" }} />
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button disabled={!title.trim() || !body.trim() || posting} onClick={submitPost} style={primaryBtnStyle(!!title.trim() && !!body.trim() && !posting)}>
+                  {posting ? "PUBBLICAZIONE..." : "PUBBLICA"}
+                </button>
+              </div>
+            </div>
+          )
       )}
 
       {error && (
@@ -170,7 +336,7 @@ function PostList({ user, onOpen }: { user: any; onOpen: (id: string) => void })
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {posts.map((p) => (
-            <div key={p.id} onClick={() => onOpen(p.id)} style={{
+            <div key={p.id} onClick={() => onOpenPost(p.id)} style={{
               background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "12px 14px",
               display: "flex", gap: 12, cursor: "pointer",
             }}>
@@ -183,7 +349,7 @@ function PostList({ user, onOpen }: { user: any; onOpen: (id: string) => void })
                   WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
                 }}>{p.body}</div>
                 <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <span>{p.author_name}</span>
+                  <span>u/{p.author_name}</span>
                   <span>{fmtDate(p.created_at)}</span>
                   <span>{p.comment_count} commenti</span>
                 </div>
@@ -196,7 +362,9 @@ function PostList({ user, onOpen }: { user: any; onOpen: (id: string) => void })
   );
 }
 
-function PostDetail({ postId, user, onBack }: { postId: string; user: any; onBack: () => void }) {
+function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
+  postId: string; user: any; username: string | null | undefined; onUsernameSet: (u: string) => void; onBack: () => void;
+}) {
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [comments, setComments] = useState<CommunityComment[]>([]);
   const [myVote, setMyVote] = useState(0);
@@ -306,7 +474,7 @@ function PostDetail({ postId, user, onBack }: { postId: string; user: any; onBac
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 6 }}>{post.title}</div>
           <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <span>{post.author_name}</span>
+            <span>u/{post.author_name}</span>
             <span>{fmtDate(post.created_at)}</span>
             {user && user.user_id === post.user_id && (
               <button onClick={removePost} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0 }}>
@@ -324,20 +492,18 @@ function PostDetail({ postId, user, onBack }: { postId: string; user: any; onBac
         </div>
 
         {user ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-            <textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Scrivi un commento..." rows={3} maxLength={3000} style={{
-              background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, borderRadius: 6,
-              padding: "8px 10px", fontSize: 13, fontFamily: FONT, outline: "none", resize: "vertical",
-            }} />
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button disabled={!commentBody.trim() || posting} onClick={submitComment} style={{
-                background: (commentBody.trim() && !posting) ? B.blue : B.panel2,
-                color: (commentBody.trim() && !posting) ? B.white : B.gray3,
-                border: "none", padding: "7px 14px", borderRadius: 6, fontFamily: FONT, fontSize: 12, fontWeight: 700,
-                cursor: (commentBody.trim() && !posting) ? "pointer" : "not-allowed",
-              }}>{posting ? "INVIO..." : "COMMENTA"}</button>
+          username === undefined ? null : username === null ? (
+            <div style={{ marginBottom: 14 }}><UsernamePrompt onSet={onUsernameSet} /></div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+              <textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Scrivi un commento..." rows={3} maxLength={3000} style={{ ...inputStyle, resize: "vertical" }} />
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button disabled={!commentBody.trim() || posting} onClick={submitComment} style={primaryBtnStyle(!!commentBody.trim() && !posting)}>
+                  {posting ? "INVIO..." : "COMMENTA"}
+                </button>
+              </div>
             </div>
-          </div>
+          )
         ) : (
           <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginBottom: 14 }}>
             <Link to="/auth" style={{ color: B.blue, fontWeight: 700, textDecoration: "none" }}>Accedi</Link> per lasciare un commento.
@@ -351,7 +517,7 @@ function PostDetail({ postId, user, onBack }: { postId: string; user: any; onBac
             {comments.map((c) => (
               <div key={c.id} style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px" }}>
                 <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 4, display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ color: B.gray2, fontWeight: 700 }}>{c.author_name}</span>
+                  <span style={{ color: B.gray2, fontWeight: 700 }}>u/{c.author_name}</span>
                   <span>{fmtDate(c.created_at)}</span>
                   {user && user.user_id === c.user_id && (
                     <button onClick={() => removeComment(c.id)} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0, marginLeft: "auto" }}>
@@ -369,16 +535,43 @@ function PostDetail({ postId, user, onBack }: { postId: string; user: any; onBac
   );
 }
 
+type View =
+  | { mode: "channels" }
+  | { mode: "channel"; channel: CommunityChannel }
+  | { mode: "post"; postId: string; channel: CommunityChannel };
+
 export default function CommunityPage() {
   const { user } = useUser();
-  const [view, setView] = useState<{ mode: "list" } | { mode: "detail"; id: string }>({ mode: "list" });
+  const [view, setView] = useState<View>({ mode: "channels" });
+  // undefined = not loaded yet, null = signed in but no username set.
+  const [username, setUsernameState] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!user) { setUsernameState(undefined); return; }
+    let alive = true;
+    getMyUsername().then((u) => { if (alive) setUsernameState(u); }).catch(() => { if (alive) setUsernameState(null); });
+    return () => { alive = false; };
+  }, [user]);
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 80, padding: 12 }}>
-        {view.mode === "list"
-          ? <PostList user={user} onOpen={(id) => setView({ mode: "detail", id })} />
-          : <PostDetail postId={view.id} user={user} onBack={() => setView({ mode: "list" })} />}
+        {view.mode === "channels" && (
+          <ChannelList user={user} username={username} onUsernameSet={setUsernameState} onOpen={(channel) => setView({ mode: "channel", channel })} />
+        )}
+        {view.mode === "channel" && (
+          <ChannelPosts
+            channel={view.channel} user={user} username={username} onUsernameSet={setUsernameState}
+            onOpenPost={(postId) => setView({ mode: "post", postId, channel: view.channel })}
+            onBack={() => setView({ mode: "channels" })}
+          />
+        )}
+        {view.mode === "post" && (
+          <PostDetail
+            postId={view.postId} user={user} username={username} onUsernameSet={setUsernameState}
+            onBack={() => setView({ mode: "channel", channel: view.channel })}
+          />
+        )}
       </div>
     </div>
   );
