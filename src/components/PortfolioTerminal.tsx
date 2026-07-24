@@ -4,6 +4,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { LogoIcon } from "@/components/Logo";
 import AnalysisPage from "./AnalysisPage";
 import HomePage from "./HomePage";
+import CommunityPage from "./CommunityPage";
 import { getInvestorProfile } from "@/lib/profile.functions";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
@@ -273,6 +274,14 @@ const NAV_ICONS: Record<string, JSX.Element> = {
       <line x1="7" y1="17" x2="13" y2="17" />
     </svg>
   ),
+  community: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
 };
 
 function BottomNav({page,setPage,badge}:any) {
@@ -283,6 +292,7 @@ function BottomNav({page,setPage,badge}:any) {
     {id:"analysis", label:"ANALYSIS"},
     {id:"ai",       label:"AI"},
     {id:"news",     label:"NEWS"},
+    {id:"community",label:"COMMUNITY"},
   ];
   return (
     <div className="sm-bottomnav" style={{background:B.panel2,borderTop:`1px solid ${B.borderB}`,
@@ -316,6 +326,7 @@ const SIDEBAR_TABS = [
   {id:"analysis", label:"ANALYSIS"},
   {id:"ai",       label:"AI ADVISOR"},
   {id:"news",     label:"NEWS"},
+  {id:"community",label:"COMMUNITY"},
 ];
 
 function SidebarNav({page,setPage,badge}:any) {
@@ -2293,7 +2304,7 @@ export default function PortfolioTerminal() {
         if (Array.isArray(parsedTx)) setTransactions(parsedTx);
       }
       const p = localStorage.getItem("moneta_page_v1");
-      if (p && ["home","search","portfolio","analysis","ai","news"].includes(p)) setPage(p);
+      if (p && ["home","search","portfolio","analysis","ai","news","community"].includes(p)) setPage(p);
     } catch (e) {
       console.warn("[Strategic Markets] hydration error:", e);
     } finally {
@@ -2588,6 +2599,7 @@ export default function PortfolioTerminal() {
                 {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage}/>}
                 {page==="ai"         && <AIAdvisorPage holdings={displayHoldings}/>}
                 {page==="news"       && <NewsPage holdings={holdings} setPage={setPage}/>}
+                {page==="community"  && <CommunityPage/>}
               </div>
               <DisclaimerBar/>
               {isMobile && <BottomNav page={page} setPage={setPage} badge={holdings.length}/>}
