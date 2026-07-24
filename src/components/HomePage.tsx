@@ -16,9 +16,9 @@ const FONT = "'Courier New', Courier, monospace";
 const CARD = { background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12 };
 
 const EXCHANGES = [
-  { code: "US", label: "NYSE / NASDAQ" },
-  { code: "L",  label: "LONDON" },
-  { code: "MI", label: "MILAN" },
+  { code: "US", label: "NYSE / NASDAQ", indexSymbol: "SPY" },
+  { code: "L",  label: "LONDON", indexSymbol: "^FTSE" },
+  { code: "MI", label: "MILAN", indexSymbol: "FTSEMIB.MI" },
 ];
 
 const INDICES = [
@@ -36,17 +36,42 @@ const BENCHMARKS = [
   { sym: "ACWI", label: "MSCI ACWI" },
 ];
 
-function MiniSparkline({ color }: { color: string }) {
-  const pts = "0,18 8,14 16,16 24,9 32,12 40,6 48,10 56,4 64,8 72,3 80,7 88,2 96,5";
+// Maps a real intraday close-price series onto the sparkline's viewBox.
+function sparklinePoints(values: number[], width = 96, height = 24, pad = 2): string {
+  if (values.length < 2) return "";
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1; // flat session — avoid divide-by-zero
+  const n = values.length;
+  return values
+    .map((v, i) => {
+      const x = (i / (n - 1)) * width;
+      const y = height - pad - ((v - min) / range) * (height - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
+
+function MiniSparkline({ values, color, loading }: { values: number[]; color: string; loading?: boolean }) {
+  const points = sparklinePoints(values);
+  if (loading || !points) {
+    return (
+      <svg width="90" height="24" viewBox="0 0 96 24" style={{ opacity: 0.25 }}>
+        <line x1="0" y1="12" x2="96" y2="12" stroke={color} strokeWidth="1.5" strokeDasharray="2,3" />
+      </svg>
+    );
+  }
   return (
-    <svg width="90" height="24" viewBox="0 0 96 24" style={{ opacity: 0.5 }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" />
+    <svg width="90" height="24" viewBox="0 0 96 24" style={{ opacity: 0.7 }}>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" />
     </svg>
   );
 }
 
 function GlobalMarketStatus() {
   const [statuses, setStatuses] = useState<any[]>([]);
+  const [series, setSeries] = useState<Record<string, number[]>>({});
+  const [seriesLoading, setSeriesLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -56,6 +81,29 @@ function GlobalMarketStatus() {
     }).catch(() => {});
     const t = setInterval(() => setNow(Date.now()), 30000);
     return () => { alive = false; clearInterval(t); };
+  }, []);
+
+  // Real intraday close-price series for each exchange's representative
+  // index, from the session's open to its most recent (or final) print —
+  // not a decorative placeholder.
+  useEffect(() => {
+    let alive = true;
+    Promise.all(
+      EXCHANGES.map((ex) =>
+        srvPriceHistory({ data: { symbol: ex.indexSymbol, range: "1d", interval: "5m" } }).catch(() => [])
+      )
+    ).then((results: any[]) => {
+      if (!alive) return;
+      const next: Record<string, number[]> = {};
+      EXCHANGES.forEach((ex, i) => {
+        next[ex.code] = (results[i] || [])
+          .map((p: any) => p.close)
+          .filter((c: any) => typeof c === "number");
+      });
+      setSeries(next);
+      setSeriesLoading(false);
+    }).catch(() => { if (alive) setSeriesLoading(false); });
+    return () => { alive = false; };
   }, []);
 
   const fmtLocal = (tz: string) => {
@@ -73,6 +121,10 @@ function GlobalMarketStatus() {
           const s = statuses.find((x: any) => x.code === ex.code);
           const isOpen = s?.isOpen;
           const color = s?.holiday ? B.yellow : isOpen ? B.green : B.red;
+          const values = series[ex.code] || [];
+          const trendColor = values.length >= 2
+            ? (values[values.length - 1] >= values[0] ? B.green : B.red)
+            : color;
           return (
             <div key={ex.code} style={{ ...CARD, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
@@ -85,7 +137,7 @@ function GlobalMarketStatus() {
                 </div>
                 <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{fmtLocal(s?.timezone)} local</div>
               </div>
-              <MiniSparkline color={color} />
+              <MiniSparkline values={values} color={trendColor} loading={seriesLoading} />
             </div>
           );
         })}
