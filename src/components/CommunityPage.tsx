@@ -10,6 +10,7 @@ import {
   listCommunityPosts, getCommunityPost, createCommunityPost, deleteCommunityPost,
   listCommunityComments, createCommunityComment, deleteCommunityComment,
   listMyVotes, setVote, removeVote,
+  listMyCommentVotes, setCommentVote, removeCommentVote,
 } from "@/lib/community.functions";
 import type { CommunityChannel, CommunityPost, CommunityComment, PortfolioSnapshot, PortfolioSnapshotHolding } from "@/lib/community.functions";
 
@@ -676,6 +677,7 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [comments, setComments] = useState<CommunityComment[]>([]);
   const [myVote, setMyVote] = useState(0);
+  const [myCommentVotes, setMyCommentVotes] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [commentBody, setCommentBody] = useState("");
@@ -691,10 +693,15 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
       setPost(p);
       setComments(cs);
       if (user && p) {
-        const votes = await listMyVotes({ data: { postIds: [p.id] } });
+        const [votes, commentVotes] = await Promise.all([
+          listMyVotes({ data: { postIds: [p.id] } }),
+          listMyCommentVotes({ data: { commentIds: cs.map((c) => c.id) } }),
+        ]);
         setMyVote(votes[p.id] || 0);
+        setMyCommentVotes(commentVotes);
       } else {
         setMyVote(0);
+        setMyCommentVotes({});
       }
     } catch (e: any) {
       setError(e.message || "Error loading discussion");
@@ -714,6 +721,20 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
     try {
       if (current === value) await removeVote({ data: { postId: post.id } });
       else await setVote({ data: { postId: post.id, value } });
+    } catch {
+      load();
+    }
+  };
+
+  const voteComment = async (commentId: string, value: 1 | -1) => {
+    if (!user) return;
+    const current = myCommentVotes[commentId] || 0;
+    const delta = current === value ? -value : value - current;
+    setComments((cs) => cs.map((c) => (c.id === commentId ? { ...c, score: c.score + delta } : c)));
+    setMyCommentVotes((v) => ({ ...v, [commentId]: current === value ? 0 : value }));
+    try {
+      if (current === value) await removeCommentVote({ data: { commentId } });
+      else await setCommentVote({ data: { commentId, value } });
     } catch {
       load();
     }
@@ -825,17 +846,20 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {comments.map((c) => (
-              <div key={c.id} style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 4, display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ color: B.gray2, fontWeight: 700 }}>u/{c.author_name}</span>
-                  <span>{fmtDate(c.created_at)}</span>
-                  {user && (user.user_id === c.user_id || isAdmin) && (
-                    <button onClick={() => removeComment(c.id)} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0, marginLeft: "auto" }}>
-                      DELETE
-                    </button>
-                  )}
+              <div key={c.id} style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px", display: "flex", gap: 10 }}>
+                <VoteControl score={c.score} myVote={myCommentVotes[c.id] || 0} disabled={!user} onVote={(v) => voteComment(c.id, v)} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 4, display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ color: B.gray2, fontWeight: 700 }}>u/{c.author_name}</span>
+                    <span>{fmtDate(c.created_at)}</span>
+                    {user && (user.user_id === c.user_id || isAdmin) && (
+                      <button onClick={() => removeComment(c.id)} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0, marginLeft: "auto" }}>
+                        DELETE
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 13, color: B.gray1, fontFamily: FONT, whiteSpace: "pre-wrap" }}>{c.body}</div>
                 </div>
-                <div style={{ fontSize: 13, color: B.gray1, fontFamily: FONT, whiteSpace: "pre-wrap" }}>{c.body}</div>
               </div>
             ))}
           </div>

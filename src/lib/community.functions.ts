@@ -78,6 +78,7 @@ export interface CommunityComment {
   user_id: string;
   author_name: string;
   body: string;
+  score: number;
   created_at: string;
 }
 
@@ -245,6 +246,44 @@ export async function removeVote({ data }: { data: { postId: string } }): Promis
     .from("community_votes")
     .delete()
     .eq("post_id", data.postId)
+    .eq("user_id", user.id);
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function listMyCommentVotes({ data }: { data: { commentIds: string[] } }): Promise<Record<string, number>> {
+  if (!data.commentIds.length) return {};
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) return {};
+  const { data: rows, error } = await supabase
+    .from("community_comment_votes")
+    .select("comment_id,value")
+    .eq("user_id", user.id)
+    .in("comment_id", data.commentIds);
+  if (error) throw error;
+  return Object.fromEntries((rows || []).map((r: any) => [r.comment_id, r.value]));
+}
+
+export async function setCommentVote({ data }: { data: { commentId: string; value: 1 | -1 } }): Promise<{ ok: true }> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const { error } = await supabase
+    .from("community_comment_votes")
+    .upsert({ comment_id: data.commentId, user_id: user.id, value: data.value }, { onConflict: "comment_id,user_id" });
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function removeCommentVote({ data }: { data: { commentId: string } }): Promise<{ ok: true }> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const { error } = await supabase
+    .from("community_comment_votes")
+    .delete()
+    .eq("comment_id", data.commentId)
     .eq("user_id", user.id);
   if (error) throw error;
   return { ok: true };
