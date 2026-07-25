@@ -45,7 +45,7 @@ function VoteControl({ score, myVote, disabled, onVote }: {
   };
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, minWidth: 34, flexShrink: 0 }}>
-      <button disabled={disabled} onClick={(e) => vote(e, 1)} title={disabled ? "Accedi per votare" : "Upvote"} style={{
+      <button disabled={disabled} onClick={(e) => vote(e, 1)} title={disabled ? "Sign in to vote" : "Upvote"} style={{
         background: "none", border: "none", cursor: disabled ? "default" : "pointer",
         color: myVote === 1 ? B.green : B.gray3, padding: 2, opacity: disabled ? 0.4 : 1,
       }}>
@@ -54,7 +54,7 @@ function VoteControl({ score, myVote, disabled, onVote }: {
         </svg>
       </button>
       <span style={{ fontSize: 13, fontWeight: 700, fontFamily: FONT, color: score > 0 ? B.green : score < 0 ? B.red : B.gray2 }}>{score}</span>
-      <button disabled={disabled} onClick={(e) => vote(e, -1)} title={disabled ? "Accedi per votare" : "Downvote"} style={{
+      <button disabled={disabled} onClick={(e) => vote(e, -1)} title={disabled ? "Sign in to vote" : "Downvote"} style={{
         background: "none", border: "none", cursor: disabled ? "default" : "pointer",
         color: myVote === -1 ? B.red : B.gray3, padding: 2, opacity: disabled ? 0.4 : 1,
       }}>
@@ -83,7 +83,7 @@ function UsernamePrompt({ onSet }: { onSet: (username: string) => void }) {
       const { username } = await srvSetUsername({ data: { username: value } });
       onSet(username);
     } catch (e: any) {
-      setErr(e.message || "Errore");
+      setErr(e.message || "Error");
     } finally {
       setBusy(false);
     }
@@ -92,17 +92,17 @@ function UsernamePrompt({ onSet }: { onSet: (username: string) => void }) {
   return (
     <div style={{ background: B.panel, border: `1px solid ${B.blue}`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, lineHeight: 1.5 }}>
-        Scegli uno username per partecipare alla community (3-20 caratteri: lettere minuscole, numeri, underscore).
+        Choose a username to participate in the community (3-20 characters: lowercase letters, numbers, underscore).
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <input
           value={value}
           onChange={(e) => setValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-          placeholder="es. mario_rossi" maxLength={20}
+          placeholder="e.g. john_doe" maxLength={20}
           style={{ ...inputStyle, flex: "1 1 160px" }}
         />
         <button disabled={busy || !valid} onClick={submit} style={primaryBtnStyle(!busy && valid)}>
-          {busy ? "..." : "SALVA USERNAME"}
+          {busy ? "..." : "SAVE USERNAME"}
         </button>
       </div>
       {err && <div style={{ fontSize: 11, color: B.red, fontFamily: FONT }}>{err}</div>}
@@ -126,7 +126,7 @@ function ChannelList({ user, username, onUsernameSet, onOpen }: {
     try {
       setChannels(await listChannels());
     } catch (e: any) {
-      setError(e.message || "Errore nel caricamento dei canali");
+      setError(e.message || "Error loading channels");
     } finally {
       setLoading(false);
     }
@@ -143,7 +143,7 @@ function ChannelList({ user, username, onUsernameSet, onOpen }: {
       await load();
       onOpen(ch);
     } catch (e: any) {
-      setError(e.message || "Errore nella creazione del canale");
+      setError(e.message || "Error creating channel");
     } finally {
       setCreating(false);
     }
@@ -152,20 +152,20 @@ function ChannelList({ user, username, onUsernameSet, onOpen }: {
   return (
     <div>
       <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 10, fontFamily: FONT }}>
-        COMMUNITY — CANALI
+        COMMUNITY — CHANNELS
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>Scegli un canale per leggere o partecipare alle discussioni.</div>
+        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>Choose a channel to read or join the discussions.</div>
         {user ? (
           <button disabled={username === undefined} onClick={() => setShowForm((s) => !s)} style={{
             background: B.blue, border: "none", color: B.white, padding: "8px 14px", borderRadius: 6,
             fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
             cursor: username === undefined ? "default" : "pointer", opacity: username === undefined ? 0.5 : 1,
-          }}>{showForm ? "ANNULLA" : "+ NUOVO CANALE"}</button>
+          }}>{showForm ? "CANCEL" : "+ NEW CHANNEL"}</button>
         ) : (
           <Link to="/auth" style={{ fontSize: 12, color: B.blue, fontFamily: FONT, fontWeight: 700, textDecoration: "none" }}>
-            ACCEDI PER PARTECIPARE →
+            SIGN IN TO PARTICIPATE →
           </Link>
         )}
       </div>
@@ -175,11 +175,11 @@ function ChannelList({ user, username, onUsernameSet, onOpen }: {
           ? <div style={{ marginBottom: 12 }}><UsernamePrompt onSet={onUsernameSet} /></div>
           : (
             <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome canale (es. Azioni USA)" maxLength={60} style={inputStyle} />
-              <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Descrizione (opzionale)" rows={2} maxLength={300} style={{ ...inputStyle, resize: "vertical" }} />
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Channel name (e.g. US Stocks)" maxLength={60} style={inputStyle} />
+              <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Description (optional)" rows={2} maxLength={300} style={{ ...inputStyle, resize: "vertical" }} />
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button disabled={!name.trim() || creating} onClick={submit} style={primaryBtnStyle(!!name.trim() && !creating)}>
-                  {creating ? "CREAZIONE..." : "CREA CANALE"}
+                  {creating ? "CREATING..." : "CREATE CHANNEL"}
                 </button>
               </div>
             </div>
@@ -193,10 +193,10 @@ function ChannelList({ user, username, onUsernameSet, onOpen }: {
       )}
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>CARICAMENTO...</div>
+        <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>
       ) : channels.length === 0 ? (
         <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
-          Nessun canale ancora, sii il primo a crearne uno.
+          No channels yet, be the first to create one.
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
@@ -208,7 +208,7 @@ function ChannelList({ user, username, onUsernameSet, onOpen }: {
               {c.description && (
                 <div style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, marginBottom: 6 }}>{c.description}</div>
               )}
-              <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{c.post_count} discussioni</div>
+              <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{c.post_count} discussions</div>
             </div>
           ))}
         </div>
@@ -243,7 +243,7 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
         setMyVotes({});
       }
     } catch (e: any) {
-      setError(e.message || "Errore nel caricamento delle discussioni");
+      setError(e.message || "Error loading discussions");
     } finally {
       setLoading(false);
     }
@@ -259,7 +259,7 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
       setTitle(""); setBody(""); setShowForm(false);
       await load();
     } catch (e: any) {
-      setError(e.message || "Errore nella pubblicazione");
+      setError(e.message || "Error publishing");
     } finally {
       setPosting(false);
     }
@@ -281,7 +281,7 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
 
   return (
     <div>
-      <button onClick={onBack} style={backBtnStyle}>← CANALI</button>
+      <button onClick={onBack} style={backBtnStyle}>← CHANNELS</button>
       <div style={{ fontSize: 16, fontWeight: 700, color: B.gray1, fontFamily: FONT, margin: "10px 0 2px" }}>{channel.name}</div>
       {channel.description && (
         <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginBottom: 10 }}>{channel.description}</div>
@@ -289,18 +289,18 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         <div style={{ display: "flex", gap: 4 }}>
-          <FKey label="RECENTI" active={sort === "recent"} onClick={() => setSort("recent")} />
-          <FKey label="PIÙ VOTATI" active={sort === "top"} onClick={() => setSort("top")} />
+          <FKey label="RECENT" active={sort === "recent"} onClick={() => setSort("recent")} />
+          <FKey label="TOP VOTED" active={sort === "top"} onClick={() => setSort("top")} />
         </div>
         {user ? (
           <button disabled={username === undefined} onClick={() => setShowForm((s) => !s)} style={{
             background: B.blue, border: "none", color: B.white, padding: "8px 14px", borderRadius: 6,
             fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
             cursor: username === undefined ? "default" : "pointer", opacity: username === undefined ? 0.5 : 1,
-          }}>{showForm ? "ANNULLA" : "+ NUOVA DISCUSSIONE"}</button>
+          }}>{showForm ? "CANCEL" : "+ NEW DISCUSSION"}</button>
         ) : (
           <Link to="/auth" style={{ fontSize: 12, color: B.blue, fontFamily: FONT, fontWeight: 700, textDecoration: "none" }}>
-            ACCEDI PER PARTECIPARE →
+            SIGN IN TO PARTICIPATE →
           </Link>
         )}
       </div>
@@ -310,11 +310,11 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
           ? <div style={{ marginBottom: 12 }}><UsernamePrompt onSet={onUsernameSet} /></div>
           : (
             <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo" maxLength={200} style={inputStyle} />
-              <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Scrivi qualcosa..." rows={4} maxLength={8000} style={{ ...inputStyle, resize: "vertical" }} />
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={200} style={inputStyle} />
+              <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write something..." rows={4} maxLength={8000} style={{ ...inputStyle, resize: "vertical" }} />
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button disabled={!title.trim() || !body.trim() || posting} onClick={submitPost} style={primaryBtnStyle(!!title.trim() && !!body.trim() && !posting)}>
-                  {posting ? "PUBBLICAZIONE..." : "PUBBLICA"}
+                  {posting ? "PUBLISHING..." : "PUBLISH"}
                 </button>
               </div>
             </div>
@@ -328,10 +328,10 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
       )}
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>CARICAMENTO...</div>
+        <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>
       ) : posts.length === 0 ? (
         <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
-          Nessuna discussione ancora, sii il primo a scrivere.
+          No discussions yet, be the first to write one.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -351,7 +351,7 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
                 <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <span>u/{p.author_name}</span>
                   <span>{fmtDate(p.created_at)}</span>
-                  <span>{p.comment_count} commenti</span>
+                  <span>{p.comment_count} comments</span>
                 </div>
               </div>
             </div>
@@ -389,7 +389,7 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
         setMyVote(0);
       }
     } catch (e: any) {
-      setError(e.message || "Errore nel caricamento della discussione");
+      setError(e.message || "Error loading discussion");
     } finally {
       setLoading(false);
     }
@@ -421,7 +421,7 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
       setComments(cs);
       setPost((p) => (p ? { ...p, comment_count: p.comment_count + 1 } : p));
     } catch (e: any) {
-      setError(e.message || "Errore nell'invio del commento");
+      setError(e.message || "Error posting comment");
     } finally {
       setPosting(false);
     }
@@ -429,41 +429,41 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
 
   const removePost = async () => {
     if (!post || !user || user.user_id !== post.user_id) return;
-    if (!window.confirm("Eliminare questa discussione?")) return;
+    if (!window.confirm("Delete this discussion?")) return;
     try {
       await deleteCommunityPost({ data: { id: post.id } });
       onBack();
     } catch (e: any) {
-      setError(e.message || "Errore nell'eliminazione");
+      setError(e.message || "Error deleting");
     }
   };
 
   const removeComment = async (id: string) => {
-    if (!window.confirm("Eliminare questo commento?")) return;
+    if (!window.confirm("Delete this comment?")) return;
     try {
       await deleteCommunityComment({ data: { id } });
       setComments((cs) => cs.filter((c) => c.id !== id));
       setPost((p) => (p ? { ...p, comment_count: Math.max(0, p.comment_count - 1) } : p));
     } catch (e: any) {
-      setError(e.message || "Errore nell'eliminazione");
+      setError(e.message || "Error deleting");
     }
   };
 
   if (loading) {
-    return <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>CARICAMENTO...</div>;
+    return <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>;
   }
   if (!post) {
     return (
       <div>
-        <button onClick={onBack} style={backBtnStyle}>← INDIETRO</button>
-        <div style={{ padding: 20, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>Discussione non trovata.</div>
+        <button onClick={onBack} style={backBtnStyle}>← BACK</button>
+        <div style={{ padding: 20, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>Discussion not found.</div>
       </div>
     );
   }
 
   return (
     <div>
-      <button onClick={onBack} style={backBtnStyle}>← INDIETRO</button>
+      <button onClick={onBack} style={backBtnStyle}>← BACK</button>
       {error && (
         <div style={{ padding: "8px 10px", fontSize: 12, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, margin: "10px 0", fontFamily: FONT }}>
           {error}
@@ -478,7 +478,7 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
             <span>{fmtDate(post.created_at)}</span>
             {user && user.user_id === post.user_id && (
               <button onClick={removePost} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0 }}>
-                ELIMINA
+                DELETE
               </button>
             )}
           </div>
@@ -488,7 +488,7 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
 
       <div style={{ marginTop: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 8, fontFamily: FONT }}>
-          {comments.length} COMMENTI
+          {comments.length} COMMENTS
         </div>
 
         {user ? (
@@ -496,22 +496,22 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
             <div style={{ marginBottom: 14 }}><UsernamePrompt onSet={onUsernameSet} /></div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-              <textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Scrivi un commento..." rows={3} maxLength={3000} style={{ ...inputStyle, resize: "vertical" }} />
+              <textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Write a comment..." rows={3} maxLength={3000} style={{ ...inputStyle, resize: "vertical" }} />
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button disabled={!commentBody.trim() || posting} onClick={submitComment} style={primaryBtnStyle(!!commentBody.trim() && !posting)}>
-                  {posting ? "INVIO..." : "COMMENTA"}
+                  {posting ? "SENDING..." : "COMMENT"}
                 </button>
               </div>
             </div>
           )
         ) : (
           <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginBottom: 14 }}>
-            <Link to="/auth" style={{ color: B.blue, fontWeight: 700, textDecoration: "none" }}>Accedi</Link> per lasciare un commento.
+            <Link to="/auth" style={{ color: B.blue, fontWeight: 700, textDecoration: "none" }}>Sign in</Link> to leave a comment.
           </div>
         )}
 
         {comments.length === 0 ? (
-          <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>Nessun commento ancora.</div>
+          <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>No comments yet.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {comments.map((c) => (
@@ -521,7 +521,7 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
                   <span>{fmtDate(c.created_at)}</span>
                   {user && user.user_id === c.user_id && (
                     <button onClick={() => removeComment(c.id)} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0, marginLeft: "auto" }}>
-                      ELIMINA
+                      DELETE
                     </button>
                   )}
                 </div>

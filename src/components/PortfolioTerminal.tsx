@@ -1779,10 +1779,10 @@ function AIAdvisorPage({holdings}:any) {
             try {
               const title=(msgs[0]?.content||"Chat").slice(0,60);
               await saveConversation({data:{title,messages:msgs}});
-              alert("Conversazione salvata nel tuo profilo");
+              alert("Conversation saved to your profile");
             } catch(e:any){
               if(String(e.message).includes("Unauthorized")){ window.location.href="/auth"; }
-              else alert("Errore: "+e.message);
+              else alert("Error: "+e.message);
             }
           }} disabled={!msgs.length} style={{
             background:"none",border:`1px solid ${B.green}`,color:B.green,

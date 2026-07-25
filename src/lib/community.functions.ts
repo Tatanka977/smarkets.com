@@ -60,14 +60,14 @@ export async function createChannel(
   const user = userData?.user;
   if (!user) throw new Error("Not signed in");
   const name = data.name.trim();
-  if (!name) throw new Error("Il nome del canale è obbligatorio");
+  if (!name) throw new Error("Channel name is required");
   const { data: row, error } = await supabase
     .from("community_channels")
     .insert({ created_by: user.id, name, description: data.description?.trim() || null, slug: slugifyChannel(name) })
     .select()
     .single();
   if (error) {
-    if ((error as any).code === "23505") throw new Error("Esiste già un canale con un nome molto simile — provane un altro.");
+    if ((error as any).code === "23505") throw new Error("A channel with a very similar name already exists — try another one.");
     throw error;
   }
   return row as CommunityChannel;
@@ -103,8 +103,8 @@ export async function createCommunityPost(
   if (!user) throw new Error("Not signed in");
   const title = data.title.trim();
   const body = data.body.trim();
-  if (!title || !body) throw new Error("Titolo e testo sono obbligatori");
-  if (!data.channelId) throw new Error("Seleziona un canale");
+  if (!title || !body) throw new Error("Title and body are required");
+  if (!data.channelId) throw new Error("Select a channel");
   // author_name is intentionally omitted: a DB trigger resolves it
   // server-side from auth.users/profiles.username so a client can't
   // impersonate another name.
@@ -140,7 +140,7 @@ export async function createCommunityComment(
   const user = userData?.user;
   if (!user) throw new Error("Not signed in");
   const body = data.body.trim();
-  if (!body) throw new Error("Il commento non può essere vuoto");
+  if (!body) throw new Error("Comment cannot be empty");
   const { data: row, error } = await supabase
     .from("community_comments")
     .insert({ post_id: data.postId, user_id: user.id, body })

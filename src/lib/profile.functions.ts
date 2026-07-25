@@ -145,7 +145,7 @@ export async function setUsername({ data }: { data: { username: string } }): Pro
   if (!user) throw new Error("Not signed in");
   const username = data.username.trim().toLowerCase();
   if (!USERNAME_RE.test(username)) {
-    throw new Error("Lo username deve avere 3-20 caratteri: lettere minuscole, numeri, underscore.");
+    throw new Error("Username must be 3-20 characters: lowercase letters, numbers, underscore.");
   }
   // upsert rather than update: a profiles row should always exist (created
   // by the handle_new_user() signup trigger), but if one is ever missing
@@ -155,7 +155,7 @@ export async function setUsername({ data }: { data: { username: string } }): Pro
     .from("profiles")
     .upsert({ id: user.id, username, updated_at: new Date().toISOString() }, { onConflict: "id" });
   if (error) {
-    if ((error as any).code === "23505") throw new Error("Username già in uso, scegline un altro.");
+    if ((error as any).code === "23505") throw new Error("Username already taken, choose another one.");
     throw error;
   }
   return { username };

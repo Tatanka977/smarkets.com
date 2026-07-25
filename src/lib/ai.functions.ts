@@ -51,14 +51,14 @@ export const aiChat = createServerFn({ method: "POST" })
       throw new Error(`System prompt too long (max ${MAX_SYSTEM_LEN} chars)`);
     }
 
-    const today = new Date().toLocaleDateString("it-IT", {
+    const today = new Date().toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
     });
 
-    const systemWithDate = `${SAFETY_PREAMBLE}\n\n${data.system}\n\nOggi è ${today}. Usa sempre questa data come riferimento per qualsiasi domanda relativa al tempo, non fare assunzioni basate su altre date.`;
+    const systemWithDate = `${SAFETY_PREAMBLE}\n\n${data.system}\n\nToday is ${today}. Always use this date as the reference for any time-related question — never assume a different date.`;
 
     // Groq's API is OpenAI-compatible: the system prompt is just the first
     // message in the array, not a separate top-level parameter.
