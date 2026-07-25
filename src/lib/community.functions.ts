@@ -20,11 +20,41 @@ export interface PortfolioSnapshotHolding {
   dayChangePct: number | null;
 }
 
+export interface PortfolioSnapshotMetrics {
+  weightedReturn: number;
+  weightedVol: number;
+  weightedBeta: number;
+  weightedDividendYield: number;
+  weightedDayChangePct: number;
+  sharpe: number;
+  hhi: number;
+  sectorCount: number;
+  geoCount: number;
+}
+
+export interface PortfolioSnapshotAlert {
+  sev: "HIGH" | "MED" | "LOW" | "OK";
+  title: string;
+  detail: string;
+  metric: string;
+}
+
+export interface PortfolioSnapshotAllocationSlice {
+  name: string;
+  value: number;
+  pct: number;
+}
+
 export interface PortfolioSnapshot {
   totalValue: number;
   baseCurrency: string;
   sourceName: string;
   holdings: PortfolioSnapshotHolding[];
+  metrics: PortfolioSnapshotMetrics;
+  alerts: PortfolioSnapshotAlert[];
+  allocationByCategory: PortfolioSnapshotAllocationSlice[];
+  allocationBySector: PortfolioSnapshotAllocationSlice[];
+  allocationByGeo: PortfolioSnapshotAllocationSlice[];
 }
 
 export interface CommunityPost {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { B, FKey, PIE_COLS } from "@/lib/uiShared";
+import { B, FKey, PIE_COLS, pMet, pCol, computeAlerts, groupBy, SEV_STYLE } from "@/lib/uiShared";
 import { useUser } from "@/hooks/useUser";
 import { getMyUsername, setUsername as srvSetUsername, listPortfolios } from "@/lib/profile.functions";
 import { OWNER_EMAIL } from "@/lib/admin";
@@ -79,15 +79,18 @@ function BarChartIcon({ size = 14 }: { size?: number }) {
 }
 
 // Builds a shareable snapshot from a live/loaded holdings array (same
-// {value, asset:{ticker,shortName,category,sector,dayChangePct}} shape
+// {value, asset:{ticker,shortName,category,sector,dayChangePct,...}} shape
 // used throughout PortfolioTerminal/HomePage/AnalysisPage). This copies
 // only what's needed to render the share card — never a live reference —
 // so the source holdings/portfolio stays private; only what the user
-// actively chose to attach becomes public on the post.
+// actively chose to attach becomes public on the post. Metrics/alerts/
+// allocation are computed with the exact same pMet/computeAlerts/groupBy
+// helpers AnalysisPage's own Risk/Allocation tabs use, so numbers a viewer
+// sees here match what the poster themselves would see in Analysis.
 function buildSnapshotFromHoldings(holdings: any[], sourceName: string): PortfolioSnapshot | null {
   if (!holdings?.length) return null;
-  const totalValue = holdings.reduce((s: number, h: any) => s + (h.value || 0), 0);
-  if (totalValue <= 0) return null;
+  const m = pMet(holdings);
+  if (!m || m.total <= 0) return null;
   const rows: PortfolioSnapshotHolding[] = holdings
     .map((h: any) => ({
       ticker: h.asset?.ticker || h.asset?.symbol || "?",
@@ -95,11 +98,32 @@ function buildSnapshotFromHoldings(holdings: any[], sourceName: string): Portfol
       category: h.asset?.category || "OTHER",
       sector: h.asset?.sector || h.asset?.industry || null,
       value: h.value || 0,
-      weightPct: ((h.value || 0) / totalValue) * 100,
+      weightPct: ((h.value || 0) / m.total) * 100,
       dayChangePct: h.asset?.dayChangePct ?? null,
     }))
     .sort((a, b) => b.value - a.value);
-  return { totalValue, baseCurrency: "USD", sourceName, holdings: rows };
+
+  return {
+    totalValue: m.total,
+    baseCurrency: "USD",
+    sourceName,
+    holdings: rows,
+    metrics: {
+      weightedReturn: m.wRet,
+      weightedVol: m.wVol,
+      weightedBeta: m.wBeta,
+      weightedDividendYield: m.wDiv,
+      weightedDayChangePct: m.wDay,
+      sharpe: m.sharpe,
+      hhi: m.hhi,
+      sectorCount: m.sectors,
+      geoCount: m.geos,
+    },
+    alerts: computeAlerts(holdings, m).map((a: any) => ({ sev: a.sev, title: a.title, detail: a.detail, metric: a.metric })),
+    allocationByCategory: groupBy(holdings, "category", m.total),
+    allocationBySector: groupBy(holdings, "sector", m.total),
+    allocationByGeo: groupBy(holdings, "geo", m.total),
+  };
 }
 
 const SNAPSHOT_CHART_TOP_N = 7;
@@ -115,16 +139,43 @@ function snapshotChartRows(snapshot: PortfolioSnapshot) {
   return rows;
 }
 
-// The full, rich display shown in a post's detail view.
+function MiniKpi({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ background: B.panel2, border: `1px solid ${B.border}`, borderRadius: 8, padding: "8px 10px", flex: "1 1 92px", minWidth: 92 }}>
+      <div style={{ fontSize: 9, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: color || B.gray1, fontFamily: FONT }}>{value}</div>
+    </div>
+  );
+}
+
+function AllocationBars({ title, data }: { title: string; data: { name: string; value: number; pct: number }[] }) {
+  if (!data.length) return null;
+  return (
+    <div style={{ flex: "1 1 200px", minWidth: 180 }}>
+      <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>{title}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {data.slice(0, 6).map((d, i) => (
+          <div key={d.name}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: B.gray1, fontFamily: FONT, marginBottom: 2 }}>
+              <span>{d.name}</span><span style={{ fontWeight: 700 }}>{d.pct.toFixed(1)}%</span>
+            </div>
+            <div style={{ height: 4, borderRadius: 2, background: B.panel2, overflow: "hidden" }}>
+              <div style={{ width: `${Math.min(d.pct, 100)}%`, height: "100%", background: PIE_COLS[i % PIE_COLS.length] }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// The full, rich display shown in a post's detail view: performance KPIs,
+// top-holdings donut, category/sector allocation, and the same risk-alert
+// logic AnalysisPage's Risk tab runs (concentration, volatility, sharpe,
+// beta, diversification).
 function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
   const chartRows = useMemo(() => snapshotChartRows(snapshot), [snapshot]);
-  const weighted = useMemo(() => {
-    let sum = 0, hasAny = false;
-    for (const h of snapshot.holdings) {
-      if (h.dayChangePct != null) { sum += (h.weightPct / 100) * h.dayChangePct; hasAny = true; }
-    }
-    return hasAny ? sum : null;
-  }, [snapshot]);
+  const wDay = snapshot.metrics.weightedDayChangePct;
 
   return (
     <div style={{
@@ -136,18 +187,27 @@ function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
         <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", fontFamily: FONT }}>SHARED PORTFOLIO</span>
         <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, fontWeight: 400 }}>· {snapshot.sourceName}</span>
       </div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
         <span style={{ fontSize: 26, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
           ${snapshot.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
         </span>
-        {weighted != null && (
-          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: FONT, color: weighted >= 0 ? B.green : B.red }}>
-            {weighted >= 0 ? "+" : ""}{weighted.toFixed(2)}% today
-          </span>
-        )}
+        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: FONT, color: pCol(wDay) }}>
+          {wDay >= 0 ? "+" : ""}{wDay.toFixed(2)}% today
+        </span>
         <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{snapshot.holdings.length} positions</span>
       </div>
-      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+        <MiniKpi label="EXP. RETURN" value={`${snapshot.metrics.weightedReturn >= 0 ? "+" : ""}${snapshot.metrics.weightedReturn.toFixed(1)}%`} color={pCol(snapshot.metrics.weightedReturn)} />
+        <MiniKpi label="VOLATILITY" value={`${snapshot.metrics.weightedVol.toFixed(1)}%`} />
+        <MiniKpi label="SHARPE" value={snapshot.metrics.sharpe.toFixed(2)} />
+        <MiniKpi label="BETA" value={snapshot.metrics.weightedBeta.toFixed(2)} />
+        <MiniKpi label="DIV YIELD" value={`${snapshot.metrics.weightedDividendYield.toFixed(1)}%`} />
+        <MiniKpi label="SECTORS/GEO" value={`${snapshot.metrics.sectorCount} / ${snapshot.metrics.geoCount}`} />
+      </div>
+
+      <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>TOP HOLDINGS</div>
+      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center", marginBottom: 18 }}>
         <ResponsiveContainer width={140} height={140} style={{ flexShrink: 0 }}>
           <PieChart>
             <Pie data={chartRows} cx="50%" cy="50%" innerRadius={38} outerRadius={64} paddingAngle={1} dataKey="value" strokeWidth={0}>
@@ -172,12 +232,35 @@ function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
           </tbody>
         </table>
       </div>
+
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 18 }}>
+        <AllocationBars title="BY CATEGORY" data={snapshot.allocationByCategory} />
+        <AllocationBars title="BY SECTOR" data={snapshot.allocationBySector} />
+        <AllocationBars title="BY GEOGRAPHY" data={snapshot.allocationByGeo} />
+      </div>
+
+      <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>RISK ALERTS</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {snapshot.alerts.map((a, i) => {
+          const style = SEV_STYLE[a.sev];
+          return (
+            <div key={i} style={{ border: `1px solid ${style.border}`, background: style.bg, borderRadius: 8, padding: "8px 10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: style.text, fontFamily: FONT }}>{style.icon} {a.title}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: style.text, fontFamily: FONT, flexShrink: 0 }}>{a.metric}</span>
+              </div>
+              <div style={{ fontSize: 11, color: B.gray2, fontFamily: FONT, lineHeight: 1.4 }}>{a.detail}</div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 // The compact teaser shown inside a post card in the channel's post list.
 function PortfolioBadge({ snapshot }: { snapshot: PortfolioSnapshot }) {
+  const highRisk = snapshot.alerts.some((a) => a.sev === "HIGH");
   return (
     <div style={{
       display: "inline-flex", alignItems: "center", gap: 6, marginTop: 4,
@@ -188,6 +271,7 @@ function PortfolioBadge({ snapshot }: { snapshot: PortfolioSnapshot }) {
       <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, fontWeight: 400 }}>
         · ${snapshot.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} · {snapshot.holdings.length} positions
       </span>
+      {highRisk && <span style={{ fontSize: 11, color: SEV_STYLE.HIGH.text, fontWeight: 700, fontFamily: FONT }}>{SEV_STYLE.HIGH.icon} risk flag</span>}
     </div>
   );
 }
