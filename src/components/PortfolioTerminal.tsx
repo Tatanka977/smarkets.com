@@ -9,7 +9,6 @@ import NotificationBell from "./NotificationBell";
 import { getInvestorProfile } from "@/lib/profile.functions";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
-  PieChart, Pie, Cell,
   RadarChart, PolarGrid, PolarAngleAxis, Radar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from "recharts";
@@ -1356,11 +1355,6 @@ const addCash = () => {
   const cash = holdings.reduce((s:number,h:any) => s + (h.asset.category === "CASH" ? h.value : 0), 0);
   const cashPct = m.total > 0 ? (cash / m.total) * 100 : 0;
 
-  const sD = groupBy(holdings,"sector",m.total);
-  const gD = groupBy(holdings,"geo",m.total);
-  const tD = groupBy(holdings,"type",m.total);
-  const top3Pct = sorted.slice(0,3).reduce((s:number,h:any)=>s+h.value,0) / m.total * 100;
-
   const catMap: Record<string, any[]> = {};
   for (const h of sorted) {
     const cat = h.asset.category || "OTHER";
@@ -1476,71 +1470,6 @@ const addCash = () => {
         </div>
       </div>
 
-      {/* KPI row 2 */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px, 1fr))",gap:14,
-        background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px"}}>
-        {[
-          {l:"Volatility (Ann.)", v:`${fmt(m.wVol,1)}%`, col:m.wVol>25?B.red:m.wVol>15?B.yellow:B.green},
-          {l:"Sharpe Ratio", v:fmt(m.sharpe,2), col:m.sharpe>0.7?B.green:m.sharpe>0.3?B.yellow:B.red},
-          {l:"Beta (vs S&P 500)", v:fmt(m.wBeta,2), col:B.gray1},
-          {l:"Dividend Yield", v:`${fmt(m.wDiv,2)}%`, col:B.gray1},
-          {l:"Max Drawdown (est.)", v:`-${fmt(m.wVol*2.5,1)}%`, col:B.red},
-          {l:"Last Rebalance", v:"—", col:B.gray3},
-        ].map((k,i)=>(
-          <div key={i}>
-            <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>{k.l}</div>
-            <div style={{fontSize:17,fontWeight:700,color:k.col,fontFamily:"'Courier New',monospace"}}>{k.v}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Breakdown row */}
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:14}}>
-        <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px"}}>
-          <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:12}}>
-            PORTFOLIO BREAKDOWN
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:10}}>
-            {[
-              {l:"TOP HOLDING", v:sorted[0]?.asset.ticker || "—", sub:sorted[0]?`${((sorted[0].value/m.total)*100).toFixed(1)}%`:""},
-              {l:"LARGEST SECTOR", v:sD[0]?.name || "—", sub:sD[0]?`${sD[0].pct}%`:""},
-              {l:"LARGEST REGION", v:gD[0]?.name || "—", sub:gD[0]?`${gD[0].pct}%`:""},
-              {l:"CASH POSITION", v:cash>0?`$${fmtM(cash)}`:"—", sub:cash>0?`${cashPct.toFixed(1)}%`:"Not tracked"},
-            ].map((c,i)=>(
-              <div key={i} style={{background:B.panel2,borderRadius:8,padding:"10px 12px"}}>
-                <div style={{fontSize:9,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace",marginBottom:4}}>{c.l}</div>
-                <div style={{fontSize:14,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{c.v}</div>
-                <div style={{fontSize:12,color:B.blue,fontFamily:"'Courier New',monospace"}}>{c.sub}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px"}}>
-          <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:8}}>
-            ASSET ALLOCATION
-          </div>
-          <div style={{display:"flex",gap:10,alignItems:"center"}}>
-            <ResponsiveContainer width={80} height={80}>
-              <PieChart>
-                <Pie data={tD} cx="50%" cy="50%" innerRadius={24} outerRadius={38} paddingAngle={1} dataKey="value" strokeWidth={0}>
-                  {tD.map((_,i)=><Cell key={i} fill={PIE_COLS[i%PIE_COLS.length]}/>)}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div style={{flex:1}}>
-              {tD.slice(0,5).map((d,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                  <span style={{width:7,height:7,borderRadius:2,background:PIE_COLS[i%PIE_COLS.length],display:"inline-block"}}/>
-                  <span style={{fontSize:11,color:B.gray1,flex:1,fontFamily:"'Courier New',monospace"}}>{d.name}</span>
-                  <span style={{fontSize:11,color:B.gray1,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{d.pct}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Holdings, grouped by instrument type */}
       <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 20px",overflowX:"auto"}}>
         <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:12}}>
@@ -1597,30 +1526,6 @@ const addCash = () => {
         </div>
       </div>
 
-      {/* Insights */}
-      <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px"}}>
-        <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
-          PORTFOLIO INSIGHTS
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit, minmax(220px, 1fr))",gap:12}}>
-          {sD[0] && (
-            <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
-              <b style={{color:B.blue}}>{sD[0].name}</b> exposure is {sD[0].pct}% of the portfolio.
-            </div>
-          )}
-          {gD[0] && (
-            <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
-              <b style={{color:B.blue}}>{gD[0].name}</b> exposure is {gD[0].pct}%.
-            </div>
-          )}
-          <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
-            Top 3 holdings represent <b style={{color:B.blue}}>{top3Pct.toFixed(1)}%</b> of the portfolio.
-          </div>
-          <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
-            Portfolio volatility is <b style={{color:B.blue}}>{fmt(m.wVol,1)}%</b> (annualized estimate).
-          </div>
-        </div>
-      </div>
       {sellTarget && (
         <SellModal
           holding={sellTarget}
