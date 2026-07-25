@@ -50,11 +50,13 @@ export interface PortfolioSnapshot {
   baseCurrency: string;
   sourceName: string;
   holdings: PortfolioSnapshotHolding[];
-  metrics: PortfolioSnapshotMetrics;
-  alerts: PortfolioSnapshotAlert[];
-  allocationByCategory: PortfolioSnapshotAllocationSlice[];
-  allocationBySector: PortfolioSnapshotAllocationSlice[];
-  allocationByGeo: PortfolioSnapshotAllocationSlice[];
+  // Optional: posts shared before this shape existed only have the fields
+  // above — every reader must tolerate these being absent, not just empty.
+  metrics?: PortfolioSnapshotMetrics;
+  alerts?: PortfolioSnapshotAlert[];
+  allocationByCategory?: PortfolioSnapshotAllocationSlice[];
+  allocationBySector?: PortfolioSnapshotAllocationSlice[];
+  allocationByGeo?: PortfolioSnapshotAllocationSlice[];
 }
 
 export interface CommunityPost {

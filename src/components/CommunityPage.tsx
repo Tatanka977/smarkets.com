@@ -148,8 +148,8 @@ function MiniKpi({ label, value, color }: { label: string; value: string; color?
   );
 }
 
-function AllocationBars({ title, data }: { title: string; data: { name: string; value: number; pct: number }[] }) {
-  if (!data.length) return null;
+function AllocationBars({ title, data }: { title: string; data?: { name: string; value: number; pct: number }[] }) {
+  if (!data?.length) return null;
   return (
     <div style={{ flex: "1 1 200px", minWidth: 180 }}>
       <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>{title}</div>
@@ -175,7 +175,13 @@ function AllocationBars({ title, data }: { title: string; data: { name: string; 
 // beta, diversification).
 function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
   const chartRows = useMemo(() => snapshotChartRows(snapshot), [snapshot]);
-  const wDay = snapshot.metrics.weightedDayChangePct;
+  // Posts shared before metrics/alerts/allocation were added to the
+  // snapshot shape only have {totalValue, baseCurrency, sourceName,
+  // holdings} stored — these fields are absent, not just empty, on those
+  // older rows, so every access below must tolerate that.
+  const metrics = snapshot.metrics;
+  const alerts = snapshot.alerts || [];
+  const wDay = metrics?.weightedDayChangePct ?? 0;
 
   return (
     <div style={{
@@ -197,14 +203,16 @@ function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
         <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{snapshot.holdings.length} positions</span>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
-        <MiniKpi label="EXP. RETURN" value={`${snapshot.metrics.weightedReturn >= 0 ? "+" : ""}${snapshot.metrics.weightedReturn.toFixed(1)}%`} color={pCol(snapshot.metrics.weightedReturn)} />
-        <MiniKpi label="VOLATILITY" value={`${snapshot.metrics.weightedVol.toFixed(1)}%`} />
-        <MiniKpi label="SHARPE" value={snapshot.metrics.sharpe.toFixed(2)} />
-        <MiniKpi label="BETA" value={snapshot.metrics.weightedBeta.toFixed(2)} />
-        <MiniKpi label="DIV YIELD" value={`${snapshot.metrics.weightedDividendYield.toFixed(1)}%`} />
-        <MiniKpi label="SECTORS/GEO" value={`${snapshot.metrics.sectorCount} / ${snapshot.metrics.geoCount}`} />
-      </div>
+      {metrics && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+          <MiniKpi label="EXP. RETURN" value={`${metrics.weightedReturn >= 0 ? "+" : ""}${metrics.weightedReturn.toFixed(1)}%`} color={pCol(metrics.weightedReturn)} />
+          <MiniKpi label="VOLATILITY" value={`${metrics.weightedVol.toFixed(1)}%`} />
+          <MiniKpi label="SHARPE" value={metrics.sharpe.toFixed(2)} />
+          <MiniKpi label="BETA" value={metrics.weightedBeta.toFixed(2)} />
+          <MiniKpi label="DIV YIELD" value={`${metrics.weightedDividendYield.toFixed(1)}%`} />
+          <MiniKpi label="SECTORS/GEO" value={`${metrics.sectorCount} / ${metrics.geoCount}`} />
+        </div>
+      )}
 
       <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>TOP HOLDINGS</div>
       <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center", marginBottom: 18 }}>
@@ -233,34 +241,40 @@ function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
         </table>
       </div>
 
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 18 }}>
-        <AllocationBars title="BY CATEGORY" data={snapshot.allocationByCategory} />
-        <AllocationBars title="BY SECTOR" data={snapshot.allocationBySector} />
-        <AllocationBars title="BY GEOGRAPHY" data={snapshot.allocationByGeo} />
-      </div>
+      {(snapshot.allocationByCategory?.length || snapshot.allocationBySector?.length || snapshot.allocationByGeo?.length) ? (
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 18 }}>
+          <AllocationBars title="BY CATEGORY" data={snapshot.allocationByCategory} />
+          <AllocationBars title="BY SECTOR" data={snapshot.allocationBySector} />
+          <AllocationBars title="BY GEOGRAPHY" data={snapshot.allocationByGeo} />
+        </div>
+      ) : null}
 
-      <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>RISK ALERTS</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {snapshot.alerts.map((a, i) => {
-          const style = SEV_STYLE[a.sev];
-          return (
-            <div key={i} style={{ border: `1px solid ${style.border}`, background: style.bg, borderRadius: 8, padding: "8px 10px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: style.text, fontFamily: FONT }}>{style.icon} {a.title}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: style.text, fontFamily: FONT, flexShrink: 0 }}>{a.metric}</span>
-              </div>
-              <div style={{ fontSize: 11, color: B.gray2, fontFamily: FONT, lineHeight: 1.4 }}>{a.detail}</div>
-            </div>
-          );
-        })}
-      </div>
+      {alerts.length > 0 && (
+        <>
+          <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>RISK ALERTS</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {alerts.map((a, i) => {
+              const style = SEV_STYLE[a.sev];
+              return (
+                <div key={i} style={{ border: `1px solid ${style.border}`, background: style.bg, borderRadius: 8, padding: "8px 10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: style.text, fontFamily: FONT }}>{style.icon} {a.title}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: style.text, fontFamily: FONT, flexShrink: 0 }}>{a.metric}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: B.gray2, fontFamily: FONT, lineHeight: 1.4 }}>{a.detail}</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 // The compact teaser shown inside a post card in the channel's post list.
 function PortfolioBadge({ snapshot }: { snapshot: PortfolioSnapshot }) {
-  const highRisk = snapshot.alerts.some((a) => a.sev === "HIGH");
+  const highRisk = (snapshot.alerts || []).some((a) => a.sev === "HIGH");
   return (
     <div style={{
       display: "inline-flex", alignItems: "center", gap: 6, marginTop: 4,
