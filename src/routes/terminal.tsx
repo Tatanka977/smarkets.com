@@ -6,6 +6,7 @@ import { useUser } from "@/hooks/useUser";
 import { getInvestorProfile } from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/terminal")({
+  head: () => ({ meta: [{ title: "Strategic Markets — Terminal" }, { name: "robots", content: "noindex" }] }),
   component: TerminalWithOnboarding,
 });
 

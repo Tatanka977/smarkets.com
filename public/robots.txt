@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /terminal
+Disallow: /auth
+Disallow: /profile
+
+Sitemap: https://s-markets.com/sitemap.xml

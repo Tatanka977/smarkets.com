@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Static sitemap covering the public marketing/content pages only.
+  App pages behind login (/terminal, /profile) and /auth are excluded —
+  see robots.txt. Individual blog posts (/blog/$slug) are stored in
+  Supabase and generated dynamically, so they can't be listed here
+  without a server-generated sitemap; add that later if blog SEO
+  traffic becomes a priority.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://s-markets.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://s-markets.com/blog</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://s-markets.com/disclaimer</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>

@@ -6,7 +6,7 @@ import { B } from "@/lib/uiShared";
 import { useTheme } from "@/hooks/useTheme";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Strategic Markets — Sign In" }] }),
+  head: () => ({ meta: [{ title: "Strategic Markets — Sign In" }, { name: "robots", content: "noindex" }] }),
   component: AuthPage,
 });
 

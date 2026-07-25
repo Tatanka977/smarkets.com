@@ -15,7 +15,7 @@ import {
 } from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/_authenticated/profile")({
-  head: () => ({ meta: [{ title: "Strategic Markets — My profile" }] }),
+  head: () => ({ meta: [{ title: "Strategic Markets — My profile" }, { name: "robots", content: "noindex" }] }),
   component: ProfilePage,
 });
 
