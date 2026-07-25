@@ -519,6 +519,7 @@ function ChannelList({ user, username, isAdmin, onUsernameSet, onOpen }: {
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -559,6 +560,11 @@ function ChannelList({ user, username, isAdmin, onUsernameSet, onOpen }: {
     }
   };
 
+  const q = search.trim().toLowerCase();
+  const filteredChannels = q
+    ? channels.filter((c) => c.name.toLowerCase().includes(q) || (c.description || "").toLowerCase().includes(q))
+    : channels;
+
   return (
     <div>
       <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 10, fontFamily: FONT }}>
@@ -578,6 +584,21 @@ function ChannelList({ user, username, isAdmin, onUsernameSet, onOpen }: {
             SIGN IN TO PARTICIPATE →
           </Link>
         )}
+      </div>
+
+      <div style={{ position: "relative", marginBottom: 12 }}>
+        <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: B.gray3, display: "flex", pointerEvents: "none" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </span>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search channels..."
+          style={{ ...inputStyle, width: "100%", paddingLeft: 30 }}
+        />
       </div>
 
       {showForm && user && (
@@ -608,9 +629,13 @@ function ChannelList({ user, username, isAdmin, onUsernameSet, onOpen }: {
         <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
           No channels yet, be the first to create one.
         </div>
+      ) : filteredChannels.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
+          No channels match "{search.trim()}".
+        </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
-          {channels.map((c) => (
+          {filteredChannels.map((c) => (
             <div key={c.id} onClick={() => onOpen(c)} style={{
               background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", position: "relative",
             }}>
