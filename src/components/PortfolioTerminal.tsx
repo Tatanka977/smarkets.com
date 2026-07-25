@@ -1768,15 +1768,23 @@ function AIAdvisorPage({holdings}:any) {
     return <div key={i} style={{fontSize:17,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.6}}>{rendered}</div>;
   });
 
+  const Avatar = () => (
+    <div style={{
+      width:28,height:28,borderRadius:"50%",background:B.blue,color:B.white,flexShrink:0,
+      display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,
+      fontFamily:"'Courier New',monospace",
+    }}>AI</div>
+  );
+
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-      <div style={{background:B.panel2,borderBottom:`1px solid ${B.border}`,padding:"4px 8px",
+      <div style={{background:B.panel2,borderBottom:`1px solid ${B.border}`,padding:"8px 12px",
         display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
         <div>
           <span style={{fontSize:13,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>STRATEGIC MARKETS</span>
-          <span style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:8}}>AI FINANCIAL TERMINAL</span>
+          <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:8}}>AI FINANCIAL TERMINAL</span>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
           <button onClick={async()=>{
             if(!msgs.length){return;}
             try {
@@ -1788,72 +1796,92 @@ function AIAdvisorPage({holdings}:any) {
               else alert("Error: "+e.message);
             }
           }} disabled={!msgs.length} style={{
-            background:"none",border:`1px solid ${B.green}`,color:B.green,
-            fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700,
-            padding:"2px 6px",cursor:msgs.length?"pointer":"not-allowed",opacity:msgs.length?1:0.4}}>
+            background:"none",border:`1px solid ${B.green}`,color:B.green,borderRadius:6,
+            fontFamily:"'Courier New',monospace",fontSize:12,fontWeight:700,
+            padding:"4px 10px",cursor:msgs.length?"pointer":"not-allowed",opacity:msgs.length?1:0.4}}>
             SAVE
           </button>
-          <div style={{width:6,height:6,background:B.green,animation:"blink 2s infinite"}}/>
-          <span style={{fontSize:14,color:B.green,fontFamily:"'Courier New',monospace"}}>ONLINE</span>
+          <div style={{display:"flex",alignItems:"center",gap:5,background:"rgba(0,255,102,0.08)",
+            border:`1px solid ${B.green}`,borderRadius:20,padding:"3px 10px"}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:B.green,animation:"blink 2s infinite"}}/>
+            <span style={{fontSize:11,color:B.green,fontFamily:"'Courier New',monospace",fontWeight:700}}>ONLINE</span>
+          </div>
         </div>
       </div>
-      <div style={{flex:1,overflowY:"auto",paddingBottom:4}}>
-        {msgs.map((m,i)=>(
-          <div key={i} style={{padding:"4px 8px",borderBottom:`1px solid ${B.border}`,
-            background:m.role==="user"?B.panel2:"transparent"}}>
-            <div style={{fontSize:14,color:m.role==="user"?B.blue:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2,fontWeight:700}}>
-              {m.role==="user"?"USER>":"SMKT>"}
+      <div style={{flex:1,overflowY:"auto",padding:"12px 10px",display:"flex",flexDirection:"column",gap:10}}>
+        {msgs.map((m,i)=>{
+          const isUser = m.role==="user";
+          return (
+            <div key={i} style={{display:"flex",gap:8,justifyContent:isUser?"flex-end":"flex-start"}}>
+              {!isUser && <Avatar/>}
+              <div style={{maxWidth:"85%",display:"flex",flexDirection:"column",gap:2,alignItems:isUser?"flex-end":"flex-start"}}>
+                <span style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",padding:"0 4px"}}>
+                  {isUser?"YOU":"STRATEGIC MARKETS AI"}
+                </span>
+                <div style={{
+                  background:isUser?B.blue:B.panel, border:`1px solid ${isUser?B.blue:B.border}`,
+                  borderRadius:14, borderTopRightRadius:isUser?4:14, borderTopLeftRadius:isUser?14:4,
+                  padding:"10px 14px",
+                }}>
+                  {isUser
+                    ? <div style={{fontSize:15,color:B.white,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>{m.content}</div>
+                    : renderMsg(m.content)}
+                </div>
+              </div>
             </div>
-            <div>{renderMsg(m.content)}</div>
-          </div>
-        ))}
+          );
+        })}
         {loading&&(
-          <div style={{padding:"6px 8px",borderBottom:`1px solid ${B.border}`}}>
-            <div style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>STRATEGIC MARKETS{">"}</div>
-            <div style={{display:"flex",gap:3,alignItems:"center"}}>
+          <div style={{display:"flex",gap:8}}>
+            <Avatar/>
+            <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:14,borderTopLeftRadius:4,
+              padding:"10px 14px",display:"flex",gap:4,alignItems:"center"}}>
               {[0,1,2].map(j=>(
-                <div key={j} style={{width:5,height:5,background:B.blue,
+                <div key={j} style={{width:5,height:5,borderRadius:"50%",background:B.blue,
                   animation:`pulse 1s ${j*0.2}s infinite ease-in-out`}}/>
               ))}
-              <span style={{fontSize:15,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:4}}>PROCESSING LIVE DATA...</span>
+              <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:4}}>Analyzing live data...</span>
             </div>
           </div>
         )}
         <div ref={bottomRef}/>
       </div>
       {showQ&&(
-        <div style={{padding:"3px 4px",borderTop:`1px solid ${B.border}`,background:B.panel2,flexShrink:0}}>
-          <div style={{fontSize:16,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:3,paddingLeft:2}}>QUICK COMMANDS:</div>
-          <div style={{display:"flex",gap:2,flexWrap:"wrap"}}>
+        <div style={{padding:"8px 10px",borderTop:`1px solid ${B.border}`,background:B.panel2,flexShrink:0}}>
+          <div className="sm-fkeys" style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2}}>
             {QUICK_Q.map((q,i)=>(
               <button key={i} onClick={()=>send(q)} disabled={loading} style={{
-                background:B.panel,border:`1px solid ${B.border}`,padding:"3px 6px",
-                color:B.gray1,fontSize:14,cursor:"pointer",
-                fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>
+                background:B.panel,border:`1px solid ${B.border}`,borderRadius:20,padding:"6px 12px",
+                color:B.gray1,fontSize:11,cursor:"pointer",flexShrink:0,
+                fontFamily:"'Courier New',monospace",fontWeight:700,letterSpacing:"0.02em"}}>
                 {q}
               </button>
             ))}
           </div>
         </div>
       )}
-      <div style={{borderTop:`1px solid ${B.blue}`,background:B.panel2,flexShrink:0}}>
-        <div style={{display:"flex",alignItems:"center"}}>
-          <span style={{fontSize:17,color:B.blue,fontFamily:"'Courier New',monospace",padding:"8px 8px",fontWeight:700}}>{">"}</span>
+      <div style={{background:B.panel2,flexShrink:0,padding:"8px 10px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,background:B.bg,
+          border:`1px solid ${B.border}`,borderRadius:24,padding:"4px 6px 4px 14px"}}>
           <input value={input} onChange={e=>setInput(e.target.value)}
             onKeyDown={e=>{ if(e.key==="Enter") send(); }}
-            placeholder="ENTER COMMAND OR QUERY..."
+            placeholder="Ask about your portfolio, risk, or a scenario..."
             style={{flex:1,background:"transparent",border:"none",
-              padding:"8px 0",color:B.gray1,fontSize:17,
-              fontFamily:"'Courier New',monospace",outline:"none",
-              letterSpacing:"0.04em",textTransform:"uppercase"}}/>
+              padding:"8px 0",color:B.gray1,fontSize:14,
+              fontFamily:"'Courier New',monospace",outline:"none"}}/>
           <button onClick={()=>send()} disabled={loading||!input.trim()} style={{
-            background:loading||!input.trim()?B.panel2:B.blue,
-            border:"none",padding:"8px 12px",color:B.white,
-            fontFamily:"'Courier New',monospace",fontSize:15,fontWeight:700,
-            cursor:loading||!input.trim()?"not-allowed":"pointer",textTransform:"uppercase"}}>GO</button>
+            background:loading||!input.trim()?B.panel:B.blue,
+            border:"none",borderRadius:"50%",width:34,height:34,flexShrink:0,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            cursor:loading||!input.trim()?"not-allowed":"pointer"}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={loading||!input.trim()?B.gray3:B.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
         </div>
-        <div style={{fontSize:16,color:B.gray4,fontFamily:"'Courier New',monospace",
-          padding:"0 8px 4px",letterSpacing:"0.04em"}}>
+        <div style={{fontSize:10,color:B.gray4,fontFamily:"'Courier New',monospace",
+          padding:"6px 4px 0",letterSpacing:"0.03em",textAlign:"center"}}>
           FOR INFORMATIONAL PURPOSES ONLY. NOT FINANCIAL ADVICE.
         </div>
       </div>
@@ -2025,8 +2053,8 @@ Max 180 words. Respond in ENGLISH.`;
     (sortMode !== "newest" ? 1 : 0);
 
   const inputStyle:any = {
-    background:B.bg, border:`1px solid ${B.border}`, color:B.gray1,
-    padding:"4px 8px", fontSize:13, fontFamily:"'Courier New',monospace",
+    background:B.bg, border:`1px solid ${B.border}`, color:B.gray1, borderRadius:8,
+    padding:"5px 10px", fontSize:13, fontFamily:"'Courier New',monospace",
     outline:"none", letterSpacing:"0.04em",
   };
   const selectStyle:any = {...inputStyle, color:B.yellow, cursor:"pointer"};
@@ -2044,44 +2072,44 @@ Max 180 words. Respond in ENGLISH.`;
       </div>
 
       {tab === "market" && (
-        <div style={{display:"flex",gap:3,padding:"4px 6px",overflowX:"auto",borderBottom:`1px solid ${B.border}`,background:B.panel}}>
+        <div style={{display:"flex",gap:6,padding:"8px 10px",overflowX:"auto",borderBottom:`1px solid ${B.border}`,background:B.panel}}>
           {["general","forex","crypto","merger"].map(c => (
             <button key={c} onClick={()=>setMarketCat(c)} style={{
               background: marketCat===c ? B.blue : B.panel2, border:`1px solid ${marketCat===c?B.blue:B.border}`,
-              color: marketCat===c ? B.white : B.gray1, padding:"3px 10px", cursor:"pointer",
-              fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, letterSpacing:"0.06em",
-              whiteSpace:"nowrap", textTransform:"uppercase",
+              color: marketCat===c ? B.white : B.gray1, padding:"5px 14px", cursor:"pointer", borderRadius:20,
+              fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.06em",
+              whiteSpace:"nowrap", textTransform:"uppercase", flexShrink:0,
             }}>{c}</button>
           ))}
         </div>
       )}
 
       {tab === "symbol" && (
-        <div style={{padding:"6px",borderBottom:`1px solid ${B.border}`,background:B.panel2,display:"flex",gap:6}}>
+        <div style={{padding:"8px 10px",borderBottom:`1px solid ${B.border}`,background:B.panel2,display:"flex",gap:8}}>
           <input data-testid="news-symbol-input" value={symInput} onChange={e=>setSymInput(e.target.value.toUpperCase())}
             onKeyDown={e=>{ if(e.key==="Enter") loadSymbol(symInput.trim()); }}
-            placeholder="ENTER TICKER (AAPL, MSFT, NVDA)..."
-            style={{flex:1,background:B.bg,border:`1px solid ${B.blue}`,color:B.yellow,
-              padding:"6px 10px",fontSize:16,fontFamily:"'Courier New',monospace",outline:"none",
-              letterSpacing:"0.04em",textTransform:"uppercase"}}/>
+            placeholder="Enter ticker (AAPL, MSFT, NVDA)..."
+            style={{flex:1,background:B.bg,border:`1px solid ${B.blue}`,color:B.yellow,borderRadius:20,
+              padding:"7px 14px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none",
+              letterSpacing:"0.02em"}}/>
           <button data-testid="news-symbol-fetch-btn" onClick={()=>loadSymbol(symInput.trim())} style={{
-            background:B.blue,border:"none",color:B.white,padding:"6px 16px",cursor:"pointer",
-            fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700,letterSpacing:"0.06em"}}>
-            ▶ FETCH
+            background:B.blue,border:"none",color:B.white,padding:"7px 18px",cursor:"pointer",borderRadius:20,
+            fontFamily:"'Courier New',monospace",fontSize:12,fontWeight:700,letterSpacing:"0.06em"}}>
+            FETCH
           </button>
         </div>
       )}
 
       {/* FILTER BAR (always visible) */}
-      <div style={{padding:"4px 6px",borderBottom:`1px solid ${B.border}`,background:B.panel2,
-        display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+      <div style={{padding:"8px 10px",borderBottom:`1px solid ${B.border}`,background:B.panel2,
+        display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
         <div style={{display:"flex",alignItems:"center",gap:4,flex:"1 1 220px",minWidth:160}}>
           <input
             data-testid="news-keyword-input"
             value={keyword}
             onChange={e=>setKeyword(e.target.value)}
-            placeholder="KEYWORD SEARCH (e.g. earnings, fed, ai)..."
-            style={{...inputStyle,flex:1,color:B.yellow,letterSpacing:"0.02em",borderColor:keyword?B.cyan:B.border}}
+            placeholder="Search headlines (e.g. earnings, fed, ai)..."
+            style={{...inputStyle,flex:1,color:B.yellow,letterSpacing:"0.02em",borderColor:keyword?B.cyan:B.border,borderRadius:20,padding:"6px 14px"}}
           />
           {keyword && (
             <button onClick={()=>setKeyword("")} data-testid="news-keyword-clear" style={{
@@ -2092,17 +2120,17 @@ Max 180 words. Respond in ENGLISH.`;
         </div>
         <button onClick={()=>setShowFilters(!showFilters)} data-testid="news-toggle-filters" style={{
           background: showFilters ? B.blue : B.panel, border:`1px solid ${showFilters?B.blue:B.border}`,
-          color: showFilters ? B.white : B.gray1, padding:"4px 10px", cursor:"pointer",
-          fontFamily:"'Courier New',monospace", fontSize:13, fontWeight:700, letterSpacing:"0.06em",
+          color: showFilters ? B.white : B.gray1, padding:"6px 14px", cursor:"pointer", borderRadius:20,
+          fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.06em",
           whiteSpace:"nowrap",
         }}>
-          {showFilters ? "▼" : "▶"} FILTERS{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          FILTERS{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
         </button>
       </div>
 
       {showFilters && (
-        <div style={{padding:"6px",borderBottom:`1px solid ${B.border}`,background:B.panel,
-          display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+        <div style={{padding:"10px",borderBottom:`1px solid ${B.border}`,background:B.panel,
+          display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
           <label style={{display:"flex",alignItems:"center",gap:4,fontSize:12,
             color:B.gray2,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em"}}>
             DATE
@@ -2155,17 +2183,17 @@ Max 180 words. Respond in ENGLISH.`;
 
           {activeFilterCount > 0 && (
             <button data-testid="news-reset-filters" onClick={resetFilters} style={{
-              background:"transparent", border:`1px solid ${B.red}`, color:B.red,
-              padding:"4px 10px", cursor:"pointer", marginLeft:"auto",
+              background:"transparent", border:`1px solid ${B.red}`, color:B.red, borderRadius:20,
+              padding:"5px 14px", cursor:"pointer", marginLeft:"auto",
               fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.06em",
             }}>
-              ✕ RESET
+              RESET
             </button>
           )}
         </div>
       )}
 
-      <div style={{padding:"4px 6px",borderBottom:`1px solid ${B.border}`,background:B.panel,
+      <div style={{padding:"8px 10px",borderBottom:`1px solid ${B.border}`,background:B.panel,
         display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0,gap:6,flexWrap:"wrap"}}>
         <span style={{fontSize:14,color:B.gray2,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em"}}>
           {tab === "symbol" && symActive ? `${symActive} — ` : ""}
@@ -2178,17 +2206,17 @@ Max 180 words. Respond in ENGLISH.`;
             else if (tab === "holdings") loadHoldings();
             else if (tab === "symbol" && symActive) loadSymbol(symActive);
           }} disabled={loading} style={{
-            background:"transparent", border:`1px solid ${B.gray3}`, color:B.gray1,
-            padding:"3px 10px", cursor:loading?"wait":"pointer",
-            fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, letterSpacing:"0.06em",
+            background:"transparent", border:`1px solid ${B.gray3}`, color:B.gray1, borderRadius:20,
+            padding:"5px 14px", cursor:loading?"wait":"pointer",
+            fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.06em",
             opacity: loading ? 0.5 : 1,
           }}>
-            {loading ? "..." : "↻ REFRESH"}
+            {loading ? "..." : "REFRESH"}
           </button>
           <button data-testid="news-ai-sentiment-btn" onClick={runSentiment} disabled={sentBusy || !list.length} style={{
-            background:"transparent", border:`1px solid ${B.cyan}`, color:B.cyan,
-            padding:"3px 10px", cursor:list.length?"pointer":"not-allowed",
-            fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, letterSpacing:"0.06em",
+            background:"transparent", border:`1px solid ${B.cyan}`, color:B.cyan, borderRadius:20,
+            padding:"5px 14px", cursor:list.length?"pointer":"not-allowed",
+            fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.06em",
             opacity: list.length ? 1 : 0.4,
           }}>
             {sentBusy ? "ANALYZING..." : "AI SENTIMENT"}
@@ -2196,10 +2224,10 @@ Max 180 words. Respond in ENGLISH.`;
         </div>
       </div>
 
-      <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
+      <div style={{flex:1,overflowY:"auto",padding:"10px",paddingBottom:80}}>
         {sentiment && (
-          <div style={{padding:"8px 10px",borderBottom:`1px solid ${B.cyan}`,background:B.panel2}}>
-            <div style={{fontSize:14,color:B.cyan,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:4,letterSpacing:"0.08em"}}>
+          <div style={{padding:"12px 14px",borderRadius:12,border:`1px solid ${B.cyan}`,background:B.panel2,marginBottom:10}}>
+            <div style={{fontSize:13,color:B.cyan,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:6,letterSpacing:"0.08em"}}>
               STRATEGIC MARKETS AI SENTIMENT
             </div>
             {sentiment.split("\n").map((line, i) => {
@@ -2220,8 +2248,8 @@ Max 180 words. Respond in ENGLISH.`;
         {loading && <Spinner text="FETCHING NEWS..."/>}
 
         {!loading && rawList.length > 0 && list.length === 0 && (
-          <div style={{padding:"14px 10px",fontSize:14,color:B.yellow,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
-            ⚠ NO HEADLINES MATCH YOUR FILTERS
+          <div style={{padding:"20px 14px",borderRadius:12,border:`1px solid ${B.border}`,background:B.panel,fontSize:14,color:B.yellow,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
+            NO HEADLINES MATCH YOUR FILTERS
             <div style={{fontSize:12,color:B.gray3,marginTop:6}}>
               Try adjusting keyword, date range or source.
             </div>
@@ -2229,40 +2257,42 @@ Max 180 words. Respond in ENGLISH.`;
         )}
 
         {!loading && rawList.length === 0 && (
-          <div style={{padding:"14px 10px",fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
-            {tab === "symbol" ? "ENTER A TICKER ABOVE TO LOAD COMPANY NEWS" :
-             tab === "holdings" ? "NO HOLDINGS YET — ADD SECURITIES VIA SEARCH" :
-             "NO NEWS AVAILABLE"}
+          <div style={{padding:"20px 14px",borderRadius:12,border:`1px solid ${B.border}`,background:B.panel,fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
+            {tab === "symbol" ? "Enter a ticker above to load company news" :
+             tab === "holdings" ? "No holdings yet — add securities via Search" :
+             "No news available"}
           </div>
         )}
 
-        {list.map((n:any, i:number) => {
-          const dt = new Date((n.datetime || 0) * 1000);
-          const dateStr = dt.toLocaleString("en-US", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false });
-          const kwTokens = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean);
-          return (
-            <a key={(n.id || i) + "_" + i} href={n.url && n.url !== "#" ? n.url : undefined}
-               target="_blank" rel="noreferrer noopener" data-testid="news-headline-item"
-               style={{display:"block",textDecoration:"none",padding:"6px 10px",
-                       borderBottom:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
-                {n._sym && <span style={{fontSize:14,color:B.blue,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{n._sym}</span>}
-                <span style={{fontSize:12,color:B.cyan,fontFamily:"'Courier New',monospace"}}>{dateStr}</span>
-                {n.source && <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>· {n.source}</span>}
-                {n.category && <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",border:`1px solid ${B.gray4}`,padding:"0 4px",textTransform:"uppercase",marginLeft:"auto"}}>{n.category}</span>}
-              </div>
-              <div style={{fontSize:16,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:2,lineHeight:1.3}}>
-                {highlightKeyword(n.headline, kwTokens)}
-              </div>
-              {n.summary && (
-                <div style={{fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace",lineHeight:1.4,
-                             overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
-                  {highlightKeyword(n.summary, kwTokens)}
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {list.map((n:any, i:number) => {
+            const dt = new Date((n.datetime || 0) * 1000);
+            const dateStr = dt.toLocaleString("en-US", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false });
+            const kwTokens = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean);
+            return (
+              <a key={(n.id || i) + "_" + i} href={n.url && n.url !== "#" ? n.url : undefined}
+                 target="_blank" rel="noreferrer noopener" data-testid="news-headline-item"
+                 style={{display:"block",textDecoration:"none",padding:"12px 14px",borderRadius:12,
+                         background:B.panel,border:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+                  {n._sym && <span style={{fontSize:13,color:B.blue,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{n._sym}</span>}
+                  <span style={{fontSize:11,color:B.cyan,fontFamily:"'Courier New',monospace"}}>{dateStr}</span>
+                  {n.source && <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>· {n.source}</span>}
+                  {n.category && <span style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",border:`1px solid ${B.gray4}`,borderRadius:10,padding:"1px 8px",textTransform:"uppercase",marginLeft:"auto"}}>{n.category}</span>}
                 </div>
-              )}
-            </a>
-          );
-        })}
+                <div style={{fontSize:15,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:4,lineHeight:1.35}}>
+                  {highlightKeyword(n.headline, kwTokens)}
+                </div>
+                {n.summary && (
+                  <div style={{fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace",lineHeight:1.45,
+                               overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+                    {highlightKeyword(n.summary, kwTokens)}
+                  </div>
+                )}
+              </a>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
