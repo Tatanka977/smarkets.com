@@ -64,6 +64,12 @@ const CATEGORY_TABS = [
   { id: "FX", label: "FX" },
 ];
 
+const HOLDINGS_CATEGORY_ORDER = ["STOCK","ETF","BOND","COMMODITY","CRYPTO","REIT","FX","CASH"];
+const HOLDINGS_CATEGORY_LABELS: Record<string,string> = {
+  STOCK: "STOCKS", ETF: "ETF", BOND: "BONDS", COMMODITY: "COMMODITIES",
+  CRYPTO: "CRYPTO", REIT: "REIT", FX: "FX", CASH: "CASH", OTHER: "OTHER",
+};
+
 const Spinner = ({text}:any) => (
   <div style={{padding:"12px 8px",textAlign:"center"}}>
     <div style={{fontSize:15,color:B.blue,fontFamily:"'Courier New',monospace",
@@ -1142,6 +1148,22 @@ function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddC
   const fileInputRef = useRef<any>(null);
   const [savedList, setSavedList] = useState<any[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
+  const [collapsedCats, setCollapsedCats] = useState<Record<string,boolean>>({});
+  const toggleCat = (cat:string) => setCollapsedCats(prev => ({...prev, [cat]: !prev[cat]}));
+
+  const handleSave = async () => {
+    if (!user) { window.location.href = "/auth"; return; }
+    const name = prompt("Portfolio name:", "Portfolio " + new Date().toLocaleDateString());
+    if (!name) return;
+    setSaving(true);
+    try {
+      await savePortfolio({ data: { name, holdings } });
+      setSaveMsg("✓ SAVED");
+    } catch (e:any) { setSaveMsg("ERROR: " + e.message); }
+    finally { setSaving(false); setTimeout(() => setSaveMsg(""), 2000); }
+  };
 
   const loadSaved = useCallback(async () => {
     setLoadingSaved(true);
@@ -1224,6 +1246,11 @@ const addCash = () => {
       ))}
       </div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        <button onClick={handleSave} disabled={saving || !holdings.length} style={{
+          background:"transparent", border:`1px solid ${B.blue}`, color:holdings.length?B.blue:B.gray3,
+          padding:"6px 12px", borderRadius:6, cursor:(saving||!holdings.length)?(saving?"wait":"not-allowed"):"pointer",
+          fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700,
+        }}>{saving ? "..." : saveMsg || "SAVE"}</button>
         <button onClick={addCash} style={{
           background:"transparent", border:`1px solid ${B.green}`, color:B.green,
           padding:"6px 12px", borderRadius:6, cursor:"pointer",
@@ -1334,6 +1361,87 @@ const addCash = () => {
   const tD = groupBy(holdings,"type",m.total);
   const top3Pct = sorted.slice(0,3).reduce((s:number,h:any)=>s+h.value,0) / m.total * 100;
 
+  const catMap: Record<string, any[]> = {};
+  for (const h of sorted) {
+    const cat = h.asset.category || "OTHER";
+    (catMap[cat] ||= []).push(h);
+  }
+  const catOrder = [...HOLDINGS_CATEGORY_ORDER, ...Object.keys(catMap).filter(c=>!HOLDINGS_CATEGORY_ORDER.includes(c))];
+  const grouped = catOrder.filter(c=>catMap[c]?.length).map(cat => {
+    const catHoldings = catMap[cat];
+    const total = catHoldings.reduce((s:number,h:any)=>s+h.value,0);
+    return { cat, label: HOLDINGS_CATEGORY_LABELS[cat] || cat, holdings: catHoldings, total };
+  });
+
+  const renderHoldingRow = (h:any) => {
+    const w = m.total>0 ? (h.value/m.total*100) : 0;
+    const cb = h.costBasis ?? (h.costPrice!=null ? h.costPrice*h.qty : null);
+    const pl = cb!=null ? h.value-cb : null;
+    const plPct = (cb!=null && cb>0) ? (pl!/cb*100) : null;
+    return (
+      <tr key={h.isin||h.asset.ticker} style={{borderTop:`1px solid ${B.border}`}}>
+        <td style={{padding:"9px 8px",color:B.blue,fontWeight:700}}>
+          {h.asset.ticker}
+          {h.asset.currency && h.asset.currency!=="USD" && (
+            <span style={{fontSize:10,color:B.gray3,fontWeight:400,marginLeft:4}} title="Values in this row are in the asset's native currency, not converted">{h.asset.currency}</span>
+          )}
+        </td>
+        <td style={{padding:"9px 8px",color:B.gray1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:160}}>{h.asset.shortName||h.asset.ticker}</td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>{h.asset.price!=null?h.asset.price.toFixed(2):"—"}</td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:pCol(h.asset.dayChangePct),fontWeight:700}}>
+          {h.asset.dayChangePct!=null?`${pSign(fmt(h.asset.dayChangePct,2))}%`:"—"}
+        </td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>{w.toFixed(1)}%</td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>${fmtM(h.value)}</td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:pl!=null?pCol(pl):B.gray3}}>
+          {pl!=null?`${pl>=0?"+":"−"}$${fmtM(Math.abs(pl))}`:"—"}
+        </td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:plPct!=null?pCol(plPct):B.gray3}}>
+          {plPct!=null?`${pSign(fmt(plPct,1))}%`:"—"}
+        </td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>
+          <EditableCell
+            value={h.costPrice} type="number"
+            format={(v:any)=>v!=null&&v!==""?parseFloat(v).toFixed(2):"—"}
+            onSave={(v:string)=>{ const n=parseFloat(v); if(!isNaN(n)&&n>=0) onUpdate(h.isin||h.asset.ticker,{costPrice:n}); }}
+          />
+        </td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>
+          <EditableCell
+            value={h.qty} type="number"
+            format={(v:any)=>v!=null?fmt(v, v<1?4:2):"—"}
+            onSave={(v:string)=>{ const n=parseFloat(v); if(!isNaN(n)&&n>0) onUpdate(h.isin||h.asset.ticker,{qty:n}); }}
+          />
+        </td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:B.gray3}}>
+          <EditableCell
+            value={h.buyDate ? h.buyDate.slice(0,10) : ""} type="date"
+            format={(v:any)=>v?new Date(v).toLocaleDateString():"—"}
+            onSave={async (v:string)=>{
+              if (!v) return;
+              const key = h.isin||h.asset.ticker;
+              onUpdate(key,{buyDate:v});
+              try {
+                const res = await fetchHistoricalPrice(h.asset.ticker, v);
+                if (res.price != null) onUpdate(key,{costPrice:res.price});
+              } catch {}
+            }}
+          />
+        </td>
+        <td style={{padding:"9px 8px",textAlign:"center",whiteSpace:"nowrap"}}>
+          <button onClick={()=>setSellTarget(h)} style={{
+            background:"none",border:`1px solid ${B.red}`,color:B.red,borderRadius:6,
+            cursor:"pointer",fontSize:11,padding:"3px 9px",marginRight:4,
+          }}>SELL</button>
+          <button onClick={()=>onRemove(h.isin||h.asset.ticker)} style={{
+            background:"none",border:`1px solid ${B.border}`,color:B.gray3,borderRadius:6,
+            cursor:"pointer",fontSize:11,padding:"3px 9px",
+          }}>✕</button>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div style={{flex:1,overflowY:"auto",padding:14,display:"flex",flexDirection:"column",gap:14,background:B.bg}}>
       {Tabs}
@@ -1433,126 +1541,83 @@ const addCash = () => {
         </div>
       </div>
 
-      {/* Holdings table + Insights */}
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2.2fr 1fr",gap:14}}>
-        <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px",overflowX:"auto"}}>
-          <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
-            HOLDINGS
-          </div>
-          <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"'Courier New',monospace",fontSize:12,minWidth:640}}>
-            <thead>
-              <tr style={{color:B.gray3,fontSize:10}}>
-                <th style={{textAlign:"left",padding:"4px 6px"}}>TICKER</th>
-                <th style={{textAlign:"left",padding:"4px 6px"}}>NAME</th>
-                <th style={{textAlign:"right",padding:"4px 6px"}}>PRICE</th>
-                <th style={{textAlign:"right",padding:"4px 6px"}}>DAY %</th>
-                <th style={{textAlign:"right",padding:"4px 6px"}}>WEIGHT</th>
-                <th style={{textAlign:"right",padding:"4px 6px"}}>VALUE</th>
-                <th style={{textAlign:"right",padding:"4px 6px"}}>P&amp;L</th>
-                <th style={{textAlign:"right",padding:"4px 6px"}}>P&amp;L %</th>
-                <th style={{textAlign:"right",padding:"4px 6px"}}>AVG COST</th>
-                <th style={{textAlign:"right",padding:"4px 6px"}}>QTY</th>
-                <th style={{textAlign:"right",padding:"4px 6px"}}>SINCE</th>
-                <th style={{textAlign:"center",padding:"4px 6px"}}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((h:any)=>{
-                const w = m.total>0 ? (h.value/m.total*100) : 0;
-                const cb = h.costBasis ?? (h.costPrice!=null ? h.costPrice*h.qty : null);
-                const pl = cb!=null ? h.value-cb : null;
-                const plPct = (cb!=null && cb>0) ? (pl!/cb*100) : null;
-                return (
-                  <tr key={h.isin||h.asset.ticker} style={{borderTop:`1px solid ${B.border}`}}>
-                    <td style={{padding:"6px",color:B.blue,fontWeight:700}}>
-                      {h.asset.ticker}
-                      {h.asset.currency && h.asset.currency!=="USD" && (
-                        <span style={{fontSize:9,color:B.gray3,fontWeight:400,marginLeft:4}} title="Values in this row are in the asset's native currency, not converted">{h.asset.currency}</span>
-                      )}
-                    </td>
-                    <td style={{padding:"6px",color:B.gray1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:140}}>{h.asset.shortName||h.asset.ticker}</td>
-                    <td style={{padding:"6px",textAlign:"right",color:B.gray1}}>{h.asset.price!=null?h.asset.price.toFixed(2):"—"}</td>
-                    <td style={{padding:"6px",textAlign:"right",color:pCol(h.asset.dayChangePct),fontWeight:700}}>
-                      {h.asset.dayChangePct!=null?`${pSign(fmt(h.asset.dayChangePct,2))}%`:"—"}
-                    </td>
-                    <td style={{padding:"6px",textAlign:"right",color:B.gray1}}>{w.toFixed(1)}%</td>
-                    <td style={{padding:"6px",textAlign:"right",color:B.gray1}}>${fmtM(h.value)}</td>
-                    <td style={{padding:"6px",textAlign:"right",color:pl!=null?pCol(pl):B.gray3}}>
-                      {pl!=null?`${pl>=0?"+":"−"}$${fmtM(Math.abs(pl))}`:"—"}
-                    </td>
-                    <td style={{padding:"6px",textAlign:"right",color:plPct!=null?pCol(plPct):B.gray3}}>
-                      {plPct!=null?`${pSign(fmt(plPct,1))}%`:"—"}
-                    </td>
-                    <td style={{padding:"6px",textAlign:"right",color:B.gray1}}>
-  <EditableCell
-    value={h.costPrice} type="number"
-    format={(v:any)=>v!=null&&v!==""?parseFloat(v).toFixed(2):"—"}
-    onSave={(v:string)=>{ const n=parseFloat(v); if(!isNaN(n)&&n>=0) onUpdate(h.isin||h.asset.ticker,{costPrice:n}); }}
-  />
-</td>
-<td style={{padding:"6px",textAlign:"right",color:B.gray1}}>
-  <EditableCell
-    value={h.qty} type="number"
-    format={(v:any)=>v!=null?fmt(v, v<1?4:2):"—"}
-    onSave={(v:string)=>{ const n=parseFloat(v); if(!isNaN(n)&&n>0) onUpdate(h.isin||h.asset.ticker,{qty:n}); }}
-  />
-</td>
-<td style={{padding:"6px",textAlign:"right",color:B.gray3}}>
-  <EditableCell
-    value={h.buyDate ? h.buyDate.slice(0,10) : ""} type="date"
-    format={(v:any)=>v?new Date(v).toLocaleDateString():"—"}
-    onSave={async (v:string)=>{
-      if (!v) return;
-      const key = h.isin||h.asset.ticker;
-      onUpdate(key,{buyDate:v});
-      try {
-        const res = await fetchHistoricalPrice(h.asset.ticker, v);
-        if (res.price != null) onUpdate(key,{costPrice:res.price});
-      } catch {}
-    }}
-  />
-</td>
-                    <td style={{padding:"6px",textAlign:"center",whiteSpace:"nowrap"}}>
-                      <button onClick={()=>setSellTarget(h)} style={{
-                        background:"none",border:`1px solid ${B.red}`,color:B.red,borderRadius:6,
-                        cursor:"pointer",fontSize:11,padding:"2px 8px",marginRight:4,
-                      }}>SELL</button>
-                      <button onClick={()=>onRemove(h.isin||h.asset.ticker)} style={{
-                        background:"none",border:`1px solid ${B.border}`,color:B.gray3,borderRadius:6,
-                        cursor:"pointer",fontSize:11,padding:"2px 8px",
-                      }}>✕</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",marginTop:8}}>
-            Showing {holdings.length} of {holdings.length} positions
-          </div>
+      {/* Holdings, grouped by instrument type */}
+      <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 20px",overflowX:"auto"}}>
+        <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:12}}>
+          HOLDINGS
         </div>
+        {grouped.map(g=>{
+          const isCollapsed = !!collapsedCats[g.cat];
+          const catPct = m.total>0 ? (g.total/m.total*100) : 0;
+          return (
+            <div key={g.cat} style={{marginBottom:10,border:`1px solid ${B.border}`,borderRadius:10,overflow:"hidden"}}>
+              <button onClick={()=>toggleCat(g.cat)} style={{
+                width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",
+                background:B.panel2,border:"none",cursor:"pointer",padding:"12px 16px",
+                fontFamily:"'Courier New',monospace",
+              }}>
+                <span style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:13,color:B.gray3}}>{isCollapsed?"▸":"▾"}</span>
+                  <span style={{fontSize:15,fontWeight:700,color:B.blue,letterSpacing:"0.05em"}}>{g.label}</span>
+                  <span style={{fontSize:12,color:B.gray3}}>({g.holdings.length})</span>
+                </span>
+                <span style={{display:"flex",alignItems:"center",gap:16}}>
+                  <span style={{fontSize:13,color:B.gray3}}>{catPct.toFixed(1)}%</span>
+                  <span style={{fontSize:16,fontWeight:700,color:B.gray1}}>${fmtM(g.total)}</span>
+                </span>
+              </button>
+              {!isCollapsed && (
+                <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"'Courier New',monospace",fontSize:13,minWidth:640}}>
+                  <thead>
+                    <tr style={{color:B.gray3,fontSize:11}}>
+                      <th style={{textAlign:"left",padding:"6px 8px"}}>TICKER</th>
+                      <th style={{textAlign:"left",padding:"6px 8px"}}>NAME</th>
+                      <th style={{textAlign:"right",padding:"6px 8px"}}>PRICE</th>
+                      <th style={{textAlign:"right",padding:"6px 8px"}}>DAY %</th>
+                      <th style={{textAlign:"right",padding:"6px 8px"}}>WEIGHT</th>
+                      <th style={{textAlign:"right",padding:"6px 8px"}}>VALUE</th>
+                      <th style={{textAlign:"right",padding:"6px 8px"}}>P&amp;L</th>
+                      <th style={{textAlign:"right",padding:"6px 8px"}}>P&amp;L %</th>
+                      <th style={{textAlign:"right",padding:"6px 8px"}}>AVG COST</th>
+                      <th style={{textAlign:"right",padding:"6px 8px"}}>QTY</th>
+                      <th style={{textAlign:"right",padding:"6px 8px"}}>SINCE</th>
+                      <th style={{textAlign:"center",padding:"6px 8px"}}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.holdings.map(renderHoldingRow)}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          );
+        })}
+        <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginTop:8}}>
+          Showing {holdings.length} of {holdings.length} positions
+        </div>
+      </div>
 
-        <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px"}}>
-          <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
-            PORTFOLIO INSIGHTS
+      {/* Insights */}
+      <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px"}}>
+        <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
+          PORTFOLIO INSIGHTS
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit, minmax(220px, 1fr))",gap:12}}>
+          {sD[0] && (
+            <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
+              <b style={{color:B.blue}}>{sD[0].name}</b> exposure is {sD[0].pct}% of the portfolio.
+            </div>
+          )}
+          {gD[0] && (
+            <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
+              <b style={{color:B.blue}}>{gD[0].name}</b> exposure is {gD[0].pct}%.
+            </div>
+          )}
+          <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
+            Top 3 holdings represent <b style={{color:B.blue}}>{top3Pct.toFixed(1)}%</b> of the portfolio.
           </div>
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            {sD[0] && (
-              <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
-                <b style={{color:B.blue}}>{sD[0].name}</b> exposure is {sD[0].pct}% of the portfolio.
-              </div>
-            )}
-            {gD[0] && (
-              <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
-                <b style={{color:B.blue}}>{gD[0].name}</b> exposure is {gD[0].pct}%.
-              </div>
-            )}
-            <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
-              Top 3 holdings represent <b style={{color:B.blue}}>{top3Pct.toFixed(1)}%</b> of the portfolio.
-            </div>
-            <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
-              Portfolio volatility is <b style={{color:B.blue}}>{fmt(m.wVol,1)}%</b> (annualized estimate).
-            </div>
+          <div style={{fontSize:12,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>
+            Portfolio volatility is <b style={{color:B.blue}}>{fmt(m.wVol,1)}%</b> (annualized estimate).
           </div>
         </div>
       </div>

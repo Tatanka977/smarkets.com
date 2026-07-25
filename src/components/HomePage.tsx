@@ -7,9 +7,7 @@ import { upsertSnapshot, getSnapshots } from "@/lib/profile.functions";
 import { fetchPriceHistory as srvPriceHistory } from "@/lib/finance.functions";
 import { fetchMarketStatus as srvMarketStatus, batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
 import { fetchMarketNews as srvMarketNews } from "@/lib/news.functions";
-import { savePortfolio } from "@/lib/profile.functions";
 import { aiChat } from "@/lib/ai.functions";
-import { useUser } from "@/hooks/useUser";
 import { usePersistentState } from "@/hooks/usePersistentState";
 
 const FONT = "'Courier New', Courier, monospace";
@@ -193,7 +191,7 @@ function StatField({ label, value, sub, color }: any) {
   );
 }
 
-function PortfolioOverview({ holdings, transactions, m, onSave, saving, saveMsg }: any) {
+function PortfolioOverview({ holdings, transactions, m }: any) {
   const hasHoldings = holdings.length > 0;
   const totalCost = holdings.reduce((s: number, h: any) => s + (h.costBasis ?? (h.costPrice || 0) * h.qty), 0);
   const totalPL = holdings.reduce((s: number, h: any) => s + (h.value - (h.costBasis ?? (h.costPrice || 0) * h.qty)), 0);
@@ -210,11 +208,6 @@ function PortfolioOverview({ holdings, transactions, m, onSave, saving, saveMsg 
     <div style={{ ...CARD, padding: "16px 18px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasForeignCcy ? 4 : 16 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>PORTFOLIO OVERVIEW</span>
-        <button onClick={onSave} disabled={saving || !hasHoldings} style={{
-          background: "none", border: `1px solid ${B.border}`, color: B.blue, fontFamily: FONT,
-          fontSize: 12, cursor: saving ? "wait" : "pointer", padding: "4px 10px", borderRadius: 6,
-          opacity: hasHoldings ? 1 : 0.4,
-        }}>{saving ? "..." : saveMsg || "SAVE"}</button>
       </div>
       {hasForeignCcy && (
         <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, marginBottom: 12 }}>
@@ -504,21 +497,6 @@ function DailySummaryCard({ holdings }: any) {
 
 export default function HomePage({ holdings, transactions, setPage, onRefresh, refreshing }: any) {
   const m = useMemo(() => pMet(holdings), [holdings]);
-  const { user } = useUser();
-  const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState("");
-
-  const handleSave = async () => {
-    if (!user) { window.location.href = "/auth"; return; }
-    const name = prompt("Portfolio name:", "Portfolio " + new Date().toLocaleDateString());
-    if (!name) return;
-    setSaving(true);
-    try {
-      await savePortfolio({ data: { name, holdings } });
-      setSaveMsg("✓ SAVED");
-    } catch (e: any) { setSaveMsg("ERROR: " + e.message); }
-    finally { setSaving(false); setTimeout(() => setSaveMsg(""), 2000); }
-  };
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 14, background: B.bg }}>
@@ -536,7 +514,7 @@ export default function HomePage({ holdings, transactions, setPage, onRefresh, r
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 14 }}>
-        <PortfolioOverview holdings={holdings} transactions={transactions} m={m} onSave={handleSave} saving={saving} saveMsg={saveMsg} />
+        <PortfolioOverview holdings={holdings} transactions={transactions} m={m} />
         <PerformancePanel holdings={holdings}/>
       </div>
 
