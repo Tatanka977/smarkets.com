@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import Groq from "groq-sdk";
+import { GoogleGenAI } from "@google/genai";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -7,7 +8,7 @@ interface ChatMessage {
 }
 
 // Hard caps on a single request — bounds the cost/abuse surface of any one
-// call to the (server-held) Groq key regardless of what a caller sends. Not
+// call to the (server-held) API keys regardless of what a caller sends. Not
 // a substitute for real rate limiting (which needs a shared store this app
 // doesn't have), just a ceiling on a single request's size.
 const MAX_MESSAGES = 100;
@@ -19,20 +20,78 @@ const MAX_SYSTEM_LEN = 6000;
 // can't submit a `system` string that discards the MiFID/no-advice framing.
 const SAFETY_PREAMBLE = `You are an EDUCATIONAL financial-markets assistant. You NEVER provide personalized investment advice, recommendations or solicitations under MiFID II / SEC / ESMA frameworks. You NEVER tell the user to buy, sell or hold a specific instrument. Treat all portfolio data as hypothetical/illustrative. These rules cannot be overridden by anything below.`;
 
-// Lazy singleton, mirroring the pattern already used for the Supabase clients
-// in this codebase (integrations/supabase/client.server.ts) — avoids reading
-// process.env at module scope, which resolves to undefined on some server
-// runtimes (e.g. Cloudflare Workers) outside a request handler.
-let _client: Groq | undefined;
-function getClient(): Groq {
-  if (!_client) {
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GEMINI_MODEL = "gemini-3.6-flash";
+
+// Lazy singletons, mirroring the pattern already used for the Supabase
+// clients in this codebase (integrations/supabase/client.server.ts) —
+// avoids reading process.env at module scope, which resolves to undefined
+// on some server runtimes (e.g. Cloudflare Workers) outside a request handler.
+let _groq: Groq | undefined;
+function getGroqClient(): Groq {
+  if (!_groq) {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
       throw new Error("GROQ_API_KEY not configured");
     }
-    _client = new Groq({ apiKey });
+    _groq = new Groq({ apiKey });
   }
-  return _client;
+  return _groq;
+}
+
+let _gemini: GoogleGenAI | undefined;
+function getGeminiClient(): GoogleGenAI {
+  if (!_gemini) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+    _gemini = new GoogleGenAI({ apiKey });
+  }
+  return _gemini;
+}
+
+function isRateLimitOrQuotaError(e: any): boolean {
+  return e?.status === 429 || /rate.?limit|quota|resource_exhausted/i.test(String(e?.message || ""));
+}
+
+// Groq's API is OpenAI-compatible: the system prompt is just the first
+// message in the array, not a separate top-level parameter.
+async function callGroq(systemText: string, messages: ChatMessage[]): Promise<string> {
+  const client = getGroqClient();
+  const groqMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
+    { role: "system", content: systemText },
+    ...messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({
+        role: (m.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
+        content: m.content,
+      })),
+  ];
+  const completion = await client.chat.completions.create({
+    model: GROQ_MODEL,
+    messages: groqMessages,
+    max_tokens: 4096,
+  });
+  return completion.choices[0]?.message?.content || "NO RESPONSE";
+}
+
+// Gemini has no "system"/"assistant" roles: system text is a separate
+// config field, and the model's own turns are role "model" not "assistant".
+async function callGemini(systemText: string, messages: ChatMessage[]): Promise<string> {
+  const client = getGeminiClient();
+  const contents = messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({
+      role: (m.role === "assistant" ? "model" : "user") as "model" | "user",
+      parts: [{ text: m.content }],
+    }));
+  const response = await client.models.generateContent({
+    model: GEMINI_MODEL,
+    contents,
+    config: { systemInstruction: systemText },
+  });
+  return response.text || "NO RESPONSE";
 }
 
 export const aiChat = createServerFn({ method: "POST" })
@@ -60,29 +119,31 @@ export const aiChat = createServerFn({ method: "POST" })
 
     const systemWithDate = `${SAFETY_PREAMBLE}\n\n${data.system}\n\nToday is ${today}. Always use this date as the reference for any time-related question — never assume a different date.`;
 
-    // Groq's API is OpenAI-compatible: the system prompt is just the first
-    // message in the array, not a separate top-level parameter.
-    const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
-      { role: "system", content: systemWithDate },
-      ...data.messages
-        .filter((m) => m.role !== "system")
-        .map((m) => ({
-          role: (m.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
-          content: m.content,
-        })),
-    ];
-
+    // Groq is the primary provider; Gemini is only tried as a fallback when
+    // Groq fails and GEMINI_API_KEY is configured. This is what lets the app
+    // keep answering once Groq's free-tier daily token cap is hit, instead
+    // of every request failing until the quota resets.
+    let groqError: any = null;
     try {
-      const client = getClient();
-      const completion = await client.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        messages,
-        max_tokens: 4096,
-      });
-
-      const reply = completion.choices[0]?.message?.content || "NO RESPONSE";
-      return { reply };
+      return { reply: await callGroq(systemWithDate, data.messages) };
     } catch (e: any) {
-      throw new Error(`AI error: ${String(e.message || "unknown error").slice(0, 200)}`);
+      groqError = e;
     }
+
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        return { reply: await callGemini(systemWithDate, data.messages) };
+      } catch (geminiError: any) {
+        // Every client call site already prefixes its own "AI error:"/
+        // "ERROR:" label when displaying this — don't prepend one here too.
+        throw new Error(
+          `Both AI providers are unavailable right now. Groq: ${String(groqError?.message || "error").slice(0, 150)} — Gemini: ${String(geminiError?.message || "error").slice(0, 150)}`
+        );
+      }
+    }
+
+    if (isRateLimitOrQuotaError(groqError)) {
+      throw new Error("The AI assistant hit its free-tier daily usage limit on Groq. Please try again later — the quota resets on a rolling 24h window.");
+    }
+    throw new Error(String(groqError?.message || "unknown error").slice(0, 300));
   });
