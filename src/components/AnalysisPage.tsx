@@ -4,7 +4,7 @@ import {
   B, fmt, fmtM, pCol, pSign, groupBy, pMet, PIE_COLS,
   BPanel, FKey, computeAlerts, SEV_STYLE, computeCagr,
 } from "@/lib/uiShared";
-import { aiChat } from "@/lib/ai.functions";
+import { aiChatAsUser } from "@/lib/ai.functions";
 import { getInvestorProfile } from "@/lib/profile.functions";
 import { fetchQuote as srvQuote, searchSecurities as srvSearch, fetchPriceHistory as srvPriceHistory } from "@/lib/finance.functions";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -201,7 +201,7 @@ function PerformanceTab({ holdings, m }: any) {
     try {
       const sys = `You are STRATEGIC MARKETS AI, an EDUCATIONAL analytics assistant. Explain performance drivers factually and educationally. No personalized advice. Max 200 words. End with: "DISCLAIMER: For educational and informational purposes only. Not investment advice."`;
       const prompt = `Portfolio performance summary: return ${fmt(stats.portfolioReturn,1)}% vs ${benchmarkLabel} ${fmt(stats.benchmarkReturn,1)}% (alpha ${pSign(fmt(stats.alpha,1))}%). CAGR ${fmt(stats.cagr,1)}%, max drawdown ${fmt(stats.maxDD,1)}%, Sortino ${fmt(stats.sortino,2)}, Calmar ${fmt(stats.calmar,2)}. Top contributors: ${perHoldingReturn.slice(0,3).map((h:any)=>`${h.ticker} ${pSign(fmt(h.contribution,1))}pp`).join(", ")}. Explain what's driving this performance and what it illustrates educationally.`;
-      const { reply } = await aiChat({ data: { messages: [{ role:"user", content: prompt }], system: sys } });
+      const { reply } = await aiChatAsUser({ messages: [{ role:"user", content: prompt }], system: sys });
       setAiText(reply);
     } catch (e:any) { setAiText("AI error: " + e.message); }
     finally { setAiBusy(false); }
@@ -750,7 +750,7 @@ Structure: 1) brief overview 2) 2-3 key hypothetical scenarios with quantitative
 ALWAYS end with: "DISCLAIMER: For educational and informational purposes only. Not investment advice."
 Max 250 words. Respond in ENGLISH.${profileText}`;
       const prompt = `My hypothetical portfolio positions:\n${positionsText}\n\nActive risk alerts:\n${alertsText}\n\nExplain these alerts and outline hypothetical rebalancing scenarios (educational only).`;
-      const { reply } = await aiChat({ data: { messages: [{ role: "user", content: prompt }], system: sys } });
+      const { reply } = await aiChatAsUser({ messages: [{ role: "user", content: prompt }], system: sys });
       setAiExplain(reply);
     } catch (e: any) {
       setAiExplain("AI error: " + e.message);

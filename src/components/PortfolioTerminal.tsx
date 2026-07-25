@@ -21,7 +21,7 @@ import {
   fetchFxRates as srvFx,
   fetchPriceHistory as srvPriceHistory,
 } from "@/lib/finance.functions";
-import { aiChat } from "@/lib/ai.functions";
+import { aiChatAsUser } from "@/lib/ai.functions";
 import {
   fetchMarketNews as srvMarketNews,
   fetchCompanyNews as srvCompanyNews,
@@ -1721,7 +1721,7 @@ function AIAdvisorPage({holdings}:any) {
     apiMsgs[apiMsgs.length-1].content=`[LIVE PORTFOLIO]\n${portCtx()}\n\n[QUERY]\n${msg}`;
     try {
       const sys = await buildSysPrompt();
-      const { reply } = await aiChat({ data: { messages: apiMsgs, system: sys } });
+      const { reply } = await aiChatAsUser({ messages: apiMsgs, system: sys });
       setMsgs(m=>[...m,{role:"assistant",content:reply}]);
     } catch(e:any) {
       setMsgs(m=>[...m,{role:"assistant",content:`ERROR: ${e.message}`}]);
@@ -2004,7 +2004,7 @@ Analyze the news headlines and produce: overall SENTIMENT (BULLISH/BEARISH/NEUTR
 ALWAYS end with: "DISCLAIMER: For educational and informational purposes only. Not investment advice."
 Max 180 words. Respond in ENGLISH.`;
       const prompt = `Analyze the sentiment of these news headlines (${tab === "symbol" ? "for " + symActive : tab === "holdings" ? "from my portfolio" : "market-wide"}):\n\n${headlines}`;
-      const { reply } = await aiChat({ data: { messages: [{role:"user", content: prompt}], system: sys } });
+      const { reply } = await aiChatAsUser({ messages: [{role:"user", content: prompt}], system: sys });
       setSentiment(reply);
     } catch (e:any) {
       setSentiment("AI error: " + e.message);
@@ -2429,8 +2429,15 @@ export default function PortfolioTerminal() {
       const qty = patch.qty!=null ? patch.qty : h.qty;
       const costPrice = patch.costPrice!=null ? patch.costPrice : h.costPrice;
       const buyDate = patch.buyDate!=null ? patch.buyDate : h.buyDate;
+      // A manual qty/cost-price edit invalidates the granular lot history
+      // (lots no longer sum to the new qty/cost) — collapse to a single lot
+      // matching the new totals so a later FIFO sell (sellFromPortfolio)
+      // computes realized P&L off values that actually match what's shown.
+      const lots = (patch.qty!=null || patch.costPrice!=null)
+        ? [{ qty, price: costPrice||0, date: buyDate }]
+        : h.lots;
       return {
-        ...h, qty, costPrice, buyDate,
+        ...h, qty, costPrice, buyDate, lots,
         costBasis: qty * (costPrice||0),
         value: qty * (h.asset.price ?? costPrice ?? 0),
       };

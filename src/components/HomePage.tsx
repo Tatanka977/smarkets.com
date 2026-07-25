@@ -7,7 +7,7 @@ import { upsertSnapshot, getSnapshots } from "@/lib/profile.functions";
 import { fetchPriceHistory as srvPriceHistory } from "@/lib/finance.functions";
 import { fetchMarketStatus as srvMarketStatus, batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
 import { fetchMarketNews as srvMarketNews } from "@/lib/news.functions";
-import { aiChat } from "@/lib/ai.functions";
+import { aiChatAsUser } from "@/lib/ai.functions";
 import { usePersistentState } from "@/hooks/usePersistentState";
 
 const FONT = "'Courier New', Courier, monospace";
@@ -458,7 +458,7 @@ function DailySummaryCard({ holdings }: any) {
     try {
       const sys = `You are STRATEGIC MARKETS AI, an EDUCATIONAL analytics assistant. Write a short (max 120 words) daily portfolio summary: 1-2 notable observations about today's positioning, framed as quantitative/educational, no personalized advice. End with: "DISCLAIMER: For educational and informational purposes only. Not investment advice."`;
       const prompt = `Today's portfolio snapshot:\n${buildPortfolioContext(holdings)}\n\nWrite today's summary.`;
-      const { reply } = await aiChat({ data: { messages: [{ role: "user", content: prompt }], system: sys } });
+      const { reply } = await aiChatAsUser({ messages: [{ role: "user", content: prompt }], system: sys });
       setCache({ date: todayYmd, hash: portfolioHash, summary: reply });
     } catch (e: any) {
       setError("AI error: " + e.message);

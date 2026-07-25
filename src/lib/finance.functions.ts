@@ -175,8 +175,12 @@ async function buildQuote(symbol: string): Promise<Quote> {
 }
 
 // =============================================================
-// MOCK DATA MODE — Finnhub temporarily disabled.
-// Restore the real fh()-based handlers when the API key works.
+// MOCK UNIVERSE + FALLBACK QUOTES.
+// Finnhub (buildQuote/fh above) is used whenever FINNHUB_API_KEY is
+// configured — see hasFinnhub() below. MOCK_UNIVERSE/findMock() only
+// kick in for categories Finnhub's free tier doesn't cover (crypto/FX/
+// bonds/commodities) or when a live lookup fails, as a last-resort
+// fallback so the UI always has a price to show.
 // =============================================================
 
 const MOCK_UNIVERSE: Quote[] = [
@@ -364,16 +368,23 @@ export const fetchQuote = createServerFn({ method: "GET" })
     return m;
   });
 
+// Bounds the work a single request can trigger — without this, an
+// unauthenticated caller could pass an arbitrarily large `symbols` array
+// and tie up the server (and burn Finnhub's paid-tier quota) indefinitely.
+const MAX_BATCH_SYMBOLS = 100;
+
 export const batchRefresh = createServerFn({ method: "POST" })
   .inputValidator((d: { symbols: string[] }) => d)
   .handler(async ({ data }) => {
-    const results: Quote[] = [];
-    for (const s of data.symbols) {
+    const symbols = (data.symbols || []).slice(0, MAX_BATCH_SYMBOLS);
+    // Parallelized (was a sequential for-loop) — with 20+ holdings the old
+    // version could take many seconds since every symbol's lookups ran one
+    // after another instead of concurrently.
+    const results = await Promise.all(symbols.map(async (s): Promise<Quote> => {
       const sym = (s || "").trim().toUpperCase();
       const mock = MOCK_UNIVERSE.find((q) => q.symbol === sym || q.ticker === sym);
       if (mock && mock.category && ["CRYPTO", "FX", "BOND", "COMMODITY"].includes(mock.category)) {
-        results.push(findMock(sym));
-        continue;
+        return findMock(sym);
       }
       if (hasFinnhub()) {
         try {
@@ -384,8 +395,7 @@ export const batchRefresh = createServerFn({ method: "POST" })
               q.sector = q.sector || mock.industry;
               q.type = q.type || mock.type;
             }
-            results.push(q);
-            continue;
+            return q;
           }
         } catch {
           // ignore, fall back
@@ -399,11 +409,10 @@ export const batchRefresh = createServerFn({ method: "POST" })
           yq.sector = yq.sector || mock.industry;
           yq.type = yq.type || mock.type;
         }
-        results.push(yq);
-        continue;
+        return yq;
       }
-      results.push(findMock(sym));
-    }
+      return findMock(sym);
+    }));
     return results;
   });
 

@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
+import { createClient } from "@supabase/supabase-js";
 import Groq from "groq-sdk";
 import { GoogleGenAI } from "@google/genai";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -55,6 +57,25 @@ function isRateLimitOrQuotaError(e: any): boolean {
   return e?.status === 429 || /rate.?limit|quota|resource_exhausted/i.test(String(e?.message || ""));
 }
 
+// aiChat has a real per-call cost (Groq/Gemini tokens) and no other server
+// function in this app requires auth — so unlike those, it must not be
+// reachable anonymously by anyone who finds the endpoint URL. Mirrors the
+// lightweight verification in integrations/supabase/auth-middleware.ts
+// (anon-key client + bearer token + getClaims), done inline here rather
+// than via that middleware since it isn't wired into start.ts.
+async function verifyAccessToken(token: string | undefined): Promise<void> {
+  if (!token) throw new Error("Please sign in to use the AI advisor.");
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) throw new Error("Auth not configured");
+  const client = createClient(url, key, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await client.auth.getClaims(token);
+  if (error || !data?.claims?.sub) throw new Error("Please sign in to use the AI advisor.");
+}
+
 // Groq's API is OpenAI-compatible: the system prompt is just the first
 // message in the array, not a separate top-level parameter.
 async function callGroq(systemText: string, messages: ChatMessage[]): Promise<string> {
@@ -95,8 +116,10 @@ async function callGemini(systemText: string, messages: ChatMessage[]): Promise<
 }
 
 export const aiChat = createServerFn({ method: "POST" })
-  .inputValidator((d: { messages: ChatMessage[]; system: string }) => d)
+  .inputValidator((d: { messages: ChatMessage[]; system: string; accessToken?: string }) => d)
   .handler(async ({ data }) => {
+    await verifyAccessToken(data.accessToken);
+
     if (!Array.isArray(data.messages) || !data.messages.length) {
       throw new Error("At least one message is required");
     }
@@ -147,3 +170,11 @@ export const aiChat = createServerFn({ method: "POST" })
     }
     throw new Error(String(groqError?.message || "unknown error").slice(0, 300));
   });
+
+// Client-side convenience wrapper — attaches the caller's current Supabase
+// access token so aiChat's server-side auth check passes. UI components
+// should call this instead of `aiChat` directly.
+export async function aiChatAsUser(payload: { messages: ChatMessage[]; system: string }) {
+  const { data: { session } } = await supabase.auth.getSession();
+  return aiChat({ data: { ...payload, accessToken: session?.access_token } });
+}

@@ -31,7 +31,12 @@ export async function listPortfolios(): Promise<Portfolio[]> {
 }
 
 export async function deletePortfolio({ data }: { data: { id: string } }): Promise<{ ok: true }> {
-  const { error } = await supabase.from("portfolios").delete().eq("id", data.id);
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  // RLS already scopes this to the caller's own rows — the explicit
+  // user_id filter is defense in depth, not the primary guard.
+  const { error } = await supabase.from("portfolios").delete().eq("id", data.id).eq("user_id", user.id);
   if (error) throw error;
   return { ok: true };
 }
@@ -66,16 +71,23 @@ export async function listWatchlist(): Promise<Watchlist[]> {
 }
 
 export async function deleteWatchlist({ data }: { data: { id: string } }): Promise<{ ok: true }> {
-  const { error } = await supabase.from("watchlist").delete().eq("id", data.id);
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const { error } = await supabase.from("watchlist").delete().eq("id", data.id).eq("user_id", user.id);
   if (error) throw error;
   return { ok: true };
 }
 
 export async function updateWatchlistAlert({ data }: { data: { id: string; target_price: number | null; direction: "above" | "below" | null } }): Promise<{ ok: true }> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
   const { error } = await supabase
     .from("watchlist")
     .update({ target_price: data.target_price, direction: data.direction })
-    .eq("id", data.id);
+    .eq("id", data.id)
+    .eq("user_id", user.id);
   if (error) throw error;
   return { ok: true };
 }
@@ -107,7 +119,10 @@ export async function listConversations(): Promise<Convo[]> {
 }
 
 export async function deleteConversation({ data }: { data: { id: string } }): Promise<{ ok: true }> {
-  const { error } = await supabase.from("ai_conversations").delete().eq("id", data.id);
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const { error } = await supabase.from("ai_conversations").delete().eq("id", data.id).eq("user_id", user.id);
   if (error) throw error;
   return { ok: true };
 }
