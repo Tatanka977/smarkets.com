@@ -737,7 +737,7 @@ Give a deeper educational breakdown: what does this concentration/diversificatio
     setAiBusy(true); setAiExplain("");
     try {
       const alertsText = alerts.map((a, i) => `${i+1}. [${a.sev}] ${a.title} (${a.metric}): ${a.detail}`).join("\n");
-      const positionsText = holdings.map((h: any) => `${h.asset.ticker} — ${((h.value/m.total)*100).toFixed(1)}% weight, sector: ${h.asset.sector || "N/A"}`).join("\n");
+      const positionsText = holdings.map((h: any) => `${h.asset.ticker} — ${((h.value/m.total)*100).toFixed(1)}% weight, sector: ${h.asset.sector || "OTHER"}`).join("\n");
       let profileText = "";
       try {
         const p = await getInvestorProfile();

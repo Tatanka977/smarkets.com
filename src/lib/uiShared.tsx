@@ -36,7 +36,7 @@ export const pCol   = (v) => v>0 ? B.green : v<0 ? B.red : B.gray2;
 export const pSign  = (v) => v==null ? "N/A" : v>0 ? `+${v}` : `${v}`;
 export const groupBy = (arr, key, total) => {
   const m={};
-  arr.forEach(h=>{ const k=h.asset[key]||"N/A"; m[k]=(m[k]||0)+h.value; });
+  arr.forEach(h=>{ const k=h.asset[key]||"OTHER"; m[k]=(m[k]||0)+h.value; });
   return Object.entries(m).map(([name,value])=>({name,value,pct:+(value/total*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
 };
 export const pMet = (hs) => {
@@ -48,8 +48,8 @@ export const pMet = (hs) => {
   const wDiv  = hs.reduce((s,h)=>s+(h.value/total)*(h.asset.dy??0),0);
   const wDay  = hs.reduce((s,h)=>s+(h.value/total)*(h.asset.dayChangePct??0),0);
   const sharpe= wVol>0 ? (wRet-2.5)/wVol : 0;
-  const sectors = new Set(hs.map(h=>h.asset.sector||"N/A")).size;
-  const geos    = new Set(hs.map(h=>h.asset.geo||"N/A")).size;
+  const sectors = new Set(hs.map(h=>h.asset.sector||"OTHER")).size;
+  const geos    = new Set(hs.map(h=>h.asset.geo||"OTHER")).size;
   const hhi     = hs.reduce((s,h)=>s+Math.pow(h.value/total*100,2),0);
   return {total,wRet,wVol,wBeta,wDiv,wDay,sharpe,sectors,geos,hhi};
 };

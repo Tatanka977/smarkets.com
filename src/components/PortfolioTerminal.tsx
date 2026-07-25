@@ -611,10 +611,10 @@ useEffect(()=>{
       // own category defaults to "STOCK" whenever Finnhub/mock data doesn't know
       // better — that mislabels ETFs, which then pollutes sector-concentration math.
       d.category= r.category|| d.category;
-      d.sector  = d.sector  || r.sector  || d.industry || r.industry || "N/A";
-      d.industry= d.industry|| r.industry|| "N/A";
+      d.sector  = d.sector  || r.sector  || d.industry || r.industry || "OTHER";
+      d.industry= d.industry|| r.industry|| "OTHER";
       d.type    = d.type    || r.type    || "EQUITY";
-      d.geo     = d.geo     || r.geo     || "N/A";
+      d.geo     = d.geo     || r.geo     || "OTHER";
       setDetail(d);
       setBuyPx(d.price!=null?String(d.price.toFixed(2)):"");
       setBuyDt(new Date().toISOString().slice(0,10));
