@@ -6,7 +6,7 @@ import { useUser } from "@/hooks/useUser";
 import { listBlogPosts, createBlogPost, deleteBlogPost, type BlogPost } from "@/lib/blog.functions";
 import "../LandingPage.css";
 
-const OWNER_EMAIL = "domenico.valvona.dv@gmail.com";
+const OWNER_EMAIL = "strat.markets@gmail.com";
 
 export const Route = createFileRoute("/blog")({
   head: () => ({
@@ -226,7 +226,7 @@ function BlogIndexPage() {
           <div className="footer-links">
             <a href="/disclaimer">Privacy</a>
             <a href="/disclaimer">Terms</a>
-            <a href="mailto:hello@s-markets.com">Contact</a>
+            <a href="mailto:strat.markets@gmail.com">Contact</a>
           </div>
         </div>
       </footer>

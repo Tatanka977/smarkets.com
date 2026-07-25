@@ -203,7 +203,7 @@ export default function LandingPage() {
           <div className="footer-links">
             <a href="/disclaimer">Privacy</a>
             <a href="/disclaimer">Terms</a>
-            <a href="mailto:hello@s-markets.com">Contact</a>
+            <a href="mailto:strat.markets@gmail.com">Contact</a>
           </div>
         </div>
       </footer>
