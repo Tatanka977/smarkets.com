@@ -7,7 +7,8 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 import appCss from "../styles.css?url";
 
@@ -107,6 +108,7 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        <Analytics />
         <Scripts />
       </body>
     </html>
@@ -115,33 +117,6 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
-  // Handle Emergent Google OAuth callback: URL hash "#session_id=..."
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const hash = window.location.hash;
-    if (!hash?.includes("session_id=")) return;
-    const params = new URLSearchParams(hash.slice(1));
-    const sid = params.get("session_id");
-    if (!sid) return;
-    const api = (import.meta as any).env?.VITE_BACKEND_URL || "";
-    (async () => {
-      try {
-        const r = await fetch(`${api}/api/auth/session`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ session_id: sid }),
-        });
-        if (!r.ok) throw new Error("Session exchange failed");
-      } catch (e) {
-        console.error("[Auth callback]", e);
-      } finally {
-        // Strip the fragment and land on home; reload to trigger useUser refresh.
-        window.location.replace(window.location.pathname);
-      }
-    })();
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
