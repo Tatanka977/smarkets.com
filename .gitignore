@@ -38,3 +38,4 @@ memory/test_credentials.md
 .env
 .env.*
 *.env
+!.env.example
