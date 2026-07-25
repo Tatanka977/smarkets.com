@@ -639,7 +639,7 @@ export default function AnalysisPage({ holdings, setPage }: any) {
   const [aiExplain, setAiExplain] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [whatIfTicker, setWhatIfTicker] = useState("");
-  const [whatIfAmount, setWhatIfAmount] = useState("5000");
+  const [whatIfQty, setWhatIfQty] = useState("10");
   const [whatIfQuote, setWhatIfQuote] = useState<any>(null);
   const [whatIfBusy, setWhatIfBusy] = useState(false);
   const [whatIfError, setWhatIfError] = useState("");
@@ -683,7 +683,7 @@ export default function AnalysisPage({ holdings, setPage }: any) {
   };
 const sendToAI = () => {
     if (!whatIf) return;
-    const prompt = `Analyze this hypothetical scenario in depth: adding a $${whatIfAmount} position in ${whatIfTicker} (sector: ${whatIf.sector}) to my current portfolio.
+    const prompt = `Analyze this hypothetical scenario in depth: adding ${fmt(whatIf.qty,whatIf.qty<1?4:2)} shares of ${whatIfTicker} (≈$${fmt(whatIf.amount,0)} at $${whatIf.price.toFixed(2)}/share, sector: ${whatIf.sector}) to my current portfolio.
 
 Before: ${whatIf.sector} exposure ${fmt(whatIf.beforeSectorPct,1)}%, HHI concentration ${whatIf.oldHHI.toFixed(0)}, ${holdings.length} positions.
 After: ${whatIf.sector} exposure would become ${fmt(whatIf.afterSectorPct,1)}%, HHI would become ${whatIf.newHHI.toFixed(0)}, ${whatIf.newPositionCount} positions.
@@ -692,10 +692,15 @@ Give a deeper educational breakdown: what does this concentration/diversificatio
     setPendingAiPrompt(prompt);
     setPage("ai");
   };
+  // Simulated by share count, not a flat dollar amount — hooks straight into
+  // the live quote's price so the resulting $ exposure (and therefore its
+  // weight/risk impact) reflects what that many shares are actually worth.
   const whatIf = useMemo(() => {
-    if (!whatIfQuote) return null;
-    const amount = parseFloat(whatIfAmount) || 0;
-    if (amount <= 0) return null;
+    if (!whatIfQuote || whatIfQuote.price == null) return null;
+    const qty = parseFloat(whatIfQty) || 0;
+    if (qty <= 0) return null;
+    const price = whatIfQuote.price;
+    const amount = qty * price;
 
     const newTotal = m.total + amount;
     const newSector = whatIfQuote.sector || whatIfQuote.industry || "OTHER";
@@ -711,12 +716,13 @@ Give a deeper educational breakdown: what does this concentration/diversificatio
 
     return {
       sector: newSector,
+      qty, price, amount,
       newWeight: (amount / newTotal) * 100,
       beforeSectorPct, afterSectorPct,
       oldHHI, newHHI,
       newPositionCount: holdings.length + 1,
     };
-  }, [whatIfQuote, whatIfAmount, holdings, m]);
+  }, [whatIfQuote, whatIfQty, holdings, m]);
 
   if (!holdings.length) return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -878,7 +884,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           // post-transaction weights (single-name/sector diluted or boosted by the
           // new position, position count +1). wVol is left unchanged: we don't have
           // reliable volatility data for a freshly-simulated ticker from a single quote.
-          const hypNewTotal = whatIf ? m.total + (parseFloat(whatIfAmount) || 0) : null;
+          const hypNewTotal = whatIf ? m.total + whatIf.amount : null;
           const hypTopHPct = whatIf ? Math.max(topH ? (topH.value / hypNewTotal) * 100 : 0, whatIf.newWeight) : null;
           const hypTopSectorPct = whatIf ? Math.max(whatIf.afterSectorPct, sDRisk[0] ? (sDRisk[0].value / hypNewTotal) * 100 : 0) : null;
           const hypNHoldings = whatIf ? whatIf.newPositionCount : null;
@@ -971,9 +977,9 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                         </div>
                       )}
                     </div>
-                    <input value={whatIfAmount} onChange={e => setWhatIfAmount(e.target.value)}
+                    <input value={whatIfQty} onChange={e => setWhatIfQty(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && runWhatIf()}
-                      type="number" placeholder="AMOUNT" style={{width:90,background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:12,borderRadius:6}} />
+                      type="number" step="any" placeholder="SHARES" style={{width:90,background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:12,borderRadius:6}} />
                     <button onClick={runWhatIf} disabled={whatIfBusy || !whatIfTicker.trim()} style={{
                       background:B.blue,border:"none",color:B.white,padding:"6px 14px",borderRadius:6,
                       cursor:whatIfBusy ? "wait" : "pointer",fontFamily:FONT,fontSize:12,fontWeight:700,
@@ -986,7 +992,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
 
                   {!whatIf ? (
                     <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,lineHeight:1.6}}>
-                      Enter a ticker and a hypothetical amount, then tap Simulate to see the immediate impact on your risk parameters and score — before you actually buy it.
+                      Enter a ticker and a hypothetical number of shares, then tap Simulate to see the immediate impact on your risk parameters and score — before you actually buy it.
                     </div>
                   ) : (
                     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px,1fr))",gap:10}}>
@@ -1002,6 +1008,9 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                       <div>
                         <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>New Position Weight</div>
                         <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{fmt(whatIf.newWeight,2)}%</div>
+                        <div style={{fontSize:11,color:B.gray3,fontFamily:FONT}}>
+                          {fmt(whatIf.qty,whatIf.qty<1?4:2)} sh @ ${whatIf.price.toFixed(2)} = ${fmt(whatIf.amount,0)}
+                        </div>
                       </div>
                       <div>
                         <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{whatIf.sector} Exposure</div>
