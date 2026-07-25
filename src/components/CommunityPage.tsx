@@ -3,11 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { B, FKey, PIE_COLS, pMet, pCol, computeAlerts, groupBy, SEV_STYLE } from "@/lib/uiShared";
 import { useUser } from "@/hooks/useUser";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { getMyUsername, setUsername as srvSetUsername, listPortfolios } from "@/lib/profile.functions";
 import { OWNER_EMAIL } from "@/lib/admin";
 import {
   listChannels, createChannel, deleteCommunityChannel,
-  listCommunityPosts, getCommunityPost, createCommunityPost, deleteCommunityPost,
+  listAllCommunityPosts, listCommunityPosts, getCommunityPost, createCommunityPost, deleteCommunityPost,
   listCommunityComments, createCommunityComment, deleteCommunityComment,
   listMyVotes, setVote, removeVote,
   listMyCommentVotes, setCommentVote, removeCommentVote,
@@ -397,6 +398,117 @@ function UsernamePrompt({ onSet }: { onSet: (username: string) => void }) {
   );
 }
 
+// Shared between the Home feed and a single channel's post list.
+// `showChannel` shows the parent-channel badge — relevant on Home (an
+// aggregated cross-channel feed) but redundant inside a channel you're
+// already looking at.
+function PostCard({ post, myVote, disabled, onVote, onOpen, showChannel }: {
+  post: CommunityPost; myVote: number; disabled: boolean; onVote: (v: 1 | -1) => void; onOpen: () => void; showChannel?: boolean;
+}) {
+  return (
+    <div onClick={onOpen} style={{
+      background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "12px 14px",
+      display: "flex", gap: 12, cursor: "pointer",
+    }}>
+      <VoteControl score={post.score} myVote={myVote} disabled={disabled} onVote={onVote} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 4 }}>{post.title}</div>
+        <div style={{
+          fontSize: 12, color: B.gray2, fontFamily: FONT, marginBottom: 6,
+          overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
+          WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
+        }}>{post.body}</div>
+        <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {showChannel && post.community_channels && (
+            <span style={{ color: B.blue, fontWeight: 700 }}>{post.community_channels.name}</span>
+          )}
+          <span>u/{post.author_name}</span>
+          <span>{fmtDate(post.created_at)}</span>
+          <span>{post.comment_count} comments</span>
+        </div>
+        {post.portfolio_snapshot && <PortfolioBadge snapshot={post.portfolio_snapshot} />}
+      </div>
+    </div>
+  );
+}
+
+// The Reddit-style aggregated feed across every channel: Recent / Popular
+// (all-time top score) / Trending (top score in the last 3 days).
+function HomeFeed({ user, onOpenPost }: { user: any; onOpenPost: (id: string) => void }) {
+  const [sort, setSort] = useState<"recent" | "popular" | "trending">("recent");
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [myVotes, setMyVotes] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const rows = await listAllCommunityPosts({ data: { sort } });
+      setPosts(rows);
+      if (user) {
+        const votes = await listMyVotes({ data: { postIds: rows.map((r) => r.id) } });
+        setMyVotes(votes);
+      } else {
+        setMyVotes({});
+      }
+    } catch (e: any) {
+      setError(e.message || "Error loading feed");
+    } finally {
+      setLoading(false);
+    }
+  }, [sort, user]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const vote = async (postId: string, value: 1 | -1) => {
+    if (!user) return;
+    const current = myVotes[postId] || 0;
+    const delta = current === value ? -value : value - current;
+    setPosts((ps) => ps.map((p) => (p.id === postId ? { ...p, score: p.score + delta } : p)));
+    setMyVotes((v) => ({ ...v, [postId]: current === value ? 0 : value }));
+    try {
+      if (current === value) await removeVote({ data: { postId } });
+      else await setVote({ data: { postId, value } });
+    } catch {
+      load();
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 10, fontFamily: FONT }}>
+        COMMUNITY — HOME
+      </div>
+      <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+        <FKey label="RECENT" active={sort === "recent"} onClick={() => setSort("recent")} />
+        <FKey label="POPULAR" active={sort === "popular"} onClick={() => setSort("popular")} />
+        <FKey label="TRENDING" active={sort === "trending"} onClick={() => setSort("trending")} />
+      </div>
+
+      {error && (
+        <div style={{ padding: "8px 10px", fontSize: 12, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, marginBottom: 10, fontFamily: FONT }}>
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>
+      ) : posts.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
+          {sort === "trending" ? "Nothing trending in the last 3 days." : "No discussions yet — pick a channel and be the first to write one."}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {posts.map((p) => (
+            <PostCard key={p.id} post={p} myVote={myVotes[p.id] || 0} disabled={!user} onVote={(v) => vote(p.id, v)} onOpen={() => onOpenPost(p.id)} showChannel />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChannelList({ user, username, isAdmin, onUsernameSet, onOpen }: {
   user: any; username: string | null | undefined; isAdmin: boolean; onUsernameSet: (u: string) => void; onOpen: (c: CommunityChannel) => void;
 }) {
@@ -644,26 +756,7 @@ function ChannelPosts({ channel, user, username, holdings, onUsernameSet, onOpen
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {posts.map((p) => (
-            <div key={p.id} onClick={() => onOpenPost(p.id)} style={{
-              background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "12px 14px",
-              display: "flex", gap: 12, cursor: "pointer",
-            }}>
-              <VoteControl score={p.score} myVote={myVotes[p.id] || 0} disabled={!user} onVote={(v) => vote(p.id, v)} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 4 }}>{p.title}</div>
-                <div style={{
-                  fontSize: 12, color: B.gray2, fontFamily: FONT, marginBottom: 6,
-                  overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
-                  WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
-                }}>{p.body}</div>
-                <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <span>u/{p.author_name}</span>
-                  <span>{fmtDate(p.created_at)}</span>
-                  <span>{p.comment_count} comments</span>
-                </div>
-                {p.portfolio_snapshot && <PortfolioBadge snapshot={p.portfolio_snapshot} />}
-              </div>
-            </div>
+            <PostCard key={p.id} post={p} myVote={myVotes[p.id] || 0} disabled={!user} onVote={(v) => vote(p.id, v)} onOpen={() => onOpenPost(p.id)} />
           ))}
         </div>
       )}
@@ -803,6 +896,9 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 6 }}>{post.title}</div>
           <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            {post.community_channels && (
+              <span style={{ color: B.blue, fontWeight: 700 }}>{post.community_channels.name}</span>
+            )}
             <span>u/{post.author_name}</span>
             <span>{fmtDate(post.created_at)}</span>
             {user && (user.user_id === post.user_id || isAdmin) && (
@@ -869,17 +965,21 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
   );
 }
 
+type PostOrigin = { mode: "home" } | { mode: "channel"; channel: CommunityChannel };
+
 type View =
+  | { mode: "home" }
   | { mode: "channels" }
   | { mode: "channel"; channel: CommunityChannel }
-  | { mode: "post"; postId: string; channel: CommunityChannel };
+  | { mode: "post"; postId: string; back: PostOrigin };
 
 export default function CommunityPage({ holdings }: { holdings?: any[] }) {
   const { user } = useUser();
   const isAdmin = user?.email === OWNER_EMAIL;
-  const [view, setView] = useState<View>({ mode: "channels" });
+  const [view, setView] = useState<View>({ mode: "home" });
   // undefined = not loaded yet, null = signed in but no username set.
   const [username, setUsernameState] = useState<string | null | undefined>(undefined);
+  const [pendingPost, setPendingPost] = usePersistentState<string>("community_pending_post", "");
 
   useEffect(() => {
     if (!user) { setUsernameState(undefined); return; }
@@ -888,23 +988,45 @@ export default function CommunityPage({ holdings }: { holdings?: any[] }) {
     return () => { alive = false; };
   }, [user]);
 
+  // A notification's "New comment on your post" click sets this (via the
+  // same localStorage-handoff pattern the AI advisor uses for pending
+  // prompts/conversations) and switches the page to "community" — pick it
+  // up here and jump straight to that post's detail view.
+  useEffect(() => {
+    if (!pendingPost) return;
+    setView({ mode: "post", postId: pendingPost, back: { mode: "home" } });
+    setPendingPost("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPost]);
+
+  const showTopNav = view.mode === "home" || view.mode === "channels";
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 80, padding: 12 }}>
+        {showTopNav && (
+          <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+            <FKey label="HOME" active={view.mode === "home"} onClick={() => setView({ mode: "home" })} />
+            <FKey label="CHANNELS" active={view.mode === "channels"} onClick={() => setView({ mode: "channels" })} />
+          </div>
+        )}
+        {view.mode === "home" && (
+          <HomeFeed user={user} onOpenPost={(postId) => setView({ mode: "post", postId, back: { mode: "home" } })} />
+        )}
         {view.mode === "channels" && (
           <ChannelList user={user} username={username} isAdmin={isAdmin} onUsernameSet={setUsernameState} onOpen={(channel) => setView({ mode: "channel", channel })} />
         )}
         {view.mode === "channel" && (
           <ChannelPosts
             channel={view.channel} user={user} username={username} holdings={holdings || []} onUsernameSet={setUsernameState}
-            onOpenPost={(postId) => setView({ mode: "post", postId, channel: view.channel })}
+            onOpenPost={(postId) => setView({ mode: "post", postId, back: { mode: "channel", channel: view.channel } })}
             onBack={() => setView({ mode: "channels" })}
           />
         )}
         {view.mode === "post" && (
           <PostDetail
             postId={view.postId} user={user} username={username} isAdmin={isAdmin} onUsernameSet={setUsernameState}
-            onBack={() => setView({ mode: "channel", channel: view.channel })}
+            onBack={() => setView(view.back)}
           />
         )}
       </div>

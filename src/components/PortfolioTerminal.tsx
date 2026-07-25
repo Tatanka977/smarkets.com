@@ -5,6 +5,7 @@ import { LogoIcon } from "@/components/Logo";
 import AnalysisPage from "./AnalysisPage";
 import HomePage from "./HomePage";
 import CommunityPage from "./CommunityPage";
+import NotificationBell from "./NotificationBell";
 import { getInvestorProfile } from "@/lib/profile.functions";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
@@ -34,6 +35,7 @@ import {
   addToWatchlist as srvAddWatch,
   listWatchlist,
 } from "@/lib/profile.functions";
+import { createNotification } from "@/lib/notifications.functions";
 import { useUser } from "@/hooks/useUser";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useTheme } from "@/hooks/useTheme";
@@ -152,7 +154,7 @@ function PhoneShell({children}:any) {
   );
 }
 
-function TopBar({time}:any) {
+function TopBar({time,setPage}:any) {
   const { user } = useUser();
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
@@ -172,6 +174,7 @@ function TopBar({time}:any) {
         <span style={{fontSize:12,color:B.yellow,fontFamily:"'Courier New',monospace",
           fontWeight:700,letterSpacing:"0.06em"}}>● LIVE</span>
         <span style={{fontSize:12,color:B.white,fontFamily:"'Courier New',monospace",opacity:0.85}}>{time}</span>
+        <NotificationBell setPage={setPage}/>
         <button
           data-testid="theme-toggle-button"
           onClick={toggleTheme}
@@ -2511,23 +2514,25 @@ export default function PortfolioTerminal() {
           return {...h, asset:newAsset, value: h.qty * (live.price ?? h.asset.price)};
         }));
       }
-      // Price alerts — fire a browser Notification once per crossing, this session only.
-      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-        watch.forEach((w:any) => {
-          if (w.target_price == null || !w.direction) return;
-          const live = bySymbol[w.symbol];
-          if (!live || live.price == null) return;
-          const crossed = w.direction === "above" ? live.price >= w.target_price : live.price <= w.target_price;
-          if (crossed && !notifiedRef.current.has(w.id)) {
-            notifiedRef.current.add(w.id);
-            try {
-              new Notification(`${w.symbol} price alert`, {
-                body: `${w.symbol} is now ${live.price.toFixed(2)} (target: ${w.direction} ${w.target_price})`,
-              });
-            } catch {}
+      // Price alerts — write an in-app notification (bell tray) once per
+      // crossing this session (notifiedRef dedup, unchanged), regardless of
+      // browser Notification permission — most users never grant that, so
+      // gating on it meant alerts silently never fired for them at all.
+      // Also fires the OS-level Notification as a bonus when permission is granted.
+      watch.forEach((w:any) => {
+        if (w.target_price == null || !w.direction) return;
+        const live = bySymbol[w.symbol];
+        if (!live || live.price == null) return;
+        const crossed = w.direction === "above" ? live.price >= w.target_price : live.price <= w.target_price;
+        if (crossed && !notifiedRef.current.has(w.id)) {
+          notifiedRef.current.add(w.id);
+          const body = `${w.symbol} is now ${live.price.toFixed(2)} (target: ${w.direction} ${w.target_price})`;
+          createNotification({ data: { type: "price_alert", title: `${w.symbol} price alert`, body, linkType: "symbol", linkId: w.symbol } }).catch(() => {});
+          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            try { new Notification(`${w.symbol} price alert`, { body }); } catch {}
           }
-        });
-      }
+        }
+      });
     } catch(e:any) {
       console.error("Refresh failed:", e.message);
     } finally { setRefreshing(false); }
@@ -2588,7 +2593,7 @@ export default function PortfolioTerminal() {
     <PhoneShell>
       {(time:string) => (
         <>
-          <TopBar time={time}/>
+          <TopBar time={time} setPage={setPage}/>
           <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"row"}}>
             {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length}/>}
             <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",minWidth:0}}>

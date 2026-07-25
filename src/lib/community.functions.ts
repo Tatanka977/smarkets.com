@@ -70,6 +70,11 @@ export interface CommunityPost {
   comment_count: number;
   portfolio_snapshot: PortfolioSnapshot | null;
   created_at: string;
+  // Present only on rows from listAllCommunityPosts (the aggregated Home
+  // feed), which embeds the parent channel via the community_posts ->
+  // community_channels FK so each card can show a channel badge without a
+  // second round trip.
+  community_channels?: { name: string; slug: string } | null;
 }
 
 export interface CommunityComment {
@@ -142,10 +147,32 @@ export async function listCommunityPosts(
   return (rows || []) as CommunityPost[];
 }
 
+// The Reddit-style Home feed: posts across every channel, each annotated
+// with its parent channel's name/slug via the community_posts ->
+// community_channels FK (Supabase embeds it in one round trip). "trending"
+// is deliberately simple — top score within the last 3 days — rather than
+// a decayed hot-score formula, since this app's traffic doesn't need one.
+export async function listAllCommunityPosts(
+  { data }: { data: { sort: "recent" | "popular" | "trending" } }
+): Promise<CommunityPost[]> {
+  let q = supabase.from("community_posts").select("*, community_channels(name, slug)");
+  if (data.sort === "trending") {
+    const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    q = q.gte("created_at", since).order("score", { ascending: false }).order("created_at", { ascending: false });
+  } else if (data.sort === "popular") {
+    q = q.order("score", { ascending: false }).order("created_at", { ascending: false });
+  } else {
+    q = q.order("created_at", { ascending: false });
+  }
+  const { data: rows, error } = await q.limit(50);
+  if (error) throw error;
+  return (rows || []) as CommunityPost[];
+}
+
 export async function getCommunityPost({ data }: { data: { id: string } }): Promise<CommunityPost | null> {
   const { data: row, error } = await supabase
     .from("community_posts")
-    .select("*")
+    .select("*, community_channels(name, slug)")
     .eq("id", data.id)
     .maybeSingle();
   if (error) throw error;
