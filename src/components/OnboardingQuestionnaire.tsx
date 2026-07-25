@@ -4,13 +4,17 @@ import { saveInvestorProfile, skipOnboarding } from "@/lib/profile.functions";
 const B = { bg:"#000", panel:"#0A0A0A", border:"#2A2A2A", blue:"#0066FF", white:"#fff", gray1:"#CCC", gray2:"#888" };
 const FONT = "'Courier New', Courier, monospace";
 
-const STEPS = [
+// Shared with the profile page's "Investor profile" tab, which lets a user
+// review/change these answers later — this is the single source of truth
+// for the field list/options so the two stay in sync.
+export const INVESTOR_PROFILE_FIELDS = [
   { key: "age_range", label: "AGE RANGE", options: ["Under 25","25–34","35–44","45–54","55–64","65+"] },
   { key: "investment_goal", label: "PRIMARY GOAL", options: ["Capital growth","Regular income","Capital preservation","Learning/practice"] },
   { key: "time_horizon", label: "TIME HORIZON", options: ["Under 3 years","3–10 years","Over 10 years"] },
   { key: "risk_tolerance", label: "RISK TOLERANCE", options: ["Conservative","Moderate","Aggressive"] },
   { key: "experience_level", label: "EXPERIENCE", options: ["Beginner","Intermediate","Advanced"] },
 ] as const;
+const STEPS = INVESTOR_PROFILE_FIELDS;
 
 export default function OnboardingQuestionnaire({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
