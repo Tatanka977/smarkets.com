@@ -5,4 +5,4 @@
 // moderation lives in the community-moderation-delete migration's RLS
 // policies, which independently check the same email via auth.jwt().
 // If this ever changes, update both.
-export const OWNER_EMAIL = "strat.markets@gmail.com";
+export const OWNER_EMAIL = "admin@s-markets.com";
