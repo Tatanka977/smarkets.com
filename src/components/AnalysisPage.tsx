@@ -805,85 +805,31 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                 </table>
               </BPanel>
 
-              <BPanel title="WHAT-IF ANALYSIS">
-                <div style={{ padding: "10px 12px" }}>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                    <div style={{ position: "relative", flex: 1 }}>
-                      <input value={whatIfTicker} onChange={e => handleTickerInput(e.target.value)}
-                        onKeyDown={e => e.key === "Enter" && runWhatIf()}
-                        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                        placeholder="SEARCH TICKER..." style={{ width: "100%", background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, padding: "6px 8px", fontFamily: FONT, fontSize: 12, borderRadius: 6 }} />
-                      {showSuggestions && suggestions.length > 0 && (
-                        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20,
-                          background: B.panel, border: `1px solid ${B.border}`, borderRadius: 6, marginTop: 2, maxHeight: 200, overflowY: "auto" }}>
-                          {suggestions.slice(0, 8).map((r: any) => (
-                            <div key={r.symbol} onClick={() => pickSuggestion(r)} style={{
-                              padding: "6px 10px", cursor: "pointer", fontFamily: FONT, fontSize: 12,
-                              borderBottom: `1px solid ${B.border}`,
-                            }}>
-                              <span style={{ color: B.blue, fontWeight: 700 }}>{r.symbol}</span>
-                              <span style={{ color: B.gray3, marginLeft: 6 }}>{r.shortName}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <input value={whatIfAmount} onChange={e => setWhatIfAmount(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && runWhatIf()}
-                      type="number" placeholder="AMOUNT" style={{ width: 90, background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, padding: "6px 8px", fontFamily: FONT, fontSize: 12, borderRadius: 6 }} />
-                    <button onClick={runWhatIf} disabled={whatIfBusy || !whatIfTicker.trim()} style={{
-                      background: B.blue, border: "none", color: B.white, padding: "6px 14px", borderRadius: 6,
-                      cursor: whatIfBusy ? "wait" : "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700,
-                    }}>{whatIfBusy ? "..." : "SIMULATE"}</button>
-                  </div>
-
-                  {whatIfError && (
-                    <div style={{ fontSize: 11, color: B.red, fontFamily: FONT, marginBottom: 8 }}>{whatIfError}</div>
-                  )}
-
-                  {!whatIf ? (
-                    <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, lineHeight: 1.6 }}>
-                      Enter a ticker and a hypothetical amount, then tap Simulate to see how it would change your portfolio's sector exposure and concentration — before you actually buy it.
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px,1fr))", gap: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 9, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>New Position Weight</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{fmt(whatIf.newWeight,2)}%</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 9, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>{whatIf.sector} Exposure</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
-                          {fmt(whatIf.beforeSectorPct,1)}% → {fmt(whatIf.afterSectorPct,1)}%
-                        </div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: whatIf.afterSectorPct>whatIf.beforeSectorPct?B.yellow:B.green, fontFamily: FONT }}>
-                          {pSign(fmt(whatIf.afterSectorPct-whatIf.beforeSectorPct,1))}%
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 9, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>Concentration (HHI)</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
-                          {whatIf.oldHHI.toFixed(0)} → {whatIf.newHHI.toFixed(0)}
-                        </div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: whatIf.newHHI>whatIf.oldHHI?B.yellow:B.green, fontFamily: FONT }}>
-                          {whatIf.newHHI>whatIf.oldHHI?"More concentrated":"More diversified"}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 9, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>Total Positions</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{holdings.length} → {whatIf.newPositionCount}</div>
-                      </div>
-                      <button onClick={sendToAI} style={{
-                        marginTop: 10, width: "100%", background: "transparent", border: `1px solid ${B.cyan}`,
-                        color: B.cyan, padding: "8px", borderRadius: 6, cursor: "pointer",
-                        fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em",
-                        gridColumn: "1 / -1",
-                      }}>
-                        AI ADVANCED ANALYSIS →
-                      </button>
-                    </div>
-                  )}
+              <BPanel title="RISK CONCENTRATION VIEW">
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, flexWrap: "wrap" }}>
+                  <table style={{ flex: 1, minWidth: 200, borderCollapse: "collapse", fontFamily: FONT, fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ color: B.gray3, fontSize: 10 }}>
+                        <th style={{ textAlign: "left", paddingBottom: 6 }}>HOLDING</th>
+                        <th style={{ textAlign: "right", paddingBottom: 6 }}>WEIGHT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topHoldings.map((h: any) => (
+                        <tr key={h.asset.ticker} style={{ borderTop: `1px solid ${B.border}` }}>
+                          <td style={{ padding: "5px 0", color: B.gray1 }}>{h.asset.ticker}</td>
+                          <td style={{ padding: "5px 0", textAlign: "right", color: B.gray1, fontWeight: 700 }}>{((h.value/m.total)*100).toFixed(1)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <ResponsiveContainer width={110} height={110}>
+                    <PieChart>
+                      <Pie data={topHoldings.map((h: any) => ({ name: h.asset.ticker, value: h.value }))} cx="50%" cy="50%" innerRadius={30} outerRadius={48} paddingAngle={1} dataKey="value" strokeWidth={0}>
+                        {topHoldings.map((_: any, i: number) => <Cell key={i} fill={PIE_COLS[i % PIE_COLS.length]} />)}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               </BPanel>
             </div>
@@ -926,6 +872,22 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
             { l:"Geographic Exposure", cur:topGeoPct, target:70, isPct:true, inverse:true },
             { l:"Diversification (Positions)", cur:nHoldings, target:10, isPct:false, more:true },
           ];
+
+          // Hypothetical risk score if the What-If simulation below is applied —
+          // reuses the exact same scoring formula as riskScore above, fed with the
+          // post-transaction weights (single-name/sector diluted or boosted by the
+          // new position, position count +1). wVol is left unchanged: we don't have
+          // reliable volatility data for a freshly-simulated ticker from a single quote.
+          const hypNewTotal = whatIf ? m.total + (parseFloat(whatIfAmount) || 0) : null;
+          const hypTopHPct = whatIf ? Math.max(topH ? (topH.value / hypNewTotal) * 100 : 0, whatIf.newWeight) : null;
+          const hypTopSectorPct = whatIf ? Math.max(whatIf.afterSectorPct, sDRisk[0] ? (sDRisk[0].value / hypNewTotal) * 100 : 0) : null;
+          const hypNHoldings = whatIf ? whatIf.newPositionCount : null;
+          const hypRiskScore = whatIf ? Math.round(Math.min(100,
+            hypTopHPct * 0.9 +
+            Math.max(0, hypTopSectorPct - 20) * 0.6 +
+            Math.max(0, (5 - hypNHoldings)) * 8 +
+            Math.max(0, m.wVol - 15) * 0.8
+          )) : null;
 
           return (
           <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12}}>
@@ -984,32 +946,95 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                 </div>
               </BPanel>
 
-              {/* Risk Concentration View */}
-              <BPanel title="RISK CONCENTRATION VIEW">
-                <div style={{display:"flex",gap:10,alignItems:"flex-start",padding:12,flexWrap:"wrap"}}>
-                  <table style={{flex:1,minWidth:200,borderCollapse:"collapse",fontFamily:FONT,fontSize:12}}>
-                    <thead>
-                      <tr style={{color:B.gray3,fontSize:10}}>
-                        <th style={{textAlign:"left",paddingBottom:6}}>HOLDING</th>
-                        <th style={{textAlign:"right",paddingBottom:6}}>WEIGHT</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {topHoldings.map((h:any)=>(
-                        <tr key={h.asset.ticker} style={{borderTop:`1px solid ${B.border}`}}>
-                          <td style={{padding:"5px 0",color:B.gray1}}>{h.asset.ticker}</td>
-                          <td style={{padding:"5px 0",textAlign:"right",color:B.gray1,fontWeight:700}}>{((h.value/m.total)*100).toFixed(1)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <ResponsiveContainer width={110} height={110}>
-                    <PieChart>
-                      <Pie data={topHoldings.map((h:any)=>({name:h.asset.ticker,value:h.value}))} cx="50%" cy="50%" innerRadius={30} outerRadius={48} paddingAngle={1} dataKey="value" strokeWidth={0}>
-                        {topHoldings.map((_:any,i:number)=><Cell key={i} fill={PIE_COLS[i%PIE_COLS.length]}/>)}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
+              {/* What-If Analysis */}
+              <BPanel title="WHAT-IF ANALYSIS">
+                <div style={{padding:"10px 12px"}}>
+                  <div style={{display:"flex",gap:6,marginBottom:10}}>
+                    <div style={{position:"relative",flex:1}}>
+                      <input value={whatIfTicker} onChange={e => handleTickerInput(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && runWhatIf()}
+                        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                        placeholder="SEARCH TICKER..." style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:12,borderRadius:6}} />
+                      {showSuggestions && suggestions.length > 0 && (
+                        <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:20,
+                          background:B.panel,border:`1px solid ${B.border}`,borderRadius:6,marginTop:2,maxHeight:200,overflowY:"auto"}}>
+                          {suggestions.slice(0, 8).map((r: any) => (
+                            <div key={r.symbol} onClick={() => pickSuggestion(r)} style={{
+                              padding:"6px 10px",cursor:"pointer",fontFamily:FONT,fontSize:12,
+                              borderBottom:`1px solid ${B.border}`,
+                            }}>
+                              <span style={{color:B.blue,fontWeight:700}}>{r.symbol}</span>
+                              <span style={{color:B.gray3,marginLeft:6}}>{r.shortName}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <input value={whatIfAmount} onChange={e => setWhatIfAmount(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && runWhatIf()}
+                      type="number" placeholder="AMOUNT" style={{width:90,background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:12,borderRadius:6}} />
+                    <button onClick={runWhatIf} disabled={whatIfBusy || !whatIfTicker.trim()} style={{
+                      background:B.blue,border:"none",color:B.white,padding:"6px 14px",borderRadius:6,
+                      cursor:whatIfBusy ? "wait" : "pointer",fontFamily:FONT,fontSize:12,fontWeight:700,
+                    }}>{whatIfBusy ? "..." : "SIMULATE"}</button>
+                  </div>
+
+                  {whatIfError && (
+                    <div style={{fontSize:11,color:B.red,fontFamily:FONT,marginBottom:8}}>{whatIfError}</div>
+                  )}
+
+                  {!whatIf ? (
+                    <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,lineHeight:1.6}}>
+                      Enter a ticker and a hypothetical amount, then tap Simulate to see the immediate impact on your risk parameters and score — before you actually buy it.
+                    </div>
+                  ) : (
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px,1fr))",gap:10}}>
+                      <div>
+                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Portfolio Risk Score</div>
+                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
+                          {riskScore} → {hypRiskScore}
+                        </div>
+                        <div style={{fontSize:11,fontWeight:700,color: hypRiskScore>riskScore?B.yellow:hypRiskScore<riskScore?B.green:B.gray3,fontFamily:FONT}}>
+                          {hypRiskScore>riskScore?"Riskier":hypRiskScore<riskScore?"Improves":"No change"}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>New Position Weight</div>
+                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{fmt(whatIf.newWeight,2)}%</div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{whatIf.sector} Exposure</div>
+                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
+                          {fmt(whatIf.beforeSectorPct,1)}% → {fmt(whatIf.afterSectorPct,1)}%
+                        </div>
+                        <div style={{fontSize:11,fontWeight:700,color: whatIf.afterSectorPct>whatIf.beforeSectorPct?B.yellow:B.green,fontFamily:FONT}}>
+                          {pSign(fmt(whatIf.afterSectorPct-whatIf.beforeSectorPct,1))}%
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Concentration (HHI)</div>
+                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
+                          {whatIf.oldHHI.toFixed(0)} → {whatIf.newHHI.toFixed(0)}
+                        </div>
+                        <div style={{fontSize:11,fontWeight:700,color: whatIf.newHHI>whatIf.oldHHI?B.yellow:B.green,fontFamily:FONT}}>
+                          {whatIf.newHHI>whatIf.oldHHI?"More concentrated":"More diversified"}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Total Positions</div>
+                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{holdings.length} → {whatIf.newPositionCount}</div>
+                      </div>
+                      <button onClick={sendToAI} style={{
+                        marginTop:10,width:"100%",background:"transparent",border:`1px solid ${B.cyan}`,
+                        color:B.cyan,padding:"8px",borderRadius:6,cursor:"pointer",
+                        fontFamily:FONT,fontSize:12,fontWeight:700,letterSpacing:"0.06em",
+                        gridColumn:"1 / -1",
+                      }}>
+                        AI ADVANCED ANALYSIS →
+                      </button>
+                    </div>
+                  )}
                 </div>
               </BPanel>
 
