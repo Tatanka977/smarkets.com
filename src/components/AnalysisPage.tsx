@@ -879,21 +879,42 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
             { l:"Diversification (Positions)", cur:nHoldings, target:10, isPct:false, more:true },
           ];
 
-          // Hypothetical risk score if the What-If simulation below is applied —
-          // reuses the exact same scoring formula as riskScore above, fed with the
-          // post-transaction weights (single-name/sector diluted or boosted by the
-          // new position, position count +1). wVol is left unchanged: we don't have
-          // reliable volatility data for a freshly-simulated ticker from a single quote.
-          const hypNewTotal = whatIf ? m.total + whatIf.amount : null;
-          const hypTopHPct = whatIf ? Math.max(topH ? (topH.value / hypNewTotal) * 100 : 0, whatIf.newWeight) : null;
-          const hypTopSectorPct = whatIf ? Math.max(whatIf.afterSectorPct, sDRisk[0] ? (sDRisk[0].value / hypNewTotal) * 100 : 0) : null;
-          const hypNHoldings = whatIf ? whatIf.newPositionCount : null;
-          const hypRiskScore = whatIf ? Math.round(Math.min(100,
-            hypTopHPct * 0.9 +
-            Math.max(0, hypTopSectorPct - 20) * 0.6 +
-            Math.max(0, (5 - hypNHoldings)) * 8 +
-            Math.max(0, m.wVol - 15) * 0.8
+          // Full hypothetical portfolio if the What-If simulation below is
+          // applied — rebuilt with the exact same holdings + math used for
+          // the "before" figures above (pMet/groupBy), not approximations,
+          // so every risk metric shown here (not just the score) has a
+          // precise "after" counterpart.
+          const hypHoldings = whatIf ? [...holdings, { asset: whatIfQuote, value: whatIf.amount }] : null;
+          const hypM = hypHoldings ? pMet(hypHoldings) : null;
+          const hypSectorRiskHoldings = hypHoldings ? hypHoldings.filter((h:any) => !h.asset.category || ["STOCK","REIT"].includes(h.asset.category)) : null;
+          const hypSDRisk = hypSectorRiskHoldings && hypM ? groupBy(hypSectorRiskHoldings, "sector", hypM.total) : null;
+          const hypGD = hypHoldings && hypM ? groupBy(hypHoldings, "geo", hypM.total) : null;
+          const hypTopH = hypHoldings ? [...hypHoldings].sort((a:any,b:any) => b.value - a.value)[0] : null;
+          const hypTopHPct = hypM && hypTopH ? (hypTopH.value / hypM.total) * 100 : null;
+          const hypTopSectorPct = hypSDRisk?.[0]?.pct ?? null;
+          const hypTopGeoPct = hypGD?.[0]?.pct ?? null;
+          const hypNHoldings = hypHoldings ? hypHoldings.length : null;
+          const hypMaxDD = hypM ? hypM.wVol * 2.5 : null;
+          const hypRiskScore = (whatIf && hypM) ? Math.round(Math.min(100,
+            (hypTopHPct ?? 0) * 0.9 +
+            Math.max(0, (hypTopSectorPct ?? 0) - 20) * 0.6 +
+            Math.max(0, (5 - (hypNHoldings ?? 0))) * 8 +
+            Math.max(0, hypM.wVol - 15) * 0.8
           )) : null;
+
+          // One row per risk metric shown in RISK SUMMARY/RISK DRIVERS above,
+          // paired with its hypothetical "after" value — this is what actually
+          // answers "show me every risk and how it changes" in the What-If panel.
+          const riskDeltaRows = whatIf ? [
+            { l: "Single Name Risk", before: topHPct, after: hypTopHPct, dp: 1, suffix: "%", worse: "higher" },
+            { l: `Sector Risk (${hypSDRisk?.[0]?.name || sDRisk[0]?.name || "—"})`, before: topSectorPct, after: hypTopSectorPct, dp: 0, suffix: "%", worse: "higher" },
+            { l: "Geographic Risk", before: topGeoPct, after: hypTopGeoPct, dp: 0, suffix: "%", worse: "higher" },
+            { l: "Diversification (Positions)", before: nHoldings, after: hypNHoldings, dp: 0, suffix: "", worse: "lower" },
+            { l: "Volatility (Ann.)", before: m.wVol, after: hypM?.wVol, dp: 1, suffix: "%", worse: "higher" },
+            { l: "Max Drawdown (est.)", before: maxDD, after: hypMaxDD, dp: 1, suffix: "%", worse: "higher", negate: true },
+            { l: "Sharpe Ratio", before: m.sharpe, after: hypM?.sharpe, dp: 2, suffix: "", worse: "lower" },
+            { l: "Beta (vs S&P 500)", before: m.wBeta, after: hypM?.wBeta, dp: 2, suffix: "", worse: "higher" },
+          ] : [];
 
           return (
           <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12}}>
@@ -1034,6 +1055,23 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                         <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Total Positions</div>
                         <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{holdings.length} → {whatIf.newPositionCount}</div>
                       </div>
+                      {riskDeltaRows.map((r,i)=>{
+                        const changed = r.after!=null && Math.abs(r.after - r.before) > 0.005;
+                        const isWorse = changed && (r.worse === "higher" ? r.after > r.before : r.after < r.before);
+                        const color = !changed ? B.gray3 : isWorse ? B.yellow : B.green;
+                        const sign = r.negate ? "-" : "";
+                        return (
+                          <div key={i}>
+                            <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{r.l}</div>
+                            <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
+                              {sign}{fmt(r.before,r.dp)}{r.suffix} → {r.after!=null ? `${sign}${fmt(r.after,r.dp)}${r.suffix}` : "—"}
+                            </div>
+                            <div style={{fontSize:11,fontWeight:700,color,fontFamily:FONT}}>
+                              {!changed ? "No change" : isWorse ? "Higher risk" : "Lower risk"}
+                            </div>
+                          </div>
+                        );
+                      })}
                       <button onClick={sendToAI} style={{
                         marginTop:10,width:"100%",background:"transparent",border:`1px solid ${B.cyan}`,
                         color:B.cyan,padding:"8px",borderRadius:6,cursor:"pointer",
