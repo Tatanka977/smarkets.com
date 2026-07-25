@@ -1,17 +1,36 @@
+import { useState, useEffect } from "react";
 import "./LandingPage.css";
 import { LogoWithText } from "@/components/Logo";
 import { useTheme } from "@/hooks/useTheme";
+import { batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
 
-const MOCK_HOLDINGS = [
-  { ticker: "AAPL", name: "Apple Inc.", price: "195.42", delta: "+1.20%", up: true },
-  { ticker: "MSFT", name: "Microsoft Corp.", price: "421.55", delta: "+0.80%", up: true },
-  { ticker: "BTC-USD", name: "Bitcoin", price: "98,450", delta: "+2.34%", up: true },
-  { ticker: "TLT", name: "20Y Treasury ETF", price: "92.15", delta: "-0.42%", up: false },
+// All STOCK/ETF category tickers, which always resolve to a real Finnhub-
+// or-Yahoo quote (never the fake ticker-derived mock price) — see
+// fetchQuote/batchRefresh in finance.functions.ts. Display names are kept
+// short/local rather than using the API's shortName (often the full legal
+// name), only the price/change shown are the live-fetched numbers.
+const LANDING_TICKERS = [
+  { ticker: "AAPL", name: "Apple Inc." },
+  { ticker: "MSFT", name: "Microsoft Corp." },
+  { ticker: "NVDA", name: "NVIDIA Corp." },
+  { ticker: "SPY", name: "S&P 500 ETF" },
 ];
 
 export default function LandingPage() {
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
+  const [quotes, setQuotes] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    let alive = true;
+    srvBatchRefresh({ data: { symbols: LANDING_TICKERS.map((t) => t.ticker) } })
+      .then((list: any) => {
+        if (!alive) return;
+        setQuotes(Object.fromEntries((list || []).map((q: any) => [q.symbol, q])));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   return (
     <div className="landing">
@@ -122,16 +141,24 @@ export default function LandingPage() {
                 <span className="mock-live-dot" /> LIVE
               </span>
             </div>
-            {MOCK_HOLDINGS.map((h) => (
-              <div className="mock-row" key={h.ticker}>
-                <div>
-                  <span className="mock-ticker">{h.ticker}</span>
-                  <span className="mock-name">{h.name}</span>
+            {LANDING_TICKERS.map((t) => {
+              const q = quotes[t.ticker];
+              const price = q?.price;
+              const chg = q?.dayChangePct;
+              const up = chg == null || chg >= 0;
+              return (
+                <div className="mock-row" key={t.ticker}>
+                  <div>
+                    <span className="mock-ticker">{t.ticker}</span>
+                    <span className="mock-name">{t.name}</span>
+                  </div>
+                  <span className="mock-price">{price != null ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "···"}</span>
+                  <span className={`mock-delta ${up ? "mock-up" : "mock-down"}`}>
+                    {chg != null ? `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%` : "···"}
+                  </span>
                 </div>
-                <span className="mock-price">{h.price}</span>
-                <span className={`mock-delta ${h.up ? "mock-up" : "mock-down"}`}>{h.delta}</span>
-              </div>
-            ))}
+              );
+            })}
             <div className="mock-footer">
               <span>Educational simulation</span>
               <span>Not investment advice</span>
