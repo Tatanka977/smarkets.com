@@ -64,6 +64,7 @@ function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
+  const [nameError, setNameError] = useState("");
 
   const [username, setUsernameField] = useState("");
   const [savedUsername, setSavedUsername] = useState<string | null | undefined>(undefined);
@@ -73,16 +74,25 @@ function ProfilePage() {
   const [investor, setInvestor] = useState<Record<string, string>>({});
   const [savingInvestor, setSavingInvestor] = useState(false);
   const [investorSaved, setInvestorSaved] = useState(false);
+  const [investorError, setInvestorError] = useState("");
 
   const loadAll = async () => {
+    // Fetched separately from the rest: if investor_profiles is missing or
+    // errors out, it must not blank out portfolios/watchlist/AI chats/
+    // username too — a single Promise.all here previously failed all of
+    // them together on any one rejection.
     try {
-      const [p, w, c, u, inv] = await Promise.all([
-        fPorts(), fWatch(), fConv(), getMyUsername(), getInvestorProfile(),
-      ]);
+      const [p, w, c, u] = await Promise.all([fPorts(), fWatch(), fConv(), getMyUsername()]);
       setPorts(p || []); setWatch(w || []); setConvs(c || []);
       setSavedUsername(u); setUsernameField(u || "");
-      setInvestor((inv as any) || {});
     } catch (e) { console.warn(e); }
+    try {
+      const inv = await getInvestorProfile();
+      setInvestor((inv as any) || {});
+    } catch (e: any) {
+      console.warn(e);
+      setInvestorError(e.message || "Could not load your investor profile.");
+    }
   };
 
   // AIAdvisorPage (on a different route entirely, /terminal) picks this up
@@ -105,12 +115,12 @@ function ProfilePage() {
 
   const saveDisplayName = async () => {
     if (!displayName.trim() || savingName) return;
-    setSavingName(true); setNameSaved(false);
+    setSavingName(true); setNameSaved(false); setNameError("");
     try {
       await updateProfile({ data: { display_name: displayName.trim() } });
       setNameSaved(true);
     } catch (e: any) {
-      console.warn(e);
+      setNameError(e.message || "Error saving display name");
     } finally {
       setSavingName(false);
     }
@@ -131,12 +141,12 @@ function ProfilePage() {
 
   const saveInvestor = async () => {
     if (savingInvestor) return;
-    setSavingInvestor(true); setInvestorSaved(false);
+    setSavingInvestor(true); setInvestorSaved(false); setInvestorError("");
     try {
       await saveInvestorProfile({ data: investor as any });
       setInvestorSaved(true);
     } catch (e: any) {
-      console.warn(e);
+      setInvestorError(e.message || "Error saving investor profile");
     } finally {
       setSavingInvestor(false);
     }
@@ -239,6 +249,7 @@ function ProfilePage() {
                     {savingName ? "SAVING..." : "SAVE"}
                   </button>
                 </div>
+                {nameError && <div style={{ fontSize: 11, color: B.red }}>{nameError}</div>}
                 {nameSaved && <div style={{ fontSize: 11, color: B.green }}>Saved.</div>}
               </div>
 
@@ -281,6 +292,11 @@ function ProfilePage() {
               <div style={{ fontSize: 12, color: B.gray3, lineHeight: 1.5 }}>
                 Self-reported context the AI advisor uses to tailor scenario relevance — never as a basis for personalized advice. Change any answer at any time.
               </div>
+              {investorError && (
+                <div style={{ padding: "8px 10px", fontSize: 12, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, fontFamily: FONT }}>
+                  {investorError}
+                </div>
+              )}
               <div style={{ ...cardStyle, gap: 12 }}>
                 {INVESTOR_PROFILE_FIELDS.map((f) => (
                   <div key={f.key}>

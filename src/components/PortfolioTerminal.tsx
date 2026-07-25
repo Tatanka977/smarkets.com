@@ -1681,7 +1681,7 @@ async function buildSysPrompt(): Promise<string> {
   try {
     const p = await getInvestorProfile();
     if (p && (p.age_range || p.investment_goal)) {
-      profileText = `\nInvestor context (self-reported, use to tailor scenario relevance, never as a reason to give personalized advice): age ${p.age_range||"N/A"}, goal ${p.investment_goal||"N/A"}, horizon ${p.time_horizon||"N/A"}, risk tolerance ${p.risk_tolerance||"N/A"}, experience ${p.experience_level||"N/A"}.`;
+      profileText = `\nInvestor context (self-reported): age ${p.age_range||"N/A"}, goal ${p.investment_goal||"N/A"}, horizon ${p.time_horizon||"N/A"}, risk tolerance ${p.risk_tolerance||"N/A"}, experience ${p.experience_level||"N/A"}. When explaining risk or proposing hypothetical alternatives/scenarios, ACTIVELY shape which examples you illustrate around this context (e.g. a conservative or short-horizon profile should see risk-reduction-leaning educational examples; an aggressive or long-horizon profile should see growth-tilted ones; a beginner should get simpler explanations than an advanced one) — this changes WHICH educational scenarios are most relevant to show, never a reason to give a personalized recommendation.`;
     }
   } catch {}
   return `You are STRATEGIC MARKETS AI, an EDUCATIONAL financial-markets terminal assistant.

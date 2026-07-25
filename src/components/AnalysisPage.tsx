@@ -742,7 +742,7 @@ Give a deeper educational breakdown: what does this concentration/diversificatio
       try {
         const p = await getInvestorProfile();
         if (p && (p.age_range || p.investment_goal)) {
-          profileText = `\nInvestor context (self-reported, for tailoring scenario relevance only): age ${p.age_range||"N/A"}, goal ${p.investment_goal||"N/A"}, horizon ${p.time_horizon||"N/A"}, risk tolerance ${p.risk_tolerance||"N/A"}, experience ${p.experience_level||"N/A"}.`;
+          profileText = `\nInvestor context (self-reported): age ${p.age_range||"N/A"}, goal ${p.investment_goal||"N/A"}, horizon ${p.time_horizon||"N/A"}, risk tolerance ${p.risk_tolerance||"N/A"}, experience ${p.experience_level||"N/A"}. ACTIVELY shape the hypothetical rebalancing scenarios around this context (e.g. a conservative or short-horizon profile should see risk-reduction-leaning examples; an aggressive or long-horizon profile should see growth-tilted ones) — this changes WHICH educational scenarios you illustrate, never a reason to give a personalized recommendation.`;
         }
       } catch {}
       const sys = `You are STRATEGIC MARKETS AI, an EDUCATIONAL analytics assistant. NO personalized investment advice under MiFID II. Frame everything as HYPOTHETICAL SCENARIOS and QUANTITATIVE OBSERVATIONS.
