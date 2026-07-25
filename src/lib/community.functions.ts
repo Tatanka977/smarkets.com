@@ -91,6 +91,12 @@ export async function createChannel(
   return row as CommunityChannel;
 }
 
+export async function deleteCommunityChannel({ data }: { data: { id: string } }): Promise<{ ok: true }> {
+  const { error } = await supabase.from("community_channels").delete().eq("id", data.id);
+  if (error) throw error;
+  return { ok: true };
+}
+
 export async function listCommunityPosts(
   { data }: { data: { sort: "recent" | "top"; channelId: string } }
 ): Promise<CommunityPost[]> {

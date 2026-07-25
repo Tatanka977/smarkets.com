@@ -4,8 +4,9 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { B, FKey, PIE_COLS } from "@/lib/uiShared";
 import { useUser } from "@/hooks/useUser";
 import { getMyUsername, setUsername as srvSetUsername, listPortfolios } from "@/lib/profile.functions";
+import { OWNER_EMAIL } from "@/lib/admin";
 import {
-  listChannels, createChannel,
+  listChannels, createChannel, deleteCommunityChannel,
   listCommunityPosts, getCommunityPost, createCommunityPost, deleteCommunityPost,
   listCommunityComments, createCommunityComment, deleteCommunityComment,
   listMyVotes, setVote, removeVote,
@@ -297,8 +298,8 @@ function UsernamePrompt({ onSet }: { onSet: (username: string) => void }) {
   );
 }
 
-function ChannelList({ user, username, onUsernameSet, onOpen }: {
-  user: any; username: string | null | undefined; onUsernameSet: (u: string) => void; onOpen: (c: CommunityChannel) => void;
+function ChannelList({ user, username, isAdmin, onUsernameSet, onOpen }: {
+  user: any; username: string | null | undefined; isAdmin: boolean; onUsernameSet: (u: string) => void; onOpen: (c: CommunityChannel) => void;
 }) {
   const [channels, setChannels] = useState<CommunityChannel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -333,6 +334,17 @@ function ChannelList({ user, username, onUsernameSet, onOpen }: {
       setError(e.message || "Error creating channel");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const removeChannel = async (e: any, c: CommunityChannel) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete channel "${c.name}" and all its discussions?`)) return;
+    try {
+      await deleteCommunityChannel({ data: { id: c.id } });
+      load();
+    } catch (err: any) {
+      setError(err.message || "Error deleting channel");
     }
   };
 
@@ -389,9 +401,17 @@ function ChannelList({ user, username, onUsernameSet, onOpen }: {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
           {channels.map((c) => (
             <div key={c.id} onClick={() => onOpen(c)} style={{
-              background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer",
+              background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", position: "relative",
             }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: B.blue, fontFamily: FONT, marginBottom: 4 }}>{c.name}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: B.blue, fontFamily: FONT, marginBottom: 4 }}>{c.name}</div>
+                {user && (user.user_id === c.created_by || isAdmin) && (
+                  <button onClick={(e) => removeChannel(e, c)} style={{
+                    background: "none", border: "none", color: B.red, cursor: "pointer",
+                    fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: 0, flexShrink: 0,
+                  }}>DELETE</button>
+                )}
+              </div>
               {c.description && (
                 <div style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, marginBottom: 6 }}>{c.description}</div>
               )}
@@ -552,8 +572,8 @@ function ChannelPosts({ channel, user, username, holdings, onUsernameSet, onOpen
   );
 }
 
-function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
-  postId: string; user: any; username: string | null | undefined; onUsernameSet: (u: string) => void; onBack: () => void;
+function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: {
+  postId: string; user: any; username: string | null | undefined; isAdmin: boolean; onUsernameSet: (u: string) => void; onBack: () => void;
 }) {
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [comments, setComments] = useState<CommunityComment[]>([]);
@@ -618,7 +638,7 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
   };
 
   const removePost = async () => {
-    if (!post || !user || user.user_id !== post.user_id) return;
+    if (!post || !user || (user.user_id !== post.user_id && !isAdmin)) return;
     if (!window.confirm("Delete this discussion?")) return;
     try {
       await deleteCommunityPost({ data: { id: post.id } });
@@ -666,7 +686,7 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
           <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <span>u/{post.author_name}</span>
             <span>{fmtDate(post.created_at)}</span>
-            {user && user.user_id === post.user_id && (
+            {user && (user.user_id === post.user_id || isAdmin) && (
               <button onClick={removePost} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0 }}>
                 DELETE
               </button>
@@ -711,7 +731,7 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
                 <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 4, display: "flex", gap: 8, alignItems: "center" }}>
                   <span style={{ color: B.gray2, fontWeight: 700 }}>u/{c.author_name}</span>
                   <span>{fmtDate(c.created_at)}</span>
-                  {user && user.user_id === c.user_id && (
+                  {user && (user.user_id === c.user_id || isAdmin) && (
                     <button onClick={() => removeComment(c.id)} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0, marginLeft: "auto" }}>
                       DELETE
                     </button>
@@ -734,6 +754,7 @@ type View =
 
 export default function CommunityPage({ holdings }: { holdings?: any[] }) {
   const { user } = useUser();
+  const isAdmin = user?.email === OWNER_EMAIL;
   const [view, setView] = useState<View>({ mode: "channels" });
   // undefined = not loaded yet, null = signed in but no username set.
   const [username, setUsernameState] = useState<string | null | undefined>(undefined);
@@ -749,7 +770,7 @@ export default function CommunityPage({ holdings }: { holdings?: any[] }) {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 80, padding: 12 }}>
         {view.mode === "channels" && (
-          <ChannelList user={user} username={username} onUsernameSet={setUsernameState} onOpen={(channel) => setView({ mode: "channel", channel })} />
+          <ChannelList user={user} username={username} isAdmin={isAdmin} onUsernameSet={setUsernameState} onOpen={(channel) => setView({ mode: "channel", channel })} />
         )}
         {view.mode === "channel" && (
           <ChannelPosts
@@ -760,7 +781,7 @@ export default function CommunityPage({ holdings }: { holdings?: any[] }) {
         )}
         {view.mode === "post" && (
           <PostDetail
-            postId={view.postId} user={user} username={username} onUsernameSet={setUsernameState}
+            postId={view.postId} user={user} username={username} isAdmin={isAdmin} onUsernameSet={setUsernameState}
             onBack={() => setView({ mode: "channel", channel: view.channel })}
           />
         )}

@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import { useUser } from "@/hooks/useUser";
 import { listBlogPosts, createBlogPost, deleteBlogPost, type BlogPost } from "@/lib/blog.functions";
+import { OWNER_EMAIL } from "@/lib/admin";
 import "../LandingPage.css";
-
-const OWNER_EMAIL = "strat.markets@gmail.com";
 
 export const Route = createFileRoute("/blog")({
   head: () => ({
