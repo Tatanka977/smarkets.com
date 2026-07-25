@@ -10,6 +10,23 @@ export interface CommunityChannel {
   created_at: string;
 }
 
+export interface PortfolioSnapshotHolding {
+  ticker: string;
+  name: string;
+  category: string;
+  sector: string | null;
+  value: number;
+  weightPct: number;
+  dayChangePct: number | null;
+}
+
+export interface PortfolioSnapshot {
+  totalValue: number;
+  baseCurrency: string;
+  sourceName: string;
+  holdings: PortfolioSnapshotHolding[];
+}
+
 export interface CommunityPost {
   id: string;
   user_id: string;
@@ -19,6 +36,7 @@ export interface CommunityPost {
   body: string;
   score: number;
   comment_count: number;
+  portfolio_snapshot: PortfolioSnapshot | null;
   created_at: string;
 }
 
@@ -96,7 +114,7 @@ export async function getCommunityPost({ data }: { data: { id: string } }): Prom
 }
 
 export async function createCommunityPost(
-  { data }: { data: { title: string; body: string; channelId: string } }
+  { data }: { data: { title: string; body: string; channelId: string; portfolioSnapshot?: PortfolioSnapshot | null } }
 ): Promise<CommunityPost> {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData?.user;
@@ -110,7 +128,7 @@ export async function createCommunityPost(
   // impersonate another name.
   const { data: row, error } = await supabase
     .from("community_posts")
-    .insert({ user_id: user.id, title, body, channel_id: data.channelId })
+    .insert({ user_id: user.id, title, body, channel_id: data.channelId, portfolio_snapshot: data.portfolioSnapshot ?? null })
     .select()
     .single();
   if (error) throw error;

@@ -2599,7 +2599,7 @@ export default function PortfolioTerminal() {
                 {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage}/>}
                 {page==="ai"         && <AIAdvisorPage holdings={displayHoldings}/>}
                 {page==="news"       && <NewsPage holdings={holdings} setPage={setPage}/>}
-                {page==="community"  && <CommunityPage/>}
+                {page==="community"  && <CommunityPage holdings={displayHoldings}/>}
               </div>
               <DisclaimerBar/>
               {isMobile && <BottomNav page={page} setPage={setPage} badge={holdings.length}/>}

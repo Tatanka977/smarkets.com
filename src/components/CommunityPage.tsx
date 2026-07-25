@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { B, FKey } from "@/lib/uiShared";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { B, FKey, PIE_COLS } from "@/lib/uiShared";
 import { useUser } from "@/hooks/useUser";
-import { getMyUsername, setUsername as srvSetUsername } from "@/lib/profile.functions";
+import { getMyUsername, setUsername as srvSetUsername, listPortfolios } from "@/lib/profile.functions";
 import {
   listChannels, createChannel,
   listCommunityPosts, getCommunityPost, createCommunityPost, deleteCommunityPost,
   listCommunityComments, createCommunityComment, deleteCommunityComment,
   listMyVotes, setVote, removeVote,
 } from "@/lib/community.functions";
-import type { CommunityChannel, CommunityPost, CommunityComment } from "@/lib/community.functions";
+import type { CommunityChannel, CommunityPost, CommunityComment, PortfolioSnapshot, PortfolioSnapshotHolding } from "@/lib/community.functions";
 
 const FONT = "'Courier New', Courier, monospace";
 
@@ -62,6 +63,192 @@ function VoteControl({ score, myVote, disabled, onVote }: {
           <path d="M12 5v14M5 12l7 7 7-7" />
         </svg>
       </button>
+    </div>
+  );
+}
+
+function BarChartIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  );
+}
+
+// Builds a shareable snapshot from a live/loaded holdings array (same
+// {value, asset:{ticker,shortName,category,sector,dayChangePct}} shape
+// used throughout PortfolioTerminal/HomePage/AnalysisPage). This copies
+// only what's needed to render the share card — never a live reference —
+// so the source holdings/portfolio stays private; only what the user
+// actively chose to attach becomes public on the post.
+function buildSnapshotFromHoldings(holdings: any[], sourceName: string): PortfolioSnapshot | null {
+  if (!holdings?.length) return null;
+  const totalValue = holdings.reduce((s: number, h: any) => s + (h.value || 0), 0);
+  if (totalValue <= 0) return null;
+  const rows: PortfolioSnapshotHolding[] = holdings
+    .map((h: any) => ({
+      ticker: h.asset?.ticker || h.asset?.symbol || "?",
+      name: h.asset?.shortName || h.asset?.ticker || "Unknown",
+      category: h.asset?.category || "OTHER",
+      sector: h.asset?.sector || h.asset?.industry || null,
+      value: h.value || 0,
+      weightPct: ((h.value || 0) / totalValue) * 100,
+      dayChangePct: h.asset?.dayChangePct ?? null,
+    }))
+    .sort((a, b) => b.value - a.value);
+  return { totalValue, baseCurrency: "USD", sourceName, holdings: rows };
+}
+
+const SNAPSHOT_CHART_TOP_N = 7;
+
+function snapshotChartRows(snapshot: PortfolioSnapshot) {
+  const sorted = [...snapshot.holdings].sort((a, b) => b.weightPct - a.weightPct);
+  const top = sorted.slice(0, SNAPSHOT_CHART_TOP_N);
+  const rest = sorted.slice(SNAPSHOT_CHART_TOP_N);
+  const restPct = rest.reduce((s, h) => s + h.weightPct, 0);
+  const rows: { name: string; value: number; change: number | null }[] =
+    top.map((h) => ({ name: h.ticker, value: h.weightPct, change: h.dayChangePct }));
+  if (rest.length) rows.push({ name: `Other (${rest.length})`, value: restPct, change: null });
+  return rows;
+}
+
+// The full, rich display shown in a post's detail view.
+function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
+  const chartRows = useMemo(() => snapshotChartRows(snapshot), [snapshot]);
+  const weighted = useMemo(() => {
+    let sum = 0, hasAny = false;
+    for (const h of snapshot.holdings) {
+      if (h.dayChangePct != null) { sum += (h.weightPct / 100) * h.dayChangePct; hasAny = true; }
+    }
+    return hasAny ? sum : null;
+  }, [snapshot]);
+
+  return (
+    <div style={{
+      background: B.panel, border: `1px solid ${B.blue}`, borderRadius: 14,
+      padding: "16px 18px", marginTop: 14, boxShadow: `0 0 0 1px ${B.blue}22`,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, color: B.blue }}>
+        <BarChartIcon />
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", fontFamily: FONT }}>SHARED PORTFOLIO</span>
+        <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, fontWeight: 400 }}>· {snapshot.sourceName}</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 26, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
+          ${snapshot.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        </span>
+        {weighted != null && (
+          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: FONT, color: weighted >= 0 ? B.green : B.red }}>
+            {weighted >= 0 ? "+" : ""}{weighted.toFixed(2)}% today
+          </span>
+        )}
+        <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{snapshot.holdings.length} positions</span>
+      </div>
+      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
+        <ResponsiveContainer width={140} height={140} style={{ flexShrink: 0 }}>
+          <PieChart>
+            <Pie data={chartRows} cx="50%" cy="50%" innerRadius={38} outerRadius={64} paddingAngle={1} dataKey="value" strokeWidth={0}>
+              {chartRows.map((_, i) => <Cell key={i} fill={PIE_COLS[i % PIE_COLS.length]} />)}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <table style={{ flex: "1 1 180px", borderCollapse: "collapse", fontFamily: FONT }}>
+          <tbody>
+            {chartRows.map((row, i) => (
+              <tr key={row.name}>
+                <td style={{ padding: "3px 0", fontSize: 12, color: B.gray1 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: PIE_COLS[i % PIE_COLS.length], display: "inline-block", marginRight: 6 }} />
+                  {row.name}
+                </td>
+                <td style={{ padding: "3px 0", fontSize: 12, color: B.gray1, textAlign: "right", fontWeight: 700 }}>{row.value.toFixed(1)}%</td>
+                <td style={{ padding: "3px 0 3px 10px", fontSize: 11, textAlign: "right", color: row.change == null ? B.gray3 : row.change >= 0 ? B.green : B.red }}>
+                  {row.change == null ? "—" : `${row.change >= 0 ? "+" : ""}${row.change.toFixed(1)}%`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// The compact teaser shown inside a post card in the channel's post list.
+function PortfolioBadge({ snapshot }: { snapshot: PortfolioSnapshot }) {
+  return (
+    <div style={{
+      display: "inline-flex", alignItems: "center", gap: 6, marginTop: 4,
+      padding: "4px 8px", background: B.panel2, border: `1px solid ${B.border}`, borderRadius: 6, color: B.blue,
+    }}>
+      <BarChartIcon size={12} />
+      <span style={{ fontSize: 11, fontWeight: 700, fontFamily: FONT }}>Portfolio attached</span>
+      <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, fontWeight: 400 }}>
+        · ${snapshot.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} · {snapshot.holdings.length} positions
+      </span>
+    </div>
+  );
+}
+
+// Toggle + source picker shown inside the new-post form. `holdings` is the
+// signed-in user's live current holdings (passed down from PortfolioTerminal);
+// savedPortfolios are lazy-loaded on first open since most posts won't attach one.
+function PortfolioAttachPicker({ holdings, value, onChange }: {
+  holdings: any[]; value: PortfolioSnapshot | null; onChange: (s: PortfolioSnapshot | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState<any[] | null>(null);
+  const [source, setSource] = useState<string>("");
+
+  const hasCurrent = (holdings?.length || 0) > 0;
+
+  useEffect(() => {
+    if (open && saved === null) {
+      listPortfolios().then(setSaved).catch(() => setSaved([]));
+    }
+  }, [open, saved]);
+
+  const pick = (src: string) => {
+    setSource(src);
+    if (!src) { onChange(null); return; }
+    if (src === "current") { onChange(buildSnapshotFromHoldings(holdings, "Current portfolio")); return; }
+    const p = (saved || []).find((x) => x.id === src);
+    onChange(p ? buildSnapshotFromHoldings(p.holdings || [], p.name) : null);
+  };
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} style={{
+        display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
+        background: "transparent", border: `1px dashed ${B.border}`, color: B.blue, borderRadius: 6,
+        padding: "6px 10px", fontFamily: FONT, fontSize: 11, fontWeight: 700, cursor: "pointer",
+      }}>
+        <BarChartIcon size={12} /> ATTACH A PORTFOLIO
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ background: B.panel2, border: `1px solid ${B.border}`, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 11, color: B.gray2, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.04em" }}>ATTACH A PORTFOLIO</span>
+        <button type="button" onClick={() => { setOpen(false); setSource(""); onChange(null); }} style={{
+          background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700,
+        }}>REMOVE</button>
+      </div>
+      {!hasCurrent && !(saved && saved.length) ? (
+        <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>Add positions in Portfolio first to share one.</div>
+      ) : (
+        <select value={source} onChange={(e) => pick(e.target.value)} style={{ ...inputStyle, width: "100%" }}>
+          <option value="">Select a portfolio…</option>
+          {hasCurrent && <option value="current">Current portfolio ({holdings.length} positions)</option>}
+          {(saved || []).map((p) => (
+            <option key={p.id} value={p.id}>{p.name} ({(p.holdings || []).length} positions)</option>
+          ))}
+        </select>
+      )}
+      {value && <PortfolioBadge snapshot={value} />}
     </div>
   );
 }
@@ -217,8 +404,8 @@ function ChannelList({ user, username, onUsernameSet, onOpen }: {
   );
 }
 
-function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBack }: {
-  channel: CommunityChannel; user: any; username: string | null | undefined;
+function ChannelPosts({ channel, user, username, holdings, onUsernameSet, onOpenPost, onBack }: {
+  channel: CommunityChannel; user: any; username: string | null | undefined; holdings: any[];
   onUsernameSet: (u: string) => void; onOpenPost: (id: string) => void; onBack: () => void;
 }) {
   const [sort, setSort] = useState<"recent" | "top">("recent");
@@ -229,6 +416,7 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [portfolioSnapshot, setPortfolioSnapshot] = useState<PortfolioSnapshot | null>(null);
   const [posting, setPosting] = useState(false);
 
   const load = useCallback(async () => {
@@ -255,8 +443,8 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
     if (!user || posting || !title.trim() || !body.trim()) return;
     setPosting(true); setError("");
     try {
-      await createCommunityPost({ data: { title, body, channelId: channel.id } });
-      setTitle(""); setBody(""); setShowForm(false);
+      await createCommunityPost({ data: { title, body, channelId: channel.id, portfolioSnapshot } });
+      setTitle(""); setBody(""); setPortfolioSnapshot(null); setShowForm(false);
       await load();
     } catch (e: any) {
       setError(e.message || "Error publishing");
@@ -312,6 +500,7 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
             <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
               <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={200} style={inputStyle} />
               <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write something..." rows={4} maxLength={8000} style={{ ...inputStyle, resize: "vertical" }} />
+              <PortfolioAttachPicker holdings={holdings} value={portfolioSnapshot} onChange={setPortfolioSnapshot} />
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button disabled={!title.trim() || !body.trim() || posting} onClick={submitPost} style={primaryBtnStyle(!!title.trim() && !!body.trim() && !posting)}>
                   {posting ? "PUBLISHING..." : "PUBLISH"}
@@ -353,6 +542,7 @@ function ChannelPosts({ channel, user, username, onUsernameSet, onOpenPost, onBa
                   <span>{fmtDate(p.created_at)}</span>
                   <span>{p.comment_count} comments</span>
                 </div>
+                {p.portfolio_snapshot && <PortfolioBadge snapshot={p.portfolio_snapshot} />}
               </div>
             </div>
           ))}
@@ -486,6 +676,8 @@ function PostDetail({ postId, user, username, onUsernameSet, onBack }: {
         </div>
       </div>
 
+      {post.portfolio_snapshot && <PortfolioShareCard snapshot={post.portfolio_snapshot} />}
+
       <div style={{ marginTop: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 8, fontFamily: FONT }}>
           {comments.length} COMMENTS
@@ -540,7 +732,7 @@ type View =
   | { mode: "channel"; channel: CommunityChannel }
   | { mode: "post"; postId: string; channel: CommunityChannel };
 
-export default function CommunityPage() {
+export default function CommunityPage({ holdings }: { holdings?: any[] }) {
   const { user } = useUser();
   const [view, setView] = useState<View>({ mode: "channels" });
   // undefined = not loaded yet, null = signed in but no username set.
@@ -561,7 +753,7 @@ export default function CommunityPage() {
         )}
         {view.mode === "channel" && (
           <ChannelPosts
-            channel={view.channel} user={user} username={username} onUsernameSet={setUsernameState}
+            channel={view.channel} user={user} username={username} holdings={holdings || []} onUsernameSet={setUsernameState}
             onOpenPost={(postId) => setView({ mode: "post", postId, channel: view.channel })}
             onBack={() => setView({ mode: "channels" })}
           />
