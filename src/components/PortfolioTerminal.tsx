@@ -629,6 +629,11 @@ useEffect(()=>{
     debounce.current = setTimeout(()=>doSearch(v, cat), 400);
   };
 
+  const clearSearch = () => {
+    clearTimeout(debounce.current);
+    setQ(""); setRes([]); setSel(null); setDetail(null); setError("");
+  };
+
   const selectSecurity = async (r) => {
     setSel(r); setLoad(true); setDetail(null); setError(""); setQty("1");
     setHistInfo({kind:null, text:""});
@@ -954,11 +959,20 @@ useEffect(()=>{
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{padding:"6px",borderBottom:`1px solid ${B.border}`,background:B.panel2,flexShrink:0}}>
-        <input value={q} onChange={e=>handleInput(e.target.value)}
-          placeholder="SEARCH TICKER, ISIN OR NAME..."
-          style={{width:"100%",background:B.bg,border:`1px solid ${B.blue}`,color:B.yellow,
-            padding:"8px 10px",fontSize:16,fontFamily:"'Courier New',monospace",outline:"none",
-            letterSpacing:"0.04em",textTransform:"uppercase"}}/>
+        <div style={{position:"relative"}}>
+          <input value={q} onChange={e=>handleInput(e.target.value)}
+            placeholder="SEARCH TICKER, ISIN OR NAME..."
+            style={{width:"100%",background:B.bg,border:`1px solid ${B.blue}`,color:B.yellow,
+              padding:"8px 34px 8px 10px",fontSize:16,fontFamily:"'Courier New',monospace",outline:"none",
+              letterSpacing:"0.04em",textTransform:"uppercase"}}/>
+          {q && (
+            <button onClick={clearSearch} aria-label="Clear search" style={{
+              position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",
+              background:"none",border:"none",color:B.gray3,cursor:"pointer",
+              fontSize:16,fontWeight:700,padding:6,lineHeight:1,
+            }}>✕</button>
+          )}
+        </div>
         <div style={{display:"flex",gap:3,marginTop:6,overflowX:"auto",paddingBottom:2}}>
           {CATEGORY_TABS.map(c=>{
             const active=cat===c.id;
@@ -1162,6 +1176,37 @@ function ImportCsvModal({rows, onCancel, onConfirm, busy}:any) {
 function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddCash}:any) {
   const isMobile = useIsMobile();
   const m=useMemo(()=>pMet(holdings),[holdings]);
+
+  // View-currency toggle, local to this page: converts only the KPI row
+  // totals below (not the per-row table/cards, which stay in each
+  // holding's own native currency with its currency badge — so inline
+  // editing never has to reason about FX rates, and this page's own "$"/"€"
+  // label always matches what it's actually showing, independent of the
+  // rest of the app which stays USD-only).
+  const [baseCcy, setBaseCcy] = usePersistentState<"USD"|"EUR">("portfolio_base_ccy", "USD");
+  const ccySym = baseCcy === "EUR" ? "€" : "$";
+  const kpiForeignCurrencies = useMemo(() => Array.from(new Set(
+    holdings.map((h:any) => h.asset.currency).filter((c:string) => c && c !== baseCcy)
+  )), [holdings, baseCcy]);
+  const [kpiFxRates, setKpiFxRates] = useState<Record<string,number>>({});
+  useEffect(() => {
+    if (!kpiForeignCurrencies.length) { setKpiFxRates({}); return; }
+    let alive = true;
+    srvFx({ data: { base: baseCcy, currencies: kpiForeignCurrencies } })
+      .then((r:any) => { if (alive) setKpiFxRates(r?.rates || {}); })
+      .catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kpiForeignCurrencies.join("|"), baseCcy]);
+  const kpiHoldings = useMemo(() => {
+    if (!kpiForeignCurrencies.length) return holdings;
+    return holdings.map((h:any) => {
+      const rate = kpiFxRates[h.asset.currency] ?? (h.asset.currency === baseCcy ? 1 : null);
+      if (rate == null || rate === 1) return h;
+      return { ...h, value: h.value*rate, costBasis: h.costBasis*rate, costPrice: h.costPrice*rate };
+    });
+  }, [holdings, kpiFxRates, kpiForeignCurrencies, baseCcy]);
+  const dm=useMemo(()=>pMet(kpiHoldings),[kpiHoldings]);
   const { user } = useUser();
   const [view, setView] = useState<"positions"|"saved">("positions");
   const [sellTarget, setSellTarget] = useState<any>(null);
@@ -1364,19 +1409,20 @@ const addCash = () => {
 
   const sorted = [...holdings].sort((a:any,b:any) => (b.value ?? 0) - (a.value ?? 0));
 
-  // Real day P&L in $ (reconstructed from today's % change, not stored historically)
-  const dayPL = holdings.reduce((s:number,h:any) => {
+  // Real day P&L in the selected base currency (reconstructed from today's
+  // % change, not stored historically) — from kpiHoldings, see above.
+  const dayPL = kpiHoldings.reduce((s:number,h:any) => {
     const chg = h.asset.dayChangePct;
     if (chg == null) return s;
     const prevValue = h.value / (1 + chg/100);
     return s + (h.value - prevValue);
   }, 0);
 
-  const totalCost = holdings.reduce((s:number,h:any) => s + (h.costBasis ?? (h.costPrice||0)*h.qty), 0);
-  const totalPL = holdings.reduce((s:number,h:any) => s + (h.value - (h.costBasis ?? (h.costPrice||0)*h.qty)), 0);
+  const totalCost = kpiHoldings.reduce((s:number,h:any) => s + (h.costBasis ?? (h.costPrice||0)*h.qty), 0);
+  const totalPL = kpiHoldings.reduce((s:number,h:any) => s + (h.value - (h.costBasis ?? (h.costPrice||0)*h.qty)), 0);
   const totalPLPct = totalCost > 0 ? (totalPL/totalCost*100) : 0;
-  const cash = holdings.reduce((s:number,h:any) => s + (h.asset.category === "CASH" ? h.value : 0), 0);
-  const cashPct = m.total > 0 ? (cash / m.total) * 100 : 0;
+  const cash = kpiHoldings.reduce((s:number,h:any) => s + (h.asset.category === "CASH" ? h.value : 0), 0);
+  const cashPct = dm.total > 0 ? (cash / dm.total) * 100 : 0;
 
   const catMap: Record<string, any[]> = {};
   for (const h of sorted) {
@@ -1547,32 +1593,44 @@ const addCash = () => {
       {Tabs}
 
       {/* KPI row 1 */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))",gap:14,
-        background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px"}}>
+      <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"14px 18px"}}>
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+          <div style={{display:"flex",border:`1px solid ${B.border}`,borderRadius:6,overflow:"hidden"}}>
+            {(["USD","EUR"] as const).map(c=>(
+              <button key={c} onClick={()=>setBaseCcy(c)} style={{
+                background:baseCcy===c?B.blue:"transparent",color:baseCcy===c?B.white:B.gray2,
+                border:"none",padding:"4px 12px",cursor:"pointer",
+                fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,letterSpacing:"0.04em",
+              }}>{c}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))",gap:14}}>
         <div>
           <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Portfolio Value</div>
-          <div style={{fontSize:20,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>${fmtM(m.total)}</div>
+          <div style={{fontSize:20,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{ccySym}{fmtM(dm.total)}</div>
         </div>
         <div>
           <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Day P&amp;L</div>
           <div style={{fontSize:20,fontWeight:700,color:pCol(dayPL),fontFamily:"'Courier New',monospace"}}>
-            {dayPL>=0?"+":"−"}${fmtM(Math.abs(dayPL))}
+            {dayPL>=0?"+":"−"}{ccySym}{fmtM(Math.abs(dayPL))}
           </div>
-          <div style={{fontSize:12,color:pCol(m.wDay),fontFamily:"'Courier New',monospace"}}>{pSign(fmt(m.wDay,2))}%</div>
+          <div style={{fontSize:12,color:pCol(dm.wDay),fontFamily:"'Courier New',monospace"}}>{pSign(fmt(dm.wDay,2))}%</div>
         </div>
         <div>
           <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Total Return</div>
           <div style={{fontSize:20,fontWeight:700,color:pCol(totalPLPct),fontFamily:"'Courier New',monospace"}}>{pSign(fmt(totalPLPct,1))}%</div>
-          <div style={{fontSize:12,color:pCol(totalPL),fontFamily:"'Courier New',monospace"}}>{totalPL>=0?"+":"−"}${fmtM(Math.abs(totalPL))}</div>
+          <div style={{fontSize:12,color:pCol(totalPL),fontFamily:"'Courier New',monospace"}}>{totalPL>=0?"+":"−"}{ccySym}{fmtM(Math.abs(totalPL))}</div>
         </div>
         <div>
           <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Cash</div>
-          <div style={{fontSize:20,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{cash>0?`$${fmtM(cash)}`:"—"}</div>
+          <div style={{fontSize:20,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{cash>0?`${ccySym}${fmtM(cash)}`:"—"}</div>
           <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{cash>0?`${cashPct.toFixed(1)}% of portfolio`:"No cash added yet"}</div>
         </div>
         <div>
           <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Positions</div>
           <div style={{fontSize:20,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{holdings.length}</div>
+        </div>
         </div>
       </div>
 
@@ -2667,7 +2725,11 @@ export default function PortfolioTerminal() {
   // Holdings' `value`/`costBasis`/`costPrice` are stored in each asset's
   // native currency. FX rates convert them to a single base (USD) for
   // display/aggregation only — `holdings` itself (canonical state, lot math,
-  // persistence) always stays in native currency.
+  // persistence) always stays in native currency. This feeds Home/Analysis/
+  // AI/Community, which all label amounts with a hardcoded "$" — always USD
+  // here regardless of the Portfolio page's own USD/EUR toggle (below),
+  // which converts independently just for that page so its "$"/"€" label
+  // always matches what it's actually showing.
   const BASE_CCY = "USD";
   const foreignCurrencies = useMemo(() => Array.from(new Set(
     holdings.map((h:any) => h.asset.currency).filter((c:string) => c && c !== BASE_CCY)
@@ -2690,7 +2752,7 @@ export default function PortfolioTerminal() {
       if (rate == null || rate === 1) return h;
       return { ...h, value: h.value*rate, costBasis: h.costBasis*rate, costPrice: h.costPrice*rate };
     });
-  }, [holdings, fxRates, foreignCurrencies]);
+  }, [holdings, fxRates, foreignCurrencies, baseCcy]);
 
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   useEffect(() => {

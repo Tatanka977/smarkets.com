@@ -346,9 +346,14 @@ export const fetchQuote = createServerFn({ method: "GET" })
   .inputValidator((d: { symbol: string; isin?: string }) => d)
   .handler(async ({ data }) => {
     const sym = (data.symbol || "").trim().toUpperCase();
-    // Non-equity assets stay on mock (Finnhub free tier lacks crypto/FX/bonds)
+    // Crypto/FX/commodities stay on mock (Finnhub free tier lacks live
+    // coverage for those). Bonds used to be short-circuited here too, which
+    // meant real, liquid tickers like TLT/AGG — and any BTP/govt bond
+    // looked up by its real ISIN — always showed the same frozen
+    // MOCK_UNIVERSE price instead of a live one; they now go through the
+    // normal Finnhub/Yahoo/ISIN-retry chain below like any stock or ETF.
     const mock = MOCK_UNIVERSE.find((q) => q.symbol === sym || q.ticker === sym);
-    if (mock && mock.category && ["CRYPTO", "FX", "BOND", "COMMODITY"].includes(mock.category)) {
+    if (mock && mock.category && ["CRYPTO", "FX", "COMMODITY"].includes(mock.category)) {
       return findMock(sym);
     }
     if (hasFinnhub()) {
@@ -435,7 +440,7 @@ export const batchRefresh = createServerFn({ method: "POST" })
     const results = await Promise.all(symbols.map(async (s): Promise<Quote> => {
       const sym = (s || "").trim().toUpperCase();
       const mock = MOCK_UNIVERSE.find((q) => q.symbol === sym || q.ticker === sym);
-      if (mock && mock.category && ["CRYPTO", "FX", "BOND", "COMMODITY"].includes(mock.category)) {
+      if (mock && mock.category && ["CRYPTO", "FX", "COMMODITY"].includes(mock.category)) {
         return findMock(sym);
       }
       if (hasFinnhub()) {

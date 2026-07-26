@@ -70,6 +70,11 @@ export default function NotificationBell({ setPage }: { setPage: (p: string) => 
     }
     setOpen(false);
     if (n.link_type === "post" && n.link_id) {
+      // Direct write, not just the usePersistentState setter — same
+      // belt-and-suspenders fix as AnalysisPage's AI handoff: guarantees
+      // CommunityPage's hydrate-on-mount effect (which fires right after
+      // setPage below) sees this value regardless of effect ordering.
+      try { localStorage.setItem("moneta_community_pending_post", JSON.stringify(n.link_id)); } catch {}
       setPendingPost(n.link_id);
       setPage("community");
     } else if (n.link_type === "symbol") {

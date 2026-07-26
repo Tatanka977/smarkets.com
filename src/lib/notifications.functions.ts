@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface AppNotification {
   id: string;
   user_id: string;
-  type: "post_comment" | "price_alert";
+  type: "post_comment" | "price_alert" | "post_vote" | "comment_vote";
   title: string;
   body: string | null;
   link_type: "post" | "symbol" | null;

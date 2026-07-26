@@ -689,6 +689,15 @@ Before: ${whatIf.sector} exposure ${fmt(whatIf.beforeSectorPct,1)}%, HHI concent
 After: ${whatIf.sector} exposure would become ${fmt(whatIf.afterSectorPct,1)}%, HHI would become ${whatIf.newHHI.toFixed(0)}, ${whatIf.newPositionCount} positions.
 
 Give a deeper educational breakdown: what does this concentration/diversification change mean in practice, what hypothetical risks or benefits does it illustrate, and what alternative hypothetical allocations could achieve a similar goal with less concentration risk.`;
+    // Write straight to localStorage instead of relying on
+    // usePersistentState's setter (which only persists via a useEffect):
+    // setPage("ai") right below unmounts this component in the very same
+    // render batch, before that effect ever gets a chance to run, so the
+    // prompt never actually reached storage and AIAdvisorPage picked up
+    // nothing on mount. Direct write is synchronous, so it's guaranteed
+    // to be there — same fix already used for the profile page's AI
+    // conversation handoff.
+    try { localStorage.setItem("moneta_ai_pending_prompt", JSON.stringify(prompt)); } catch {}
     setPendingAiPrompt(prompt);
     setPage("ai");
   };
@@ -1027,11 +1036,15 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                         </div>
                       </div>
                       <div>
+                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Cash Outlay</div>
+                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>${fmt(whatIf.amount,2)}</div>
+                        <div style={{fontSize:11,color:B.gray3,fontFamily:FONT}}>
+                          {fmt(whatIf.qty,whatIf.qty<1?4:2)} sh @ ${whatIf.price.toFixed(2)}
+                        </div>
+                      </div>
+                      <div>
                         <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>New Position Weight</div>
                         <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{fmt(whatIf.newWeight,2)}%</div>
-                        <div style={{fontSize:11,color:B.gray3,fontFamily:FONT}}>
-                          {fmt(whatIf.qty,whatIf.qty<1?4:2)} sh @ ${whatIf.price.toFixed(2)} = ${fmt(whatIf.amount,0)}
-                        </div>
                       </div>
                       <div>
                         <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{whatIf.sector} Exposure</div>
