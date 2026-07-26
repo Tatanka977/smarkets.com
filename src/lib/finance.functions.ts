@@ -354,7 +354,12 @@ export const fetchQuote = createServerFn({ method: "GET" })
     if (hasFinnhub()) {
       try {
         const q = await buildQuote(sym);
-        if (q.price != null) {
+        // Finnhub returns HTTP 200 with every field zeroed out (not an
+        // error) for a symbol it doesn't recognize — `price != null` alone
+        // treats that fake zero-quote as valid and returns it immediately,
+        // which for e.g. an OpenFIGI-mapped local ticker Finnhub has never
+        // heard of skipped the Yahoo/ISIN fallback below entirely.
+        if (q.price != null && q.price > 0) {
           if (mock) {
             q.category = mock.category;
             q.sector = q.sector || mock.industry;
@@ -436,7 +441,9 @@ export const batchRefresh = createServerFn({ method: "POST" })
       if (hasFinnhub()) {
         try {
           const q = await buildQuote(sym);
-          if (q.price != null) {
+          // See fetchQuote above: Finnhub returns a zeroed-out 200 (not an
+          // error) for unrecognized symbols, so price>0 is required too.
+          if (q.price != null && q.price > 0) {
             if (mock) {
               q.category = mock.category;
               q.sector = q.sector || mock.industry;
