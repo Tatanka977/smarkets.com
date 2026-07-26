@@ -9,15 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DisclaimerRouteImport } from './routes/disclaimer'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BlogRouteImport } from './routes/blog'
+import { Route as DisclaimerRouteImport } from './routes/disclaimer'
+import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 
-const DisclaimerRoute = DisclaimerRouteImport.update({
-  id: '/disclaimer',
-  path: '/disclaimer',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -25,13 +32,19 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DisclaimerRoute = DisclaimerRouteImport.update({
+  id: '/disclaimer',
+  path: '/disclaimer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TerminalRoute = TerminalRouteImport.update({
+  id: '/terminal',
+  path: '/terminal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
@@ -39,62 +52,88 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
   '/disclaimer': typeof DisclaimerRoute
+  '/terminal': typeof TerminalRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/blog/$slug': typeof BlogSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
   '/disclaimer': typeof DisclaimerRoute
+  '/terminal': typeof TerminalRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/blog/$slug': typeof BlogSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
   '/disclaimer': typeof DisclaimerRoute
+  '/terminal': typeof TerminalRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/blog/$slug': typeof BlogSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/disclaimer' | '/profile'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/blog'
+    | '/disclaimer'
+    | '/terminal'
+    | '/profile'
+    | '/blog/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/disclaimer' | '/profile'
+  to:
+    | '/'
+    | '/auth'
+    | '/blog'
+    | '/disclaimer'
+    | '/terminal'
+    | '/profile'
+    | '/blog/$slug'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/blog'
     | '/disclaimer'
+    | '/terminal'
     | '/_authenticated/profile'
+    | '/blog/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  BlogRoute: typeof BlogRouteWithChildren
   DisclaimerRoute: typeof DisclaimerRoute
+  TerminalRoute: typeof TerminalRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/disclaimer': {
-      id: '/disclaimer'
-      path: '/disclaimer'
-      fullPath: '/disclaimer'
-      preLoaderRoute: typeof DisclaimerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -104,11 +143,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/disclaimer': {
+      id: '/disclaimer'
+      path: '/disclaimer'
+      fullPath: '/disclaimer'
+      preLoaderRoute: typeof DisclaimerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terminal': {
+      id: '/terminal'
+      path: '/terminal'
+      fullPath: '/terminal'
+      preLoaderRoute: typeof TerminalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/profile': {
@@ -117,6 +177,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/profile'
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRoute
     }
   }
 }
@@ -132,11 +199,23 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface BlogRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+}
+
+const BlogRouteChildren: BlogRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+}
+
+const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  BlogRoute: BlogRouteWithChildren,
   DisclaimerRoute: DisclaimerRoute,
+  TerminalRoute: TerminalRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
