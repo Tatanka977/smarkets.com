@@ -144,14 +144,32 @@ function PhoneShell({children}:any) {
 
         /* Allow the horizontal top nav to scroll on very narrow screens */
         .sm-topbar { flex-wrap: wrap; gap: 6px; }
-        .sm-fkeys, .sm-bottomnav { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .sm-fkeys::-webkit-scrollbar, .sm-bottomnav::-webkit-scrollbar { height: 0; }
+        .sm-fkeys { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .sm-fkeys::-webkit-scrollbar { height: 0; }
 
-        /* Hide secondary tagline on very narrow screens to avoid overlap */
+        /* Hide secondary tagline / disclaimer sentence on very narrow
+           screens to avoid overlap — the warning icon and "FULL TERMS"
+           link (the two that actually matter) always stay visible. */
         @media (max-width: 480px) {
           .sm-tagline { display: none !important; }
           .sm-topbar { padding: 6px 8px !important; }
         }
+        @media (max-width: 400px) {
+          .sm-disclaimer-full { display: none !important; }
+        }
+
+        /* Bottom tab bar: on very narrow phones even a 9px label per tab is
+           too tight across 7 tabs — drop to icon-only there, full labels
+           stay from ~380px up (most phones). */
+        @media (max-width: 380px) {
+          .sm-bottomnav .sm-navlabel { display: none; }
+        }
+
+        /* Every fixed-overlay modal caps its card to this height so a card
+           taller than the viewport (long text, or the on-screen keyboard
+           shrinking visible height) never pushes its own buttons off-screen
+           with no way to reach them. */
+        .sm-modal-card { max-height: calc(100dvh - 32px); }
 
         ::selection { background: ${B.blue}; color: ${B.white}; }
       `}</style>
@@ -302,24 +320,29 @@ function BottomNav({page,setPage,badge}:any) {
     {id:"news",     label:"NEWS"},
     {id:"community",label:"COMMUNITY"},
   ];
+  // App-style tab bar: icon on top, label below (was icon+label side by
+  // side, which needs ~90px per tab — with 7 tabs that never fits a phone
+  // width, so some tabs' icons/labels were pushed off past the edge of the
+  // screen). Stacked, each tab only needs its own icon/label width, and the
+  // sm-navlabel class below hides labels entirely on very narrow phones.
   return (
     <div className="sm-bottomnav" style={{background:B.panel2,borderTop:`1px solid ${B.borderB}`,
-      display:"flex",paddingBottom:"env(safe-area-inset-bottom, 8px)",flexShrink:0}}>
+      display:"flex",paddingBottom:"env(safe-area-inset-bottom, 6px)",flexShrink:0}}>
       {tabs.map(t=>{
         const active=page===t.id;
         return (
           <button key={t.id} onClick={()=>setPage(t.id)} style={{
             flex:1,background:"none",border:"none",cursor:"pointer",
-            padding:"10px 4px",display:"flex",flexDirection:"row",alignItems:"center",justifyContent:"center",gap:6,
-            borderTop:`2px solid ${active?B.blue:"transparent"}`,position:"relative",minWidth:0,
+            padding:"7px 2px 6px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,
+            borderTop:`2px solid ${active?B.blue:"transparent"}`,position:"relative",minWidth:0,minHeight:48,
             color:active?B.blue:B.gray2,
           }}>
-            {t.badge>0&&<div style={{position:"absolute",top:2,right:"20%",
-              background:B.blue,color:B.white,fontSize:10,fontWeight:700,
-              fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"14px",borderRadius:2}}>{t.badge}</div>}
+            {t.badge>0&&<div style={{position:"absolute",top:3,right:"20%",
+              background:B.blue,color:B.white,fontSize:9,fontWeight:700,
+              fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"13px",borderRadius:6,minWidth:13,textAlign:"center"}}>{t.badge}</div>}
             {NAV_ICONS[t.id]}
-            <span style={{fontSize:12,fontWeight:700,
-              fontFamily:"'Courier New',monospace",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{t.label}</span>
+            <span className="sm-navlabel" style={{fontSize:9,fontWeight:700,
+              fontFamily:"'Courier New',monospace",letterSpacing:0,whiteSpace:"nowrap"}}>{t.label}</span>
           </button>
         );
       })}
@@ -769,7 +792,7 @@ useEffect(()=>{
             {detail.dayChangePct!=null?`${pSign(fmt(detail.dayChangePct,2))}%`:"---"}
           </div>
         </div>
-        <div style={{display:"flex",gap:8}}>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <button onClick={()=>document.getElementById("add-position-panel")?.scrollIntoView({behavior:"smooth"})} style={{
             background:B.blue,border:"none",color:B.white,padding:"8px 16px",borderRadius:8,cursor:"pointer",
             fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700}}>+ ADD TO PORTFOLIO</button>
@@ -1230,7 +1253,7 @@ const addCash = () => {
     }
   };
   const Tabs = (
-    <div style={{display:"flex",gap:16,borderBottom:`1px solid ${B.border}`,padding:"0 4px",flexShrink:0,alignItems:"center",justifyContent:"space-between"}}>
+    <div style={{display:"flex",gap:"6px 16px",borderBottom:`1px solid ${B.border}`,padding:"6px 4px",flexShrink:0,alignItems:"center",justifyContent:"space-between",flexWrap:"wrap"}}>
       <div style={{display:"flex",gap:16}}>
       {(["positions","saved"] as const).map(v=>(
         <button key={v} onClick={()=>setView(v)} style={{
@@ -1436,6 +1459,89 @@ const addCash = () => {
     );
   };
 
+  // Mobile: a dense 12-column table forces horizontal scrolling just to
+  // reach the SELL/remove buttons — a stacked card per holding instead,
+  // with actions always visible and no side-scrolling required.
+  const renderHoldingCard = (h:any) => {
+    const w = m.total>0 ? (h.value/m.total*100) : 0;
+    const cb = h.costBasis ?? (h.costPrice!=null ? h.costPrice*h.qty : null);
+    const pl = cb!=null ? h.value-cb : null;
+    const plPct = (cb!=null && cb>0) ? (pl!/cb*100) : null;
+    return (
+      <div key={h.isin||h.asset.ticker} style={{borderTop:`1px solid ${B.border}`,padding:"12px 10px",display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+          <div style={{minWidth:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{color:B.blue,fontWeight:700,fontSize:16}}>{h.asset.ticker}</span>
+              {h.asset.currency && h.asset.currency!=="USD" && (
+                <span style={{fontSize:10,color:B.gray3}}>{h.asset.currency}</span>
+              )}
+            </div>
+            <div style={{color:B.gray3,fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{h.asset.shortName||h.asset.ticker}</div>
+          </div>
+          <div style={{textAlign:"right",flexShrink:0}}>
+            <div style={{color:B.gray1,fontWeight:700,fontSize:16}}>${fmtM(h.value)}</div>
+            <div style={{color:pCol(h.asset.dayChangePct),fontWeight:700,fontSize:12}}>
+              {h.asset.dayChangePct!=null?`${pSign(fmt(h.asset.dayChangePct,2))}%`:"—"}
+            </div>
+          </div>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:6,background:B.panel2,borderRadius:8,padding:"8px 10px"}}>
+          <div>
+            <div style={{fontSize:9,color:B.gray3,textTransform:"uppercase"}}>Weight</div>
+            <div style={{fontSize:12,color:B.gray1,fontWeight:700}}>{w.toFixed(1)}%</div>
+          </div>
+          <div>
+            <div style={{fontSize:9,color:B.gray3,textTransform:"uppercase"}}>P&amp;L</div>
+            <div style={{fontSize:12,fontWeight:700,color:pl!=null?pCol(pl):B.gray3}}>
+              {pl!=null?`${pl>=0?"+":"−"}$${fmtM(Math.abs(pl))}`:"—"}
+              {plPct!=null && <span style={{fontSize:10,marginLeft:3}}>({pSign(fmt(plPct,1))}%)</span>}
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:9,color:B.gray3,textTransform:"uppercase"}}>Price</div>
+            <div style={{fontSize:12,color:B.gray1,fontWeight:700}}>{h.asset.price!=null?h.asset.price.toFixed(2):"—"}</div>
+          </div>
+        </div>
+
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:B.gray3,flexWrap:"wrap",gap:8}}>
+          <span>QTY {" "}
+            <EditableCell value={h.qty} type="number" format={(v:any)=>v!=null?fmt(v,v<1?4:2):"—"}
+              onSave={(v:string)=>{ const n=parseFloat(v); if(!isNaN(n)&&n>0) onUpdate(h.isin||h.asset.ticker,{qty:n}); }}/>
+          </span>
+          <span>AVG {" "}
+            <EditableCell value={h.costPrice} type="number" format={(v:any)=>v!=null&&v!==""?parseFloat(v).toFixed(2):"—"}
+              onSave={(v:string)=>{ const n=parseFloat(v); if(!isNaN(n)&&n>=0) onUpdate(h.isin||h.asset.ticker,{costPrice:n}); }}/>
+          </span>
+          <span>SINCE {" "}
+            <EditableCell value={h.buyDate?h.buyDate.slice(0,10):""} type="date" format={(v:any)=>v?new Date(v).toLocaleDateString():"—"}
+              onSave={async (v:string)=>{
+                if (!v) return;
+                const key = h.isin||h.asset.ticker;
+                onUpdate(key,{buyDate:v});
+                try {
+                  const res = await fetchHistoricalPrice(h.asset.ticker, v);
+                  if (res.price != null) onUpdate(key,{costPrice:res.price});
+                } catch {}
+              }}/>
+          </span>
+        </div>
+
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setSellTarget(h)} style={{
+            flex:1,background:"none",border:`1px solid ${B.red}`,color:B.red,borderRadius:6,
+            cursor:"pointer",fontSize:13,fontWeight:700,padding:"10px 0",
+          }}>SELL</button>
+          <button onClick={()=>onRemove(h.isin||h.asset.ticker)} style={{
+            flex:1,background:"none",border:`1px solid ${B.border}`,color:B.gray2,borderRadius:6,
+            cursor:"pointer",fontSize:13,fontWeight:700,padding:"10px 0",
+          }}>✕ REMOVE</button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{flex:1,overflowY:"auto",padding:14,display:"flex",flexDirection:"column",gap:14,background:B.bg}}>
       {Tabs}
@@ -1471,31 +1577,33 @@ const addCash = () => {
       </div>
 
       {/* Holdings, grouped by instrument type */}
-      <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 20px",overflowX:"auto"}}>
-        <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:12}}>
+      <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:isMobile?"14px 0":"16px 20px",overflowX:isMobile?"hidden":"auto"}}>
+        <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:12,padding:isMobile?"0 14px":0}}>
           HOLDINGS
         </div>
         {grouped.map(g=>{
           const isCollapsed = !!collapsedCats[g.cat];
           const catPct = m.total>0 ? (g.total/m.total*100) : 0;
           return (
-            <div key={g.cat} style={{marginBottom:10,border:`1px solid ${B.border}`,borderRadius:10,overflow:"hidden"}}>
+            <div key={g.cat} style={{marginBottom:10,border:isMobile?"none":`1px solid ${B.border}`,borderTop:isMobile?`1px solid ${B.border}`:undefined,borderRadius:isMobile?0:10,overflow:"hidden"}}>
               <button onClick={()=>toggleCat(g.cat)} style={{
                 width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",
-                background:B.panel2,border:"none",cursor:"pointer",padding:"12px 16px",
-                fontFamily:"'Courier New',monospace",
+                background:B.panel2,border:"none",cursor:"pointer",padding:isMobile?"12px 14px":"12px 16px",
+                fontFamily:"'Courier New',monospace",minHeight:44,
               }}>
                 <span style={{display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:13,color:B.gray3}}>{isCollapsed?"▸":"▾"}</span>
                   <span style={{fontSize:15,fontWeight:700,color:B.blue,letterSpacing:"0.05em"}}>{g.label}</span>
                   <span style={{fontSize:12,color:B.gray3}}>({g.holdings.length})</span>
                 </span>
-                <span style={{display:"flex",alignItems:"center",gap:16}}>
-                  <span style={{fontSize:13,color:B.gray3}}>{catPct.toFixed(1)}%</span>
+                <span style={{display:"flex",alignItems:"center",gap:isMobile?10:16}}>
+                  {!isMobile && <span style={{fontSize:13,color:B.gray3}}>{catPct.toFixed(1)}%</span>}
                   <span style={{fontSize:16,fontWeight:700,color:B.gray1}}>${fmtM(g.total)}</span>
                 </span>
               </button>
-              {!isCollapsed && (
+              {!isCollapsed && (isMobile ? (
+                <div>{g.holdings.map(renderHoldingCard)}</div>
+              ) : (
                 <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"'Courier New',monospace",fontSize:13,minWidth:640}}>
                   <thead>
                     <tr style={{color:B.gray3,fontSize:11}}>
@@ -1517,11 +1625,11 @@ const addCash = () => {
                     {g.holdings.map(renderHoldingRow)}
                   </tbody>
                 </table>
-              )}
+              ))}
             </div>
           );
         })}
-        <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginTop:8}}>
+        <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginTop:8,padding:isMobile?"0 14px":0}}>
           Showing {holdings.length} of {holdings.length} positions
         </div>
       </div>
@@ -1586,29 +1694,29 @@ function SellModal({holding, onCancel, onConfirm}:any) {
       display:"flex", alignItems:"center", justifyContent:"center", padding:16,
       fontFamily:"'Courier New',monospace",
     }}>
-      <div style={{maxWidth:420, width:"100%", background:B.bg, border:`2px solid ${B.red}`}}>
-        <div style={{background:B.red, padding:"6px 10px", color:"#000", fontWeight:700, fontSize:14, letterSpacing:"0.08em"}}>
+      <div className="sm-modal-card" style={{maxWidth:420, width:"100%", display:"flex", flexDirection:"column", background:B.bg, border:`2px solid ${B.red}`}}>
+        <div style={{background:B.red, padding:"6px 10px", color:"#000", fontWeight:700, fontSize:14, letterSpacing:"0.08em", flexShrink:0}}>
           SELL {holding.asset.ticker}
         </div>
-        <div style={{padding:"14px 16px", color:B.gray1, fontSize:13, display:"flex", flexDirection:"column", gap:10}}>
+        <div style={{padding:"14px 16px", color:B.gray1, fontSize:13, display:"flex", flexDirection:"column", gap:10, overflowY:"auto", flex:1, minHeight:0}}>
           <div style={{fontSize:11, color:B.gray3}}>You currently hold {fmt(holding.qty, holding.qty<1?4:2)} shares @ avg cost {holding.costPrice!=null?holding.costPrice.toFixed(2):"—"}.</div>
           <div>
             <div style={{fontSize:10,color:B.gray3,marginBottom:2}}>QUANTITY TO SELL</div>
             <input value={qty} onChange={e=>setQty(e.target.value)} type="number" min="0" max={holding.qty} step="any"
               style={{width:"100%",background:B.panel2,border:`1px solid ${validQty?B.border:B.red}`,color:B.gray1,borderRadius:6,
-                padding:"6px 8px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
+                padding:"9px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
           </div>
           <div>
             <div style={{fontSize:10,color:B.gray3,marginBottom:2}}>SELL PRICE</div>
             <input value={price} onChange={e=>setPrice(e.target.value)} type="number" min="0" step="any"
               style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,borderRadius:6,
-                padding:"6px 8px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
+                padding:"9px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
           </div>
           <div>
             <div style={{fontSize:10,color:B.gray3,marginBottom:2}}>SALE DATE</div>
             <input value={date} onChange={e=>handleDateChange(e.target.value)} type="date" max={todayYmd}
               style={{width:"100%",background:B.panel2,border:`1px solid ${histBusy?B.blue:B.border}`,color:B.gray1,borderRadius:6,
-                padding:"6px 8px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
+                padding:"9px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
           </div>
           {histInfo.text && (
             <div style={{padding:"6px 10px",fontSize:11,fontWeight:700,borderRadius:6,
@@ -1624,22 +1732,22 @@ function SellModal({holding, onCancel, onConfirm}:any) {
             </span>
           </div>
           {!validQty && <div style={{fontSize:11,color:B.red}}>Quantity must be greater than 0 and at most {fmt(holding.qty, holding.qty<1?4:2)}.</div>}
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={onCancel} style={{
-              flex:1,background:"transparent",border:`1px solid ${B.border}`,color:B.gray1,padding:"10px",
-              fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,cursor:"pointer",borderRadius:6,
-            }}>CANCEL</button>
-            <button
-              data-testid="sell-confirm-btn"
-              disabled={!validQty || priceNum<=0}
-              onClick={()=>onConfirm(qtyNum, priceNum, date)}
-              style={{
-                flex:1,background:(validQty && priceNum>0)?B.red:B.panel2,border:"none",
-                color:(validQty && priceNum>0)?"#fff":B.gray3,padding:"10px",borderRadius:6,
-                fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,
-                cursor:(validQty && priceNum>0)?"pointer":"not-allowed",
-            }}>CONFIRM SELL</button>
-          </div>
+        </div>
+        <div style={{display:"flex",gap:8,padding:"12px 16px",flexShrink:0,borderTop:`1px solid ${B.border}`}}>
+          <button onClick={onCancel} style={{
+            flex:1,background:"transparent",border:`1px solid ${B.border}`,color:B.gray1,padding:"11px",
+            fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,cursor:"pointer",borderRadius:6,
+          }}>CANCEL</button>
+          <button
+            data-testid="sell-confirm-btn"
+            disabled={!validQty || priceNum<=0}
+            onClick={()=>onConfirm(qtyNum, priceNum, date)}
+            style={{
+              flex:1,background:(validQty && priceNum>0)?B.red:B.panel2,border:"none",
+              color:(validQty && priceNum>0)?"#fff":B.gray3,padding:"11px",borderRadius:6,
+              fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,
+              cursor:(validQty && priceNum>0)?"pointer":"not-allowed",
+          }}>CONFIRM SELL</button>
         </div>
       </div>
     </div>
@@ -2628,11 +2736,11 @@ function DisclaimerBar() {
   return (
     <div data-testid="disclaimer-bar" style={{
       background:"#1a0f00", borderTop:`1px solid ${B.yellow}`, borderBottom:`1px solid ${B.border}`,
-      padding:"3px 8px", display:"flex", alignItems:"center", gap:6,
-      fontFamily:"'Courier New',monospace", fontSize:11, color:B.yellow, lineHeight:1.2,
+      padding:"4px 8px", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap",
+      fontFamily:"'Courier New',monospace", fontSize:11, color:B.yellow, lineHeight:1.3,
     }}>
-      <span style={{fontWeight:700,letterSpacing:"0.06em"}}>⚠ EDU/INFO ONLY</span>
-      <span style={{color:B.gray2,letterSpacing:"0.02em"}}>
+      <span style={{fontWeight:700,letterSpacing:"0.06em",whiteSpace:"nowrap"}}>⚠ EDU/INFO ONLY</span>
+      <span className="sm-disclaimer-full" style={{color:B.gray2,letterSpacing:"0.02em"}}>
         Not investment advice (MiFID II/SEC).
       </span>
       <Link to="/disclaimer" style={{color:B.cyan,textDecoration:"underline",marginLeft:"auto",whiteSpace:"nowrap"}}>
@@ -2649,15 +2757,16 @@ function DisclaimerModal({onAccept}:{onAccept:()=>void}) {
       display:"flex", alignItems:"center", justifyContent:"center", padding:16,
       fontFamily:"'Courier New',monospace",
     }}>
-      <div style={{
-        maxWidth:560, width:"100%", background:B.bg, border:`2px solid ${B.yellow}`,
+      <div className="sm-modal-card" style={{
+        maxWidth:560, width:"100%", display:"flex", flexDirection:"column",
+        background:B.bg, border:`2px solid ${B.yellow}`,
         boxShadow:`0 0 0 4px ${B.bg}, 0 0 0 5px ${B.yellow}`,
       }}>
         <div style={{background:B.yellow,padding:"6px 10px",color:"#000",fontWeight:700,
-          fontSize:16,letterSpacing:"0.1em"}}>
+          fontSize:16,letterSpacing:"0.1em",flexShrink:0}}>
           ⚠ STRATEGIC MARKETS — REGULATORY NOTICE
         </div>
-        <div style={{padding:"14px 16px",color:B.gray1,fontSize:14,lineHeight:1.55}}>
+        <div style={{padding:"14px 16px",color:B.gray1,fontSize:14,lineHeight:1.55,overflowY:"auto",flex:1,minHeight:0}}>
           <div style={{color:B.yellow,fontWeight:700,marginBottom:6,letterSpacing:"0.05em"}}>
             ▸ NOT FINANCIAL ADVICE
           </div>
@@ -2678,6 +2787,8 @@ function DisclaimerModal({onAccept}:{onAccept:()=>void}) {
             sole responsibility of the user, who is encouraged to consult a
             licensed financial advisor.
           </p>
+        </div>
+        <div style={{padding:"12px 16px",flexShrink:0,borderTop:`1px solid ${B.border}`}}>
           <p style={{margin:"0 0 12px 0",color:B.gray2,fontSize:13}}>
             By clicking "ACCEPT" you confirm that you have read and understood this notice.
           </p>

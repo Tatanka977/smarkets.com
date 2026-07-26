@@ -42,18 +42,18 @@ export default function OnboardingQuestionnaire({ onDone }: { onDone: () => void
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,fontFamily:FONT,padding:16}}>
-      <div style={{width:"100%",maxWidth:420,background:B.panel,border:`1px solid ${B.border}`}}>
-        <div style={{background:B.blue,padding:"10px 14px"}}>
+      <div style={{width:"100%",maxWidth:420,maxHeight:"calc(100dvh - 32px)",display:"flex",flexDirection:"column",background:B.panel,border:`1px solid ${B.border}`}}>
+        <div style={{background:B.blue,padding:"10px 14px",flexShrink:0}}>
           <div style={{fontSize:15,fontWeight:700,color:B.white,letterSpacing:"0.1em"}}>QUICK INVESTOR PROFILE</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.85)",marginTop:2}}>STEP {step+1} OF {STEPS.length} — HELPS THE AI GIVE MORE RELEVANT SCENARIOS</div>
         </div>
-        <div style={{padding:16}}>
+        <div style={{padding:16,overflowY:"auto",flex:1,minHeight:0}}>
           <div style={{fontSize:13,color:B.gray1,marginBottom:12,letterSpacing:"0.06em"}}>{current.label}</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {current.options.map(opt=>(
               <button key={opt} disabled={saving} onClick={()=>choose(opt)} style={{
-                textAlign:"left",padding:"10px 12px",background:"#111",border:`1px solid ${B.border}`,
-                color:B.white,fontFamily:FONT,fontSize:13,cursor:"pointer",
+                textAlign:"left",padding:"12px",background:"#111",border:`1px solid ${B.border}`,
+                color:B.white,fontFamily:FONT,fontSize:13,cursor:"pointer",minHeight:44,
               }}>{opt}</button>
             ))}
           </div>
