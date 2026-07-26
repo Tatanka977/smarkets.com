@@ -308,6 +308,12 @@ const NAV_ICONS: Record<string, JSX.Element> = {
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   ),
+  profile: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  ),
 };
 
 function BottomNav({page,setPage,badge}:any) {
@@ -350,17 +356,37 @@ function BottomNav({page,setPage,badge}:any) {
   );
 }
 
-const SIDEBAR_TABS = [
-  {id:"home",     label:"HOME"},
-  {id:"search",   label:"SEARCH"},
-  {id:"portfolio",label:"PORTFOLIO",badgeKey:true},
-  {id:"analysis", label:"ANALYSIS"},
-  {id:"ai",       label:"AI ADVISOR"},
-  {id:"news",     label:"NEWS"},
-  {id:"community",label:"COMMUNITY"},
+// Grouped into four visually separated sections: Home on its own, the
+// core portfolio workflow (Search → AI Advisor) together, the
+// content/social pages (News, Community), and Profile on its own at the
+// bottom — a route (not an in-terminal `page`), so it renders as a real
+// link rather than a setPage(...) button.
+const SIDEBAR_GROUPS = [
+  [
+    {id:"home",     label:"HOME"},
+  ],
+  [
+    {id:"search",   label:"SEARCH"},
+    {id:"portfolio",label:"PORTFOLIO",badgeKey:true},
+    {id:"analysis", label:"ANALYSIS"},
+    {id:"ai",       label:"AI ADVISOR"},
+  ],
+  [
+    {id:"news",     label:"NEWS"},
+    {id:"community",label:"COMMUNITY"},
+  ],
+  [
+    {id:"profile",  label:"PROFILE", href:true},
+  ],
 ];
 
 function SidebarNav({page,setPage,badge}:any) {
+  const { user } = useUser();
+  const itemStyle:any = {
+    display:"flex",alignItems:"center",gap:10,padding:"9px 12px",
+    border:"none",borderRadius:4,position:"relative",
+    textAlign:"left",width:"100%",textDecoration:"none",boxSizing:"border-box",
+  };
   return (
     <div className="sm-sidebarnav" style={{width:200,flexShrink:0,background:B.panel2,borderRight:`1px solid ${B.border}`,
       display:"flex",flexDirection:"column",overflow:"hidden"}}>
@@ -371,25 +397,41 @@ function SidebarNav({page,setPage,badge}:any) {
           letterSpacing:"0.08em",lineHeight:1.3}}>STRATEGIC<br/>MARKETS</span>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"10px 8px",display:"flex",flexDirection:"column",gap:2}}>
-        {SIDEBAR_TABS.map(t=>{
+        {SIDEBAR_GROUPS.map((group,gi)=>(
+          <div key={gi} style={{display:"flex",flexDirection:"column",gap:2,
+            borderTop: gi>0 ? `1px solid ${B.border}` : "none",
+            marginTop: gi>0 ? 8 : 0, paddingTop: gi>0 ? 8 : 0}}>
+            {group.map((t:any)=>{
           const active=page===t.id;
-          return (
-            <button key={t.id} onClick={()=>setPage(t.id)} style={{
-              display:"flex",alignItems:"center",gap:10,padding:"9px 12px",
-              background:active?B.panel:"transparent",
-              border:"none",borderLeft:`2px solid ${active?B.blue:"transparent"}`,
-              borderRadius:4,cursor:"pointer",color:active?B.blue:B.gray2,position:"relative",
-              textAlign:"left",width:"100%",
-            }}>
+          const label = (
+            <>
               {t.badgeKey && badge>0 && <div style={{position:"absolute",top:6,right:8,
                 background:B.blue,color:B.white,fontSize:10,fontWeight:700,
                 fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"14px",borderRadius:2}}>{badge}</div>}
               {NAV_ICONS[t.id]}
               <span style={{fontSize:13,fontWeight:700,
                 fontFamily:"'Courier New',monospace",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{t.label}</span>
-            </button>
+            </>
           );
-        })}
+          if (t.href) {
+            return (
+              <Link key={t.id} to={user ? "/profile" : "/auth"} style={{
+                ...itemStyle, background:"transparent",
+                borderLeft:`2px solid transparent`, color:B.gray2,
+              }}>{label}</Link>
+            );
+          }
+          return (
+            <button key={t.id} onClick={()=>setPage(t.id)} style={{
+              ...itemStyle,
+              background:active?B.panel:"transparent",
+              borderLeft:`2px solid ${active?B.blue:"transparent"}`,
+              cursor:"pointer",color:active?B.blue:B.gray2,
+            }}>{label}</button>
+          );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
