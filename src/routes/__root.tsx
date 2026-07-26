@@ -100,10 +100,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+// Sets data-theme on <html> synchronously, before the stylesheet is even
+// parsed — without this, the page briefly renders the CSS default
+// ([data-theme="terminal"], dark) until useTheme's own effect runs on the
+// client and flips it to the user's actual saved theme, which shows as a
+// visible dark→light flash on every load. Key/default must stay in sync
+// with src/hooks/useTheme.ts (STORAGE_KEY / readInitial()).
+const THEME_INIT_SCRIPT = `
+(function(){
+  try {
+    var t = localStorage.getItem("moneta_sm_theme");
+    document.documentElement.setAttribute("data-theme", (t === "terminal" || t === "aurora") ? t : "aurora");
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "aurora");
+  }
+})();
+`;
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
