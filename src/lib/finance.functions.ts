@@ -310,8 +310,22 @@ export const searchSecurities = createServerFn({ method: "GET" })
 
     let results: SearchResult[];
     if (isIsin(q)) {
-      results = await searchByIsin(q);
-      if (!results.length) results = await searchYahoo(q);
+      // OpenFIGI's mapped ticker is sometimes a local/internal exchange code
+      // (common for mutual funds, e.g. an Italian fund mapped to its Borsa
+      // Italiana code) that Yahoo/Finnhub quote lookups don't recognize at
+      // all, even though the same instrument IS quotable on Yahoo under its
+      // own symbol for a different listing. Short-circuiting on "OpenFIGI
+      // returned something" meant that dead-end ticker was the only option
+      // offered, with no price ever resolving. Always fetch both and merge
+      // (deduped by symbol) so a working Yahoo-native symbol is still on
+      // offer even when OpenFIGI "succeeds" with an unusable one.
+      const [figiResults, yahooResults] = await Promise.all([searchByIsin(q), searchYahoo(q)]);
+      const seen = new Set<string>();
+      results = [...figiResults, ...yahooResults].filter(r => {
+        if (seen.has(r.symbol)) return false;
+        seen.add(r.symbol);
+        return true;
+      });
     } else {
       results = await searchYahoo(q);
     }
