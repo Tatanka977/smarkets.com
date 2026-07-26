@@ -45,7 +45,7 @@ import { B, PIE_COLS, fmt, fmtM, pCol, pSign, groupBy, pMet, FKey, BPanel, build
 export { B, PIE_COLS, fmt, fmtM, pCol, pSign, groupBy, pMet, FKey, BPanel };
 
 const searchSecurities = (q, category) => srvSearch({ data: { q, category } });
-const fetchQuote = (sym) => srvQuote({ data: { symbol: sym } });
+const fetchQuote = (sym, isin?) => srvQuote({ data: { symbol: sym, isin } });
 const batchRefresh = (symbols) => srvBatch({ data: { symbols } });
 const fetchMarketStatus = (exchanges?:string[]) => srvMarketStatus({ data: { exchanges } });
 const fetchHistoricalPrice = (symbol, date) => srvHistorical({ data: { symbol, date } });
@@ -633,7 +633,7 @@ useEffect(()=>{
     setSel(r); setLoad(true); setDetail(null); setError(""); setQty("1");
     setHistInfo({kind:null, text:""});
     try {
-      const d = await fetchQuote(r.symbol);
+      const d = await fetchQuote(r.symbol, r.isin);
       // Prefer the search result's category: it comes from real exchange/type
       // classification (Yahoo quoteType/OpenFIGI securityType), whereas the quote's
       // own category defaults to "STOCK" whenever Finnhub/mock data doesn't know

@@ -13,6 +13,9 @@ export interface SearchResult {
   sector?: string;
   industry?: string;
   geo?: string;
+  // Present only when this result came from an ISIN search — lets fetchQuote
+  // retry via Yahoo's own ISIN resolution if `symbol` itself has no price.
+  isin?: string;
 }
 
 export interface Quote {
@@ -296,6 +299,7 @@ async function searchByIsin(isin: string): Promise<SearchResult[]> {
       exchange: e.exchCode || "—",
       type: e.securityType || "Equity",
       category: inferCategoryFromType(e.securityType || e.marketSector || ""),
+      isin: isin.toUpperCase(),
     }));
   } catch (e) {
     console.warn("[OpenFIGI]", (e as Error).message);
@@ -320,8 +324,11 @@ export const searchSecurities = createServerFn({ method: "GET" })
       // (deduped by symbol) so a working Yahoo-native symbol is still on
       // offer even when OpenFIGI "succeeds" with an unusable one.
       const [figiResults, yahooResults] = await Promise.all([searchByIsin(q), searchYahoo(q)]);
+      // Tag the Yahoo-sourced results with the ISIN too, so fetchQuote's
+      // retry-via-ISIN fallback below applies no matter which of the two
+      // (deduped) results the user actually picks.
       const seen = new Set<string>();
-      results = [...figiResults, ...yahooResults].filter(r => {
+      results = [...figiResults, ...yahooResults.map(r => ({ ...r, isin: q.toUpperCase() }))].filter(r => {
         if (seen.has(r.symbol)) return false;
         seen.add(r.symbol);
         return true;
@@ -336,7 +343,7 @@ export const searchSecurities = createServerFn({ method: "GET" })
     return results;
   });
 export const fetchQuote = createServerFn({ method: "GET" })
-  .inputValidator((d: { symbol: string }) => d)
+  .inputValidator((d: { symbol: string; isin?: string }) => d)
   .handler(async ({ data }) => {
     const sym = (data.symbol || "").trim().toUpperCase();
     // Non-equity assets stay on mock (Finnhub free tier lacks crypto/FX/bonds)
@@ -376,6 +383,32 @@ export const fetchQuote = createServerFn({ method: "GET" })
       if (ySec) { yq.sector = ySec.sector; yq.industry = ySec.industry; }
       return yq;
     }
+
+    // Last resort before giving up to a fictional mock price: `sym` itself
+    // (often an OpenFIGI-mapped local exchange ticker for mutual funds,
+    // e.g. an Italian fund's Borsa Italiana code) may have no resolvable
+    // price anywhere, while the same instrument IS quotable on Yahoo under
+    // a different symbol for its ISIN. Re-resolve via Yahoo search and try
+    // each candidate until one actually has a price.
+    if (data.isin) {
+      const candidates = await searchYahoo(data.isin);
+      for (const c of candidates) {
+        if (c.symbol.toUpperCase() === sym) continue; // already tried above
+        const alt = await fetchYahooQuoteFull(c.symbol);
+        if (alt) {
+          if (mock) {
+            alt.category = mock.category;
+            alt.sector = alt.sector || mock.industry;
+            alt.industry = alt.industry || mock.industry;
+            alt.type = alt.type || mock.type;
+          }
+          const ySec = await fetchYahooSector(c.symbol);
+          if (ySec) { alt.sector = ySec.sector; alt.industry = ySec.industry; }
+          return alt;
+        }
+      }
+    }
+
     const m = findMock(sym);
     const ySec = await fetchYahooSector(sym);
     if (ySec) { m.sector = ySec.sector; m.industry = ySec.industry; }
