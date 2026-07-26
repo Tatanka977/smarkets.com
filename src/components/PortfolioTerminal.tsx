@@ -2752,7 +2752,7 @@ export default function PortfolioTerminal() {
       if (rate == null || rate === 1) return h;
       return { ...h, value: h.value*rate, costBasis: h.costBasis*rate, costPrice: h.costPrice*rate };
     });
-  }, [holdings, fxRates, foreignCurrencies, baseCcy]);
+  }, [holdings, fxRates, foreignCurrencies]);
 
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   useEffect(() => {
