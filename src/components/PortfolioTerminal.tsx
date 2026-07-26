@@ -181,6 +181,7 @@ function TopBar({time,setPage}:any) {
   const { user } = useUser();
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
+  const isMobile = useIsMobile();
   return (
     <div className="sm-topbar" style={{background:B.blue,display:"flex",alignItems:"center",
       justifyContent:"space-between",padding:"6px 12px",flexShrink:0,gap:8,flexWrap:"wrap"}}>
@@ -227,12 +228,17 @@ function TopBar({time,setPage}:any) {
             </svg>
           )}
         </button>
-        <Link to={user ? "/profile" : "/auth"} style={{
-          fontSize:12,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
-          textDecoration:"none",background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.4)",
-          padding:"4px 10px",letterSpacing:"0.08em",whiteSpace:"nowrap"}}>
-          {user ? "◉ PROFILE" : "▸ SIGN IN"}
-        </Link>
+        {/* On desktop this now lives in the sidebar's Profile section
+            (bottom group) — kept here only on mobile, where there's no
+            sidebar and this is the only way to reach it. */}
+        {isMobile && (
+          <Link to={user ? "/profile" : "/auth"} style={{
+            fontSize:12,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
+            textDecoration:"none",background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.4)",
+            padding:"4px 10px",letterSpacing:"0.08em",whiteSpace:"nowrap"}}>
+            {user ? "◉ PROFILE" : "▸ SIGN IN"}
+          </Link>
+        )}
       </div>
     </div>
   );
