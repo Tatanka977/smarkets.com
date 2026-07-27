@@ -429,6 +429,40 @@ function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
 }
 
 // The compact teaser shown inside a post card in the channel's post list.
+function PostPortfolioWidget({ snapshot }: { snapshot: PortfolioSnapshot }) {
+  const data = snapshot.allocationByCategory?.length
+    ? snapshot.allocationByCategory
+    : snapshot.allocationBySector?.length
+      ? snapshot.allocationBySector
+      : null;
+
+  if (!data || !data.length) return null;
+
+  const top = [...data].sort((a, b) => b.pct - a.pct).slice(0, 4);
+
+  return (
+    <div style={{ width: 190, flexShrink: 0, background: B.panel2, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <ResponsiveContainer width={64} height={64}>
+          <PieChart>
+            <Pie data={top} cx="50%" cy="50%" innerRadius={18} outerRadius={30} paddingAngle={1} dataKey="pct" strokeWidth={0}>
+              {top.map((_, i) => <Cell key={i} fill={PIE_COLS[i % PIE_COLS.length]} />)}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {top.map((d, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
+              <span style={{ width: 7, height: 7, borderRadius: 2, background: PIE_COLS[i % PIE_COLS.length], flexShrink: 0 }} />
+              <span style={{ fontSize: 10, color: B.gray2, fontFamily: FONT, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{d.pct.toFixed(0)}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 function PortfolioBadge({ snapshot }: { snapshot: PortfolioSnapshot }) {
   const highRisk = (snapshot.alerts || []).some((a) => a.sev === "HIGH");
   return (
@@ -565,26 +599,29 @@ function PostCard({ post, myVote, disabled, onVote, onOpen, showChannel }: {
       display: "flex", gap: 12, cursor: "pointer",
     }}>
       <VoteControl score={post.score} myVote={myVote} disabled={disabled} onVote={onVote} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-          <PostTypeTag type={post.post_type} />
-          {showChannel && post.community_channels && (
-            <span style={{ fontSize: 11, color: B.blue, fontWeight: 700, fontFamily: FONT }}>{post.community_channels.name}</span>
-          )}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+            <PostTypeTag type={post.post_type} />
+            {showChannel && post.community_channels && (
+              <span style={{ fontSize: 11, color: B.blue, fontWeight: 700, fontFamily: FONT }}>{post.community_channels.name}</span>
+            )}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 4 }}>{post.title}</div>
+          <div style={{
+            fontSize: 12, color: B.gray2, fontFamily: FONT, marginBottom: 6,
+            overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
+            WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
+          }}>{post.body}</div>
+          <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <Avatar name={post.author_name} size={18} />
+            <span>u/{post.author_name}</span>
+            <span>· {fmtDate(post.created_at)}</span>
+          </div>
+          {post.portfolio_snapshot && <PortfolioBadge snapshot={post.portfolio_snapshot} />}
+          <PostActions post={post} onOpenComments={onOpen} />
         </div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 4 }}>{post.title}</div>
-        <div style={{
-          fontSize: 12, color: B.gray2, fontFamily: FONT, marginBottom: 6,
-          overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
-          WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
-        }}>{post.body}</div>
-        <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <Avatar name={post.author_name} size={18} />
-          <span>u/{post.author_name}</span>
-          <span>· {fmtDate(post.created_at)}</span>
-        </div>
-        {post.portfolio_snapshot && <PortfolioBadge snapshot={post.portfolio_snapshot} />}
-        <PostActions post={post} onOpenComments={onOpen} />
+        {post.portfolio_snapshot && <PostPortfolioWidget snapshot={post.portfolio_snapshot} />}
       </div>
     </div>
   );
