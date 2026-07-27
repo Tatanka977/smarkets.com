@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { getMyUsername, setUsername as srvSetUsername, listPortfolios } from "@/lib/profile.functions";
 import { OWNER_EMAIL } from "@/lib/admin";
 import {
-  listChannels, createChannel, deleteCommunityChannel,
+  listChannels, createChannel, deleteCommunityChannel, updateChannelRules,
   listAllCommunityPosts, listCommunityPosts, getCommunityPost, createCommunityPost, deleteCommunityPost,
   listCommunityComments, createCommunityComment, deleteCommunityComment,
   listMyVotes, setVote, removeVote,
@@ -627,13 +627,6 @@ function PostCard({ post, myVote, disabled, onVote, onOpen, showChannel }: {
   );
 }
 
-const COMMUNITY_RULES = [
-  "Be respectful — no harassment, personal attacks, or hate speech.",
-  "No spam or self-promotion outside what a topic's own rules allow.",
-  "This is educational content, not financial advice — frame posts as informational or hypothetical.",
-  "Stay on topic for the topic you're posting in.",
-  "Never share private account credentials or other people's personal information.",
-];
 
 // The single Reddit-style feed: sort tabs (Hot/New/Top/Following), an "All
 // Topics" channel dropdown (replacing the old separate channel-list page),
@@ -659,7 +652,11 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [channelName, setChannelName] = useState("");
   const [channelDesc, setChannelDesc] = useState("");
+  const [channelRulesText, setChannelRulesText] = useState("");
   const [creatingChannel, setCreatingChannel] = useState(false);
+  const [editingRules, setEditingRules] = useState(false);
+  const [rulesDraft, setRulesDraft] = useState("");
+  const [savingRules, setSavingRules] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [sortTab, setSortTab] = useState<"hot" | "new" | "top" | "following">("hot");
@@ -729,6 +726,10 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
   }, [selectedChannel]);
   useEffect(() => { loadSidebar(); }, [loadSidebar]);
 
+  // Switching topics while mid-edit would otherwise leave the previous
+  // topic's rules draft open, now pointed at a different topic.
+  useEffect(() => { setEditingRules(false); }, [selectedChannel]);
+
   useEffect(() => {
     if (!dropdownOpen) return;
     const onDocClick = (e: MouseEvent) => {
@@ -756,8 +757,9 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
     if (creatingChannel || !channelName.trim()) return;
     setCreatingChannel(true); setError("");
     try {
-      const ch = await createChannel({ data: { name: channelName, description: channelDesc } });
-      setChannelName(""); setChannelDesc(""); setShowCreateChannel(false);
+      const rules = channelRulesText.split("\n").map((r) => r.trim()).filter(Boolean);
+      const ch = await createChannel({ data: { name: channelName, description: channelDesc, rules } });
+      setChannelName(""); setChannelDesc(""); setChannelRulesText(""); setShowCreateChannel(false);
       await loadChannels();
       setSelectedChannel(ch);
       setDropdownOpen(false);
@@ -765,6 +767,26 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
       setError(e.message || "Error creating topic");
     } finally {
       setCreatingChannel(false);
+    }
+  };
+
+  const startEditRules = () => {
+    setRulesDraft((selectedChannel?.rules || []).join("\n"));
+    setEditingRules(true);
+  };
+
+  const saveRules = async () => {
+    if (!selectedChannel || savingRules) return;
+    setSavingRules(true); setError("");
+    try {
+      const rules = rulesDraft.split("\n").map((r) => r.trim()).filter(Boolean);
+      const updated = await updateChannelRules({ data: { id: selectedChannel.id, rules } });
+      setSelectedChannel(updated);
+      setEditingRules(false);
+    } catch (e: any) {
+      setError(e.message || "Error saving rules");
+    } finally {
+      setSavingRules(false);
     }
   };
 
@@ -929,6 +951,10 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
             <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
               <input value={channelName} onChange={(e) => setChannelName(e.target.value)} placeholder="Topic name (e.g. US Stocks)" maxLength={60} style={inputStyle} />
               <textarea value={channelDesc} onChange={(e) => setChannelDesc(e.target.value)} placeholder="Description (optional)" rows={2} maxLength={300} style={{ ...inputStyle, resize: "vertical" }} />
+              <div>
+                <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, marginBottom: 4 }}>RULES (optional, one per line) — you decide these as the topic's creator</div>
+                <textarea value={channelRulesText} onChange={(e) => setChannelRulesText(e.target.value)} placeholder={"Be respectful\nNo spam\n..."} rows={3} maxLength={1000} style={{ ...inputStyle, width: "100%", resize: "vertical" }} />
+              </div>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button disabled={!channelName.trim() || creatingChannel} onClick={submitChannel} style={primaryBtnStyle(!!channelName.trim() && !creatingChannel)}>
                   {creatingChannel ? "CREATING..." : "CREATE TOPIC"}
@@ -1050,15 +1076,49 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
             display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
             background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: rulesOpen ? 10 : 0,
           }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>Community Rules</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
+              {selectedChannel ? `${selectedChannel.name} Rules` : "Topic Rules"}
+            </span>
             <span style={{ color: B.gray3 }}><ChevronIcon open={rulesOpen} /></span>
           </button>
           {rulesOpen && (
-            <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
-              {COMMUNITY_RULES.map((r, i) => (
-                <li key={i} style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, lineHeight: 1.4 }}>{r}</li>
-              ))}
-            </ol>
+            !selectedChannel ? (
+              <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, lineHeight: 1.5 }}>
+                Select a topic to see its rules — each one is set by whoever created it, like a subreddit's own rules.
+              </div>
+            ) : editingRules ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <textarea
+                  value={rulesDraft} onChange={(e) => setRulesDraft(e.target.value)} rows={5}
+                  placeholder={"One rule per line"} style={{ ...inputStyle, width: "100%", resize: "vertical", fontSize: 12 }}
+                />
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button onClick={() => setEditingRules(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700 }}>CANCEL</button>
+                  <button disabled={savingRules} onClick={saveRules} style={primaryBtnStyle(!savingRules)}>{savingRules ? "SAVING..." : "SAVE"}</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {(selectedChannel.rules || []).length === 0 ? (
+                  <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, lineHeight: 1.5 }}>No rules set for this topic yet.</div>
+                ) : (
+                  <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {selectedChannel.rules.map((r, i) => (
+                      <li key={i} style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, lineHeight: 1.4 }}>{r}</li>
+                    ))}
+                  </ol>
+                )}
+                {/* Only the topic's own creator can edit its rules — matches
+                    the RLS update policy exactly (no admin override here,
+                    unlike delete). */}
+                {user && user.user_id === selectedChannel.created_by && (
+                  <button onClick={startEditRules} style={{
+                    marginTop: 10, background: "none", border: `1px solid ${B.border}`, color: B.blue, borderRadius: 6,
+                    padding: "6px 10px", fontFamily: FONT, fontSize: 11, fontWeight: 700, cursor: "pointer", width: "100%",
+                  }}>EDIT RULES</button>
+                )}
+              </>
+            )
           )}
         </div>
       </div>

@@ -8,6 +8,10 @@ export interface CommunityChannel {
   created_by: string;
   post_count: number;
   created_at: string;
+  // Set by whoever creates the topic — same idea as a subreddit's own
+  // rules, set by its mods. Empty array, not a fallback to some generic
+  // list, when the creator hasn't set any.
+  rules: string[];
 }
 
 export interface PortfolioSnapshotHolding {
@@ -113,22 +117,39 @@ export async function listChannels(): Promise<CommunityChannel[]> {
 }
 
 export async function createChannel(
-  { data }: { data: { name: string; description?: string } }
+  { data }: { data: { name: string; description?: string; rules?: string[] } }
 ): Promise<CommunityChannel> {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData?.user;
   if (!user) throw new Error("Not signed in");
   const name = data.name.trim();
   if (!name) throw new Error("Channel name is required");
+  const rules = (data.rules || []).map((r) => r.trim()).filter(Boolean);
   const { data: row, error } = await supabase
     .from("community_channels")
-    .insert({ created_by: user.id, name, description: data.description?.trim() || null, slug: slugifyChannel(name) })
+    .insert({ created_by: user.id, name, description: data.description?.trim() || null, slug: slugifyChannel(name), rules })
     .select()
     .single();
   if (error) {
     if ((error as any).code === "23505") throw new Error("A channel with a very similar name already exists — try another one.");
     throw error;
   }
+  return row as CommunityChannel;
+}
+
+// Editing rules after creation — RLS (community_channels own update policy)
+// already restricts this to the topic's own creator, same as the insert.
+export async function updateChannelRules(
+  { data }: { data: { id: string; rules: string[] } }
+): Promise<CommunityChannel> {
+  const rules = (data.rules || []).map((r) => r.trim()).filter(Boolean);
+  const { data: row, error } = await supabase
+    .from("community_channels")
+    .update({ rules })
+    .eq("id", data.id)
+    .select()
+    .single();
+  if (error) throw error;
   return row as CommunityChannel;
 }
 
