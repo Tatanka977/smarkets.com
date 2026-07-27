@@ -641,9 +641,8 @@ const COMMUNITY_RULES = [
 // channel CRUD, and post/comment creation all reuse the exact same
 // community.functions.ts calls the old Home/Channels/ChannelPosts views did
 // — only the layout and the sort/filter UI around them changed.
-function Feed({ user, username, isAdmin, holdings, composerOpen, onComposerHandled, onUsernameSet, onOpenPost, selectedChannel, onSelectChannel }: {
+function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, selectedChannel, onSelectChannel }: {
   user: any; username: string | null | undefined; isAdmin: boolean; holdings: any[];
-  composerOpen: boolean; onComposerHandled: () => void;
   onUsernameSet: (u: string) => void; onOpenPost: (id: string) => void;
   // Lifted to CommunityPage so it survives this component unmounting when
   // the view switches to a post's detail and back (a plain local useState
@@ -656,6 +655,7 @@ function Feed({ user, username, isAdmin, holdings, composerOpen, onComposerHandl
   const [channelsLoading, setChannelsLoading] = useState(true);
   const setSelectedChannel = onSelectChannel;
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [channelSearch, setChannelSearch] = useState("");
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [channelName, setChannelName] = useState("");
   const [channelDesc, setChannelDesc] = useState("");
@@ -728,20 +728,6 @@ function Feed({ user, username, isAdmin, holdings, composerOpen, onComposerHandl
     }
   }, [selectedChannel]);
   useEffect(() => { loadSidebar(); }, [loadSidebar]);
-
-  // "+ NEW POST" now lives in the app's left sidebar (see SidebarNav in
-  // PortfolioTerminal.tsx) on desktop, not in this page — composerOpen is
-  // plain lifted state from the shared parent (PortfolioTerminal), since
-  // sidebar and page content are always co-mounted there. Mobile has no
-  // sidebar, so it gets its own floating "+" button further down instead.
-  useEffect(() => {
-    if (composerOpen) {
-      setFormChannelId(selectedChannel?.id || "");
-      setShowForm(true);
-      onComposerHandled();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [composerOpen, onComposerHandled]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -827,24 +813,25 @@ function Feed({ user, username, isAdmin, holdings, composerOpen, onComposerHandl
   const communityName = selectedChannel ? selectedChannel.name : "Strategic Markets Community";
   const totalTrendingCount = (trending || []).reduce((s, t) => s + t.count, 0);
 
+  // Community search — filters by name and description, live, as you type
+  // (same behavior the old dedicated channel-browsing page had).
+  const filteredChannels = useMemo(() => {
+    const q = channelSearch.trim().toLowerCase();
+    if (!q) return channels;
+    return channels.filter((c) => c.name.toLowerCase().includes(q) || (c.description || "").toLowerCase().includes(q));
+  }, [channels, channelSearch]);
+
+  const openComposer = () => {
+    setFormChannelId(selectedChannel?.id || "");
+    setShowForm(true);
+  };
+
   if (channelsLoading) {
     return <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>;
   }
 
   return (
     <>
-    {/* Mobile has no left sidebar (where "+ NEW POST" lives on desktop —
-        see SidebarNav in PortfolioTerminal.tsx), so it needs its own
-        entry point: a floating action button, positioned clear of the
-        bottom tab bar. */}
-    {isMobile && (
-      <button onClick={() => { setFormChannelId(selectedChannel?.id || ""); setShowForm(true); }} aria-label="New post" style={{
-        position: "fixed", bottom: 78, right: 16, zIndex: 15,
-        width: 52, height: 52, borderRadius: "50%", background: B.blue, color: B.white, border: "none",
-        display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.3)", fontSize: 26, fontWeight: 700, fontFamily: FONT, lineHeight: 1,
-      }}>+</button>
-    )}
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 14, alignItems: "flex-start" }}>
       <div style={{ flex: 1, minWidth: 0, width: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
@@ -870,21 +857,36 @@ function Feed({ user, username, isAdmin, holdings, composerOpen, onComposerHandl
             </button>
             {dropdownOpen && (
               <div style={{
-                position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 20, width: 220, maxHeight: 320, overflowY: "auto",
-                background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10,
+                position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 20, width: 260, maxHeight: 380, overflowY: "auto",
+                background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10, display: "flex", flexDirection: "column",
               }}>
+                <div style={{ padding: 8, borderBottom: `1px solid ${B.border}` }}>
+                  <input
+                    autoFocus value={channelSearch} onChange={(e) => setChannelSearch(e.target.value)}
+                    placeholder="Search communities…" style={{ ...inputStyle, width: "100%", fontSize: 12, padding: "6px 8px" }}
+                  />
+                </div>
                 <button onClick={() => { setSelectedChannel(null); setDropdownOpen(false); }} style={{
                   display: "block", width: "100%", textAlign: "left", background: !selectedChannel ? B.panel2 : "none", border: "none",
                   color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700, padding: "10px 12px",
                 }}>All Topics</button>
-                {channels.map((c) => (
+                {filteredChannels.length === 0 ? (
+                  <div style={{ padding: "12px", fontSize: 11, color: B.gray3, fontFamily: FONT }}>
+                    No communities match "{channelSearch.trim()}".
+                  </div>
+                ) : filteredChannels.map((c) => (
                   <button key={c.id} onClick={() => { setSelectedChannel(c); setDropdownOpen(false); }} style={{
-                    display: "flex", justifyContent: "space-between", width: "100%", textAlign: "left",
+                    display: "block", width: "100%", textAlign: "left",
                     background: selectedChannel?.id === c.id ? B.panel2 : "none", border: "none",
-                    color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "10px 12px",
+                    color: B.gray1, cursor: "pointer", fontFamily: FONT, padding: "10px 12px",
                   }}>
-                    <span>{c.name}</span>
-                    <span style={{ color: B.gray3 }}>{c.post_count}</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700 }}>
+                      <span>{c.name}</span>
+                      <span style={{ color: B.gray3, fontWeight: 400 }}>{c.post_count}</span>
+                    </div>
+                    {c.description && (
+                      <div style={{ fontSize: 10, color: B.gray3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.description}</div>
+                    )}
                   </button>
                 ))}
                 <div style={{ borderTop: `1px solid ${B.border}` }}>
@@ -903,6 +905,22 @@ function Feed({ user, username, isAdmin, holdings, composerOpen, onComposerHandl
             )}
           </div>
         </div>
+
+        {/* Reddit-style "Create Post" bar — the entry point for posting on
+            every screen size (desktop and mobile alike), instead of a
+            button tucked into the app sidebar or the feed's corner. */}
+        {!showForm && (
+          <button onClick={openComposer} style={{
+            display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+            background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10,
+            padding: "10px 14px", marginBottom: 12, cursor: "pointer",
+          }}>
+            <Avatar name={username || "?"} size={28} />
+            <span style={{ flex: 1, fontSize: 13, color: B.gray3, fontFamily: FONT }}>
+              {user ? "Create Post" : "Sign in to create a post"}
+            </span>
+          </button>
+        )}
 
         {showCreateChannel && user && (
           username === null ? (
@@ -1258,11 +1276,7 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
 
 type View = { mode: "feed" } | { mode: "post"; postId: string };
 
-// composerOpen/onComposerHandled come from PortfolioTerminal (which also
-// renders the app's left SidebarNav — its own "+ NEW POST" button flips
-// this): they're siblings that stay co-mounted on desktop, so this is
-// plain lifted state, not a cross-page localStorage handoff.
-export default function CommunityPage({ holdings, composerOpen, onComposerHandled }: { holdings?: any[]; composerOpen?: boolean; onComposerHandled?: () => void }) {
+export default function CommunityPage({ holdings }: { holdings?: any[] }) {
   const { user } = useUser();
   const isAdmin = user?.email === OWNER_EMAIL;
   const [view, setView] = useState<View>({ mode: "feed" });
@@ -1297,7 +1311,6 @@ export default function CommunityPage({ holdings, composerOpen, onComposerHandle
         {view.mode === "feed" && (
           <Feed
             user={user} username={username} isAdmin={isAdmin} holdings={holdings || []}
-            composerOpen={!!composerOpen} onComposerHandled={() => onComposerHandled?.()}
             onUsernameSet={setUsernameState}
             onOpenPost={(postId) => setView({ mode: "post", postId })}
             selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel}
