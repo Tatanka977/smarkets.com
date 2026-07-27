@@ -803,10 +803,10 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
   };
 
   const submitPost = async () => {
-    if (!user || posting || !title.trim() || !body.trim() || !formChannelId) return;
+    if (!user || posting || !title.trim() || !body.trim()) return;
     setPosting(true); setError("");
     try {
-      await createCommunityPost({ data: { title, body, channelId: formChannelId, postType, portfolioSnapshot } });
+      await createCommunityPost({ data: { title, body, channelId: formChannelId || null, postType, portfolioSnapshot } });
       setTitle(""); setBody(""); setPortfolioSnapshot(null); setPostType("discussion"); setShowForm(false);
       await loadPosts();
     } catch (e: any) {
@@ -978,7 +978,7 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
                 <button onClick={() => setShowForm(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700 }}>CANCEL</button>
               </div>
               <select value={formChannelId} onChange={(e) => setFormChannelId(e.target.value)} style={inputStyle}>
-                <option value="">Select a topic…</option>
+                <option value="">No topic (posts to Community Home)</option>
                 {channels.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -995,7 +995,7 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
               <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write something..." rows={4} maxLength={8000} style={{ ...inputStyle, resize: "vertical" }} />
               <PortfolioAttachPicker holdings={holdings} value={portfolioSnapshot} onChange={setPortfolioSnapshot} />
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button disabled={!title.trim() || !body.trim() || !formChannelId || posting} onClick={submitPost} style={primaryBtnStyle(!!title.trim() && !!body.trim() && !!formChannelId && !posting)}>
+                <button disabled={!title.trim() || !body.trim() || posting} onClick={submitPost} style={primaryBtnStyle(!!title.trim() && !!body.trim() && !posting)}>
                   {posting ? "PUBLISHING..." : "PUBLISH"}
                 </button>
               </div>

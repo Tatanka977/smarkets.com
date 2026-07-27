@@ -13,6 +13,11 @@ import {
   updateProfile, getMyUsername, setUsername,
   getInvestorProfile, saveInvestorProfile,
 } from "@/lib/profile.functions";
+import {
+  listMyCommunityPosts, listMyCommunityComments,
+  createCommunityPost, deleteCommunityPost, deleteCommunityComment,
+} from "@/lib/community.functions";
+import type { CommunityPost, CommunityCommentWithPost } from "@/lib/community.functions";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({ meta: [{ title: "Strategic Markets — My profile" }, { name: "robots", content: "noindex" }] }),
@@ -55,10 +60,21 @@ function ProfilePage() {
   const fConv  = useServerFn(listConversations);
   const fDelC  = useServerFn(deleteConversation);
 
-  const [tab, setTab] = useState<"profile" | "investor" | "portfolios" | "watchlist" | "ai">("profile");
+  const [tab, setTab] = useState<"profile" | "investor" | "portfolios" | "watchlist" | "ai" | "posts" | "comments">("profile");
   const [ports, setPorts] = useState<any[]>([]);
   const [watch, setWatch] = useState<any[]>([]);
   const [convs, setConvs] = useState<any[]>([]);
+  const [myPosts, setMyPosts] = useState<CommunityPost[]>([]);
+  const [myComments, setMyComments] = useState<CommunityCommentWithPost[]>([]);
+
+  // ── u/username-style "new post" composer, straight from the profile ─
+  // page — no topic picker: these always post to the Community Home feed
+  // under no topic, same as the rest of this page's Reddit-profile spirit.
+  const [showPostForm, setShowPostForm] = useState(false);
+  const [postTitle, setPostTitle] = useState("");
+  const [postBody, setPostBody] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [postError, setPostError] = useState("");
 
   // ── Editable identity fields ────────────────────────────────────────
   const [displayName, setDisplayName] = useState("");
@@ -92,6 +108,39 @@ function ProfilePage() {
     } catch (e: any) {
       console.warn(e);
       setInvestorError(e.message || "Could not load your investor profile.");
+    }
+    // Separate again, same reasoning as investor_profile above: community
+    // posts/comments failing to load must not blank out the rest of the page.
+    try {
+      const [mp, mc] = await Promise.all([listMyCommunityPosts(), listMyCommunityComments()]);
+      setMyPosts(mp || []); setMyComments(mc || []);
+    } catch (e) { console.warn(e); }
+  };
+
+  // Community lives inside the SPA terminal (a different route), so opening
+  // one of the user's own posts reuses the exact same pending-post handoff
+  // NotificationBell already uses for "new comment" notifications: stash the
+  // post id, point the terminal's persisted page at "community", navigate.
+  const openCommunityPost = (postId: string) => {
+    try {
+      window.localStorage.setItem("moneta_community_pending_post", JSON.stringify(postId));
+      window.localStorage.setItem("moneta_page_v1", "community");
+    } catch {}
+    navigate({ to: "/terminal" });
+  };
+
+  const submitProfilePost = async () => {
+    if (!postTitle.trim() || !postBody.trim() || posting) return;
+    setPosting(true); setPostError("");
+    try {
+      await createCommunityPost({ data: { title: postTitle, body: postBody, channelId: null } });
+      setPostTitle(""); setPostBody(""); setShowPostForm(false);
+      const mp = await listMyCommunityPosts();
+      setMyPosts(mp || []);
+    } catch (e: any) {
+      setPostError(e.message || "Error publishing post");
+    } finally {
+      setPosting(false);
     }
   };
 
@@ -163,6 +212,7 @@ function ProfilePage() {
 
   const initial = (user.name || user.email || "?").trim().charAt(0).toUpperCase();
   const list = tab === "portfolios" ? ports : tab === "watchlist" ? watch : tab === "ai" ? convs : [];
+  const isCommunityTab = tab === "posts" || tab === "comments";
 
   return (
     <div style={{ minHeight: "100vh", background: B.bg, color: B.gray1, fontFamily: FONT }}>
@@ -213,6 +263,8 @@ function ProfilePage() {
             { id: "portfolios", l: `PORTFOLIOS (${ports.length})` },
             { id: "watchlist", l: `WATCHLIST (${watch.length})` },
             { id: "ai", l: `AI CHAT (${convs.length})` },
+            { id: "posts", l: `POSTS (${myPosts.length})` },
+            { id: "comments", l: `COMMENTS (${myComments.length})` },
           ].map((t: any) => (
             <FKey key={t.id} label={t.l} active={tab === t.id} onClick={() => setTab(t.id)} />
           ))}
@@ -321,7 +373,7 @@ function ProfilePage() {
             </div>
           )}
 
-          {tab !== "profile" && tab !== "investor" && (
+          {tab !== "profile" && tab !== "investor" && !isCommunityTab && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {list.map((it: any) => (
                 <div key={it.id} style={{
@@ -379,6 +431,89 @@ function ProfilePage() {
                   {tab === "watchlist" && "No tickers in your watchlist"}
                   {tab === "ai" && "No saved conversations"}
                 </div>
+              )}
+            </div>
+          )}
+
+          {tab === "posts" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {!showPostForm ? (
+                <button onClick={() => setShowPostForm(true)} style={{
+                  display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+                  background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10,
+                  padding: "10px 14px", cursor: "pointer", color: B.gray3, fontSize: 13, fontFamily: FONT,
+                }}>Create a post — goes straight to the Community Home feed, under no topic</button>
+              ) : (
+                <div style={{ ...cardStyle }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={labelStyle}>NEW POST · NO TOPIC</div>
+                    <button onClick={() => setShowPostForm(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700 }}>CANCEL</button>
+                  </div>
+                  <input value={postTitle} onChange={(e) => setPostTitle(e.target.value)} placeholder="Title" maxLength={200} style={inputStyle} />
+                  <textarea value={postBody} onChange={(e) => setPostBody(e.target.value)} placeholder="Write something..." rows={4} maxLength={8000} style={{ ...inputStyle, resize: "vertical" }} />
+                  {postError && <div style={{ fontSize: 11, color: B.red }}>{postError}</div>}
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <button disabled={!postTitle.trim() || !postBody.trim() || posting} onClick={submitProfilePost} style={primaryBtnStyle(!!postTitle.trim() && !!postBody.trim() && !posting)}>
+                      {posting ? "PUBLISHING..." : "PUBLISH"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {myPosts.map((p) => (
+                <div key={p.id} onClick={() => openCommunityPost(p.id)} style={{
+                  background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, color: B.blue, fontWeight: 700 }}>{p.title}</div>
+                      <div style={{ fontSize: 11, color: B.gray3, marginTop: 2 }}>
+                        {p.community_channels?.name || "No topic"} · {p.score} points · {p.comment_count} comments · {new Date(p.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <button onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!window.confirm("Delete this post?")) return;
+                      await deleteCommunityPost({ data: { id: p.id } });
+                      loadAll();
+                    }} style={{ ...ghostBtnStyle(B.red), flexShrink: 0 }}>DELETE</button>
+                  </div>
+                </div>
+              ))}
+              {myPosts.length === 0 && (
+                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 12 }}>No posts yet</div>
+              )}
+            </div>
+          )}
+
+          {tab === "comments" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {myComments.map((c) => (
+                <div key={c.id} onClick={() => c.community_posts && openCommunityPost(c.community_posts.id)} style={{
+                  background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px",
+                  cursor: c.community_posts ? "pointer" : "default",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: B.gray3 }}>
+                        on <span style={{ color: B.blue, fontWeight: 700 }}>{c.community_posts?.title || "a deleted post"}</span>
+                      </div>
+                      <div style={{ fontSize: 13, color: B.gray1, marginTop: 4 }}>{c.body}</div>
+                      <div style={{ fontSize: 11, color: B.gray3, marginTop: 4 }}>
+                        {c.score} points · {new Date(c.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <button onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!window.confirm("Delete this comment?")) return;
+                      await deleteCommunityComment({ data: { id: c.id } });
+                      loadAll();
+                    }} style={{ ...ghostBtnStyle(B.red), flexShrink: 0 }}>DELETE</button>
+                  </div>
+                </div>
+              ))}
+              {myComments.length === 0 && (
+                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 12 }}>No comments yet</div>
               )}
             </div>
           )}

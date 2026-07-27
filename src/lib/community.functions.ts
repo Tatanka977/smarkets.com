@@ -204,7 +204,7 @@ export async function getCommunityPost({ data }: { data: { id: string } }): Prom
 }
 
 export async function createCommunityPost(
-  { data }: { data: { title: string; body: string; channelId: string; postType?: CommunityPostType; portfolioSnapshot?: PortfolioSnapshot | null } }
+  { data }: { data: { title: string; body: string; channelId?: string | null; postType?: CommunityPostType; portfolioSnapshot?: PortfolioSnapshot | null } }
 ): Promise<CommunityPost> {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData?.user;
@@ -212,14 +212,17 @@ export async function createCommunityPost(
   const title = data.title.trim();
   const body = data.body.trim();
   if (!title || !body) throw new Error("Title and body are required");
-  if (!data.channelId) throw new Error("Select a channel");
+  // channelId is optional: a post with no channel lands only in the
+  // aggregated Home feed, not under any topic — e.g. posts created from
+  // the user's own profile page, same idea as a Reddit post with no
+  // subreddit picked.
   // author_name is intentionally omitted: a DB trigger resolves it
   // server-side from auth.users/profiles.username so a client can't
   // impersonate another name.
   const { data: row, error } = await supabase
     .from("community_posts")
     .insert({
-      user_id: user.id, title, body, channel_id: data.channelId,
+      user_id: user.id, title, body, channel_id: data.channelId || null,
       post_type: data.postType || "discussion",
       portfolio_snapshot: data.portfolioSnapshot ?? null,
     })
@@ -227,6 +230,40 @@ export async function createCommunityPost(
     .single();
   if (error) throw error;
   return row as CommunityPost;
+}
+
+// The user's own "u/username" profile page: every post/comment they've
+// made, across every topic (and topic-less posts), newest first — same
+// data listAllCommunityPosts/listCommunityComments use, just scoped to one
+// author instead of one channel.
+export async function listMyCommunityPosts(): Promise<CommunityPost[]> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const { data: rows, error } = await supabase
+    .from("community_posts")
+    .select("*, community_channels(name, slug)")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (rows || []) as CommunityPost[];
+}
+
+export interface CommunityCommentWithPost extends CommunityComment {
+  community_posts?: { id: string; title: string; channel_id: string | null } | null;
+}
+
+export async function listMyCommunityComments(): Promise<CommunityCommentWithPost[]> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const { data: rows, error } = await supabase
+    .from("community_comments")
+    .select("*, community_posts(id, title, channel_id)")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (rows || []) as CommunityCommentWithPost[];
 }
 
 // Real (not estimated) counts for the "About" sidebar box: distinct users
