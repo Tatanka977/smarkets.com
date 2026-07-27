@@ -324,6 +324,62 @@ export async function getTrendingChannels(): Promise<{ id: string; name: string;
     .slice(0, 5);
 }
 
+// Following a topic ("channel") — same idea as following a subreddit.
+// Returns [] rather than throwing when signed out, so callers (e.g. the
+// Home page's community callout) can call this unconditionally.
+export async function listFollowedChannelIds(): Promise<string[]> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from("community_channel_follows")
+    .select("channel_id")
+    .eq("user_id", user.id);
+  if (error) throw error;
+  return (data || []).map((r: any) => r.channel_id);
+}
+
+export async function followChannel({ data }: { data: { channelId: string } }): Promise<{ ok: true }> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const { error } = await supabase
+    .from("community_channel_follows")
+    .insert({ user_id: user.id, channel_id: data.channelId });
+  if (error && (error as any).code !== "23505") throw error;
+  return { ok: true };
+}
+
+export async function unfollowChannel({ data }: { data: { channelId: string } }): Promise<{ ok: true }> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) throw new Error("Not signed in");
+  const { error } = await supabase
+    .from("community_channel_follows")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("channel_id", data.channelId);
+  if (error) throw error;
+  return { ok: true };
+}
+
+// Posts from every channel the signed-in user follows, newest first —
+// powers both the Community page's "Following" sort tab and the Home
+// page's community callout widget. [] (not an error) when signed out or
+// following nothing, so callers can fall back to the general feed.
+export async function listFollowedPosts(args?: { data?: { limit?: number } }): Promise<CommunityPost[]> {
+  const channelIds = await listFollowedChannelIds();
+  if (!channelIds.length) return [];
+  const { data: rows, error } = await supabase
+    .from("community_posts")
+    .select("*, community_channels(name, slug)")
+    .in("channel_id", channelIds)
+    .order("created_at", { ascending: false })
+    .limit(args?.data?.limit ?? 50);
+  if (error) throw error;
+  return (rows || []) as CommunityPost[];
+}
+
 export async function deleteCommunityPost({ data }: { data: { id: string } }): Promise<{ ok: true }> {
   const { error } = await supabase.from("community_posts").delete().eq("id", data.id);
   if (error) throw error;

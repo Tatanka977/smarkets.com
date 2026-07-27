@@ -8,6 +8,7 @@ import { fetchPriceHistory as srvPriceHistory } from "@/lib/finance.functions";
 import { fetchMarketStatus as srvMarketStatus, batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
 import { fetchMarketNews as srvMarketNews } from "@/lib/news.functions";
 import { aiChatAsUser } from "@/lib/ai.functions";
+import { listFollowedPosts, listAllCommunityPosts } from "@/lib/community.functions";
 import { usePersistentState } from "@/hooks/usePersistentState";
 
 const FONT = "'Courier New', Courier, monospace";
@@ -359,60 +360,68 @@ function PerformancePanel({ holdings }: any) {
     </div>
   );
 }
-const TX_STYLE: Record<string, { bg: string; color: string }> = {
-  BUY:  { bg: "rgba(0,200,120,0.12)", color: "#00C878" },
-  SELL: { bg: "rgba(255,51,51,0.12)", color: "#FF3333" },
-  CASH: { bg: "rgba(0,150,255,0.12)", color: "#0096FF" },
-};
+// Reddit-style community callout: the latest posts from the topics the
+// user follows, or — if they don't follow any topic yet — the latest
+// posts across the whole Community Home feed, so this card is never
+// empty just because someone hasn't followed anything yet. Clicking a
+// post reuses the same pending-post handoff NotificationBell/the profile
+// page use to jump the terminal straight to that post in COMMUNITY.
+function CommunityCallout({ setPage }: any) {
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [followingMode, setFollowingMode] = useState(false);
 
-function RecentActivity({ transactions }: any) {
-  const rows = [...(transactions || [])]
-    .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const followed = await listFollowedPosts({ data: { limit: 5 } });
+        if (!alive) return;
+        if (followed.length) {
+          setPosts(followed); setFollowingMode(true);
+        } else {
+          const home = await listAllCommunityPosts({ data: { sort: "recent" } });
+          if (!alive) return;
+          setPosts((home || []).slice(0, 5)); setFollowingMode(false);
+        }
+      } catch {
+        if (alive) setPosts([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const openPost = (id: string) => {
+    try { window.localStorage.setItem("moneta_community_pending_post", JSON.stringify(id)); } catch {}
+    setPage("community");
+  };
 
   return (
     <div style={{ ...CARD, padding: "16px 18px" }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 10 }}>
-        RECENT ACTIVITY
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>
+          {followingMode ? "FROM TOPICS YOU FOLLOW" : "COMMUNITY"}
+        </span>
+        <button onClick={() => setPage("community")} style={{
+          background: "none", border: "none", color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700,
+        }}>VIEW ALL →</button>
       </div>
-      {!rows.length ? (
-        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>No activity yet.</div>
+      {loading ? (
+        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>LOADING…</div>
+      ) : !posts.length ? (
+        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>No discussions yet — be the first to write one.</div>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT }}>
-          <thead>
-            <tr style={{ color: B.gray3, fontSize: 10 }}>
-              <th style={{ textAlign: "left", paddingBottom: 6 }}>TYPE</th>
-              <th style={{ textAlign: "left", paddingBottom: 6 }}>SECURITY</th>
-              <th style={{ textAlign: "right", paddingBottom: 6 }}>AMOUNT</th>
-              <th style={{ textAlign: "right", paddingBottom: 6 }}>DATE</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((t: any) => {
-              const st = TX_STYLE[t.type] || TX_STYLE.BUY;
-              const isSell = t.type === "SELL";
-              return (
-                <tr key={t.id} style={{ borderTop: `1px solid ${B.border}` }}>
-                  <td style={{ padding: "8px 0" }}>
-                    <span style={{ background: st.bg, color: st.color, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{t.type}</span>
-                  </td>
-                  <td style={{ padding: "8px 0", fontSize: 12, color: B.gray1 }}>{t.shortName || t.ticker}</td>
-                  <td style={{ padding: "8px 0", fontSize: 12, color: isSell ? B.green : B.red, textAlign: "right" }}>
-                    {isSell ? "+" : "−"}${fmtM(t.amount)}
-                    {isSell && t.realizedPnl != null && (
-                      <div style={{ fontSize: 10, color: pCol(t.realizedPnl) }}>
-                        {t.realizedPnl>=0?"+":"−"}${fmtM(Math.abs(t.realizedPnl))} realized
-                      </div>
-                    )}
-                  </td>
-                  <td style={{ padding: "8px 0", fontSize: 12, color: B.gray3, textAlign: "right" }}>
-                    {new Date(t.date).toLocaleDateString()}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        posts.map((p: any) => (
+          <div key={p.id} onClick={() => openPost(p.id)} style={{ padding: "8px 0", borderTop: `1px solid ${B.border}`, cursor: "pointer" }}>
+            <div style={{ fontSize: 13, color: B.gray1, fontFamily: FONT, lineHeight: 1.4, marginBottom: 3 }}>{p.title}</div>
+            <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>
+              {p.community_channels?.name || "No topic"} · u/{p.author_name} · {p.score} pts
+            </div>
+          </div>
+        ))
       )}
     </div>
   );
@@ -515,11 +524,11 @@ export default function HomePage({ holdings, transactions, setPage, onRefresh, r
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 14 }}>
         <PortfolioOverview holdings={holdings} transactions={transactions} m={m} />
-        <PerformancePanel holdings={holdings}/>
+        <CommunityCallout setPage={setPage} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
-        <RecentActivity transactions={transactions} />
+        <PerformancePanel holdings={holdings}/>
         <MarketNewsCard />
       </div>
 

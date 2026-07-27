@@ -14,6 +14,7 @@ import {
   listMyVotes, setVote, removeVote,
   listMyCommentVotes, setCommentVote, removeCommentVote,
   getCommunityAbout, getTrendingChannels,
+  listFollowedChannelIds, followChannel, unfollowChannel, listFollowedPosts,
 } from "@/lib/community.functions";
 import type { CommunityChannel, CommunityPost, CommunityComment, CommunityPostType, PortfolioSnapshot, PortfolioSnapshotHolding } from "@/lib/community.functions";
 
@@ -677,6 +678,9 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
   const [trending, setTrending] = useState<{ id: string; name: string; count: number }[] | null>(null);
   const [rulesOpen, setRulesOpen] = useState(true);
 
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const [followBusy, setFollowBusy] = useState(false);
+
   const loadChannels = useCallback(async () => {
     setChannelsLoading(true);
     try {
@@ -689,10 +693,14 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
   }, []);
   useEffect(() => { loadChannels(); }, [loadChannels]);
 
+  const isFollowingTab = sortTab === "following";
+
   const loadPosts = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const rows = selectedChannel
+      const rows = isFollowingTab
+        ? await listFollowedPosts()
+        : selectedChannel
         ? await listCommunityPosts({ data: { sort: "recent", channelId: selectedChannel.id } })
         : await listAllCommunityPosts({ data: { sort: "recent" } });
       setPosts(rows);
@@ -707,8 +715,40 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
     } finally {
       setLoading(false);
     }
-  }, [selectedChannel, user]);
+  }, [selectedChannel, user, isFollowingTab]);
   useEffect(() => { loadPosts(); }, [loadPosts]);
+
+  const loadFollowed = useCallback(async () => {
+    if (!user) { setFollowedIds(new Set()); return; }
+    try {
+      setFollowedIds(new Set(await listFollowedChannelIds()));
+    } catch {
+      // supplementary to the Follow button's display; failing quietly
+      // just leaves the button showing "+ FOLLOW" until the next load
+    }
+  }, [user]);
+  useEffect(() => { loadFollowed(); }, [loadFollowed]);
+
+  const toggleFollow = async () => {
+    if (!selectedChannel || !user || followBusy) return;
+    const id = selectedChannel.id;
+    const wasFollowing = followedIds.has(id);
+    setFollowBusy(true);
+    try {
+      if (wasFollowing) {
+        await unfollowChannel({ data: { channelId: id } });
+        setFollowedIds((s) => { const n = new Set(s); n.delete(id); return n; });
+      } else {
+        await followChannel({ data: { channelId: id } });
+        setFollowedIds((s) => new Set(s).add(id));
+      }
+      if (isFollowingTab) loadPosts();
+    } catch (e: any) {
+      setError(e.message || "Error updating follow");
+    } finally {
+      setFollowBusy(false);
+    }
+  };
 
   // Sidebar data is supplementary — real numbers when available, but a
   // failure here shouldn't block the main feed, so errors are swallowed.
@@ -1009,20 +1049,24 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
           </div>
         )}
 
-        {sortTab === "following" ? (
-          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13, lineHeight: 1.6 }}>
-            Follow users or topics to see their posts here — coming soon.
-          </div>
-        ) : loading ? (
+        {loading ? (
           <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>
+        ) : isFollowingTab && !user ? (
+          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13, lineHeight: 1.6 }}>
+            Sign in to follow topics and see their posts here.
+          </div>
+        ) : isFollowingTab && followedIds.size === 0 ? (
+          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13, lineHeight: 1.6 }}>
+            You're not following any topics yet — open a topic and hit + Follow.
+          </div>
         ) : sortedPosts.length === 0 ? (
           <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
-            No discussions yet — be the first to write one.
+            {isFollowingTab ? "No posts yet in the topics you follow." : "No discussions yet — be the first to write one."}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {sortedPosts.map((p) => (
-              <PostCard key={p.id} post={p} myVote={myVotes[p.id] || 0} disabled={!user} onVote={(v) => vote(p.id, v)} onOpen={() => onOpenPost(p.id)} showChannel={!selectedChannel} />
+              <PostCard key={p.id} post={p} myVote={myVotes[p.id] || 0} disabled={!user} onVote={(v) => vote(p.id, v)} onOpen={() => onOpenPost(p.id)} showChannel={!selectedChannel || isFollowingTab} />
             ))}
           </div>
         )}
@@ -1042,6 +1086,16 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
             </div>
           ) : (
             <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>Loading…</div>
+          )}
+          {selectedChannel && user && (
+            <button disabled={followBusy} onClick={toggleFollow} style={{
+              marginTop: 12,
+              background: followedIds.has(selectedChannel.id) ? B.panel2 : B.blue,
+              border: `1px solid ${followedIds.has(selectedChannel.id) ? B.border : B.blue}`,
+              color: followedIds.has(selectedChannel.id) ? B.gray1 : B.white,
+              borderRadius: 6, padding: "6px 10px", fontFamily: FONT, fontSize: 11, fontWeight: 700,
+              cursor: followBusy ? "wait" : "pointer", width: "100%",
+            }}>{followedIds.has(selectedChannel.id) ? "✓ FOLLOWING" : "+ FOLLOW"}</button>
           )}
           {selectedChannel && user && (user.user_id === selectedChannel.created_by || isAdmin) && (
             <button onClick={deleteSelectedChannel} style={{
