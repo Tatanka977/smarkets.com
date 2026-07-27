@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { B, FKey, PIE_COLS, pMet, pCol, computeAlerts, groupBy, SEV_STYLE } from "@/lib/uiShared";
+import { B, PIE_COLS, pMet, pCol, computeAlerts, groupBy, SEV_STYLE } from "@/lib/uiShared";
 import { useUser } from "@/hooks/useUser";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { getMyUsername, setUsername as srvSetUsername, listPortfolios } from "@/lib/profile.functions";
 import { OWNER_EMAIL } from "@/lib/admin";
 import {
@@ -12,8 +13,9 @@ import {
   listCommunityComments, createCommunityComment, deleteCommunityComment,
   listMyVotes, setVote, removeVote,
   listMyCommentVotes, setCommentVote, removeCommentVote,
+  getCommunityAbout, getTrendingChannels,
 } from "@/lib/community.functions";
-import type { CommunityChannel, CommunityPost, CommunityComment, PortfolioSnapshot, PortfolioSnapshotHolding } from "@/lib/community.functions";
+import type { CommunityChannel, CommunityPost, CommunityComment, CommunityPostType, PortfolioSnapshot, PortfolioSnapshotHolding } from "@/lib/community.functions";
 
 const FONT = "'Courier New', Courier, monospace";
 
@@ -77,6 +79,158 @@ function BarChartIcon({ size = 14 }: { size?: number }) {
       <line x1="12" y1="20" x2="12" y2="4" />
       <line x1="6" y1="20" x2="6" y2="14" />
     </svg>
+  );
+}
+
+function CommentIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function ShareIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+      <line x1="8.6" y1="10.6" x2="15.4" y2="6.4" /><line x1="8.6" y1="13.4" x2="15.4" y2="17.6" />
+    </svg>
+  );
+}
+
+function BookmarkIcon({ filled, size = 14 }: { filled?: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21 12 16l-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ size = 12, open }: { size?: number; open?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+      style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+// We don't have real profile pictures, so avatars are a colored circle with
+// the username's initial rather than a stock-photo-style placeholder that
+// would look like a real (but fake) person. Color is a deterministic hash
+// of the username — reuses the existing PIE_COLS palette, not a new one.
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function Avatar({ name, size = 28 }: { name: string; size?: number }) {
+  const color = PIE_COLS[hashStr(name || "?") % PIE_COLS.length];
+  const initial = (name || "?").trim().charAt(0).toUpperCase() || "?";
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%", background: color, color: "#000",
+      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+      fontSize: Math.round(size * 0.42), fontWeight: 700, fontFamily: FONT,
+    }}>{initial}</div>
+  );
+}
+
+// Colors come from B.* only (no new hex) — background stays the neutral
+// panel color in both themes, with the type's own color used just for the
+// text/border, which reads fine without needing a CSS color-mix/alpha trick
+// on a custom-property value (which "B.green + alpha suffix" can't do).
+const POST_TYPE_META: Record<CommunityPostType, { label: string; color: string }> = {
+  portfolio_review: { label: "Portfolio Review", color: B.green },
+  question: { label: "Question", color: B.cyan },
+  discussion: { label: "Discussion", color: B.blueL },
+  market_talk: { label: "Market Talk", color: B.yellow },
+};
+function PostTypeTag({ type }: { type: CommunityPostType }) {
+  const meta = POST_TYPE_META[type] || POST_TYPE_META.discussion;
+  return (
+    <span style={{
+      display: "inline-block", padding: "2px 8px", borderRadius: 999,
+      background: B.panel2, color: meta.color, border: `1px solid ${meta.color}`,
+      fontSize: 10, fontWeight: 700, fontFamily: FONT, letterSpacing: "0.03em", whiteSpace: "nowrap",
+    }}>{meta.label}</span>
+  );
+}
+
+const actionBtnStyle: any = {
+  display: "inline-flex", alignItems: "center", gap: 5,
+  background: "none", border: "none", color: B.gray3, cursor: "pointer",
+  fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: "4px 6px", borderRadius: 6,
+};
+
+// Comments (opens the post), Share (copies a direct link), Save (a
+// localStorage bookmark — no dedicated table for this yet) and a "..."
+// menu with placeholder moderation actions. Shown under every post card
+// and again at the top of the post detail view.
+function PostActions({ post, onOpenComments }: { post: CommunityPost; onOpenComments?: () => void }) {
+  const [saved, setSaved] = usePersistentState<string[]>("community_saved_posts", []);
+  const [copied, setCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const isSaved = saved.includes(post.id);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [menuOpen]);
+
+  const share = async (e: any) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/terminal#community-post-${post.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard permission denied or unavailable — no fallback UI for now.
+    }
+  };
+
+  const toggleSave = (e: any) => {
+    e.stopPropagation();
+    setSaved((s) => (isSaved ? s.filter((id) => id !== post.id) : [...s, post.id]));
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
+      <button onClick={onOpenComments} style={actionBtnStyle} disabled={!onOpenComments}>
+        <CommentIcon /> {post.comment_count}
+      </button>
+      <button onClick={share} style={actionBtnStyle}>
+        <ShareIcon /> {copied ? "Link copied" : "Share"}
+      </button>
+      <button onClick={toggleSave} style={{ ...actionBtnStyle, color: isSaved ? B.blue : B.gray3 }}>
+        <BookmarkIcon filled={isSaved} /> {isSaved ? "Saved" : "Save"}
+      </button>
+      <div ref={menuRef} style={{ position: "relative", marginLeft: "auto" }}>
+        <button onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }} style={actionBtnStyle}>•••</button>
+        {menuOpen && (
+          <div style={{
+            position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 10, minWidth: 140,
+            background: B.panel, border: `1px solid ${B.border}`, borderRadius: 8, overflow: "hidden",
+          }}>
+            <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} style={{
+              display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
+              color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "8px 12px",
+            }}>Report</button>
+            <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} style={{
+              display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
+              color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "8px 12px",
+            }}>Hide</button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -412,39 +566,101 @@ function PostCard({ post, myVote, disabled, onVote, onOpen, showChannel }: {
     }}>
       <VoteControl score={post.score} myVote={myVote} disabled={disabled} onVote={onVote} />
       <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+          <PostTypeTag type={post.post_type} />
+          {showChannel && post.community_channels && (
+            <span style={{ fontSize: 11, color: B.blue, fontWeight: 700, fontFamily: FONT }}>{post.community_channels.name}</span>
+          )}
+        </div>
         <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 4 }}>{post.title}</div>
         <div style={{
           fontSize: 12, color: B.gray2, fontFamily: FONT, marginBottom: 6,
           overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
           WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
         }}>{post.body}</div>
-        <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {showChannel && post.community_channels && (
-            <span style={{ color: B.blue, fontWeight: 700 }}>{post.community_channels.name}</span>
-          )}
+        <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <Avatar name={post.author_name} size={18} />
           <span>u/{post.author_name}</span>
-          <span>{fmtDate(post.created_at)}</span>
-          <span>{post.comment_count} comments</span>
+          <span>· {fmtDate(post.created_at)}</span>
         </div>
         {post.portfolio_snapshot && <PortfolioBadge snapshot={post.portfolio_snapshot} />}
+        <PostActions post={post} onOpenComments={onOpen} />
       </div>
     </div>
   );
 }
 
-// The Reddit-style aggregated feed across every channel: Recent / Popular
-// (all-time top score) / Trending (top score in the last 3 days).
-function HomeFeed({ user, onOpenPost }: { user: any; onOpenPost: (id: string) => void }) {
-  const [sort, setSort] = useState<"recent" | "popular" | "trending">("recent");
+const COMMUNITY_RULES = [
+  "Be respectful — no harassment, personal attacks, or hate speech.",
+  "No spam or self-promotion outside what a topic's own rules allow.",
+  "This is educational content, not financial advice — frame posts as informational or hypothetical.",
+  "Stay on topic for the topic you're posting in.",
+  "Never share private account credentials or other people's personal information.",
+];
+
+// The single Reddit-style feed: sort tabs (Hot/New/Top/Following), an "All
+// Topics" channel dropdown (replacing the old separate channel-list page),
+// the post list, and the right-rail sidebar (About/Trending/Rules). Voting,
+// channel CRUD, and post/comment creation all reuse the exact same
+// community.functions.ts calls the old Home/Channels/ChannelPosts views did
+// — only the layout and the sort/filter UI around them changed.
+function Feed({ user, username, isAdmin, holdings, composerOpen, onComposerHandled, onUsernameSet, onOpenPost, selectedChannel, onSelectChannel }: {
+  user: any; username: string | null | undefined; isAdmin: boolean; holdings: any[];
+  composerOpen: boolean; onComposerHandled: () => void;
+  onUsernameSet: (u: string) => void; onOpenPost: (id: string) => void;
+  // Lifted to CommunityPage so it survives this component unmounting when
+  // the view switches to a post's detail and back (a plain local useState
+  // here would silently reset to "All Topics" every time you open a post).
+  selectedChannel: CommunityChannel | null; onSelectChannel: (c: CommunityChannel | null) => void;
+}) {
+  const isMobile = useIsMobile();
+
+  const [channels, setChannels] = useState<CommunityChannel[]>([]);
+  const [channelsLoading, setChannelsLoading] = useState(true);
+  const setSelectedChannel = onSelectChannel;
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [channelName, setChannelName] = useState("");
+  const [channelDesc, setChannelDesc] = useState("");
+  const [creatingChannel, setCreatingChannel] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [sortTab, setSortTab] = useState<"hot" | "new" | "top" | "following">("hot");
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [myVotes, setMyVotes] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
+  const [showForm, setShowForm] = useState(false);
+  const [postType, setPostType] = useState<CommunityPostType>("discussion");
+  const [formChannelId, setFormChannelId] = useState("");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [portfolioSnapshot, setPortfolioSnapshot] = useState<PortfolioSnapshot | null>(null);
+  const [posting, setPosting] = useState(false);
+
+  const [about, setAbout] = useState<{ postCount: number; memberCount: number } | null>(null);
+  const [trending, setTrending] = useState<{ id: string; name: string; count: number }[] | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(true);
+
+  const loadChannels = useCallback(async () => {
+    setChannelsLoading(true);
+    try {
+      setChannels(await listChannels());
+    } catch (e: any) {
+      setError(e.message || "Error loading topics");
+    } finally {
+      setChannelsLoading(false);
+    }
+  }, []);
+  useEffect(() => { loadChannels(); }, [loadChannels]);
+
+  const loadPosts = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const rows = await listAllCommunityPosts({ data: { sort } });
+      const rows = selectedChannel
+        ? await listCommunityPosts({ data: { sort: "recent", channelId: selectedChannel.id } })
+        : await listAllCommunityPosts({ data: { sort: "recent" } });
       setPosts(rows);
       if (user) {
         const votes = await listMyVotes({ data: { postIds: rows.map((r) => r.id) } });
@@ -457,9 +673,47 @@ function HomeFeed({ user, onOpenPost }: { user: any; onOpenPost: (id: string) =>
     } finally {
       setLoading(false);
     }
-  }, [sort, user]);
+  }, [selectedChannel, user]);
+  useEffect(() => { loadPosts(); }, [loadPosts]);
 
-  useEffect(() => { load(); }, [load]);
+  // Sidebar data is supplementary — real numbers when available, but a
+  // failure here shouldn't block the main feed, so errors are swallowed.
+  const loadSidebar = useCallback(async () => {
+    try {
+      const [ab, tr] = await Promise.all([
+        getCommunityAbout({ data: { channelId: selectedChannel?.id } }),
+        getTrendingChannels(),
+      ]);
+      setAbout(ab);
+      setTrending(tr);
+    } catch {
+      // sidebar is supplementary; leave it in its loading/empty state
+    }
+  }, [selectedChannel]);
+  useEffect(() => { loadSidebar(); }, [loadSidebar]);
+
+  // "+ NEW POST" now lives in the app's left sidebar (see SidebarNav in
+  // PortfolioTerminal.tsx) on desktop, not in this page — composerOpen is
+  // plain lifted state from the shared parent (PortfolioTerminal), since
+  // sidebar and page content are always co-mounted there. Mobile has no
+  // sidebar, so it gets its own floating "+" button further down instead.
+  useEffect(() => {
+    if (composerOpen) {
+      setFormChannelId(selectedChannel?.id || "");
+      setShowForm(true);
+      onComposerHandled();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [composerOpen, onComposerHandled]);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [dropdownOpen]);
 
   const vote = async (postId: string, value: 1 | -1) => {
     if (!user) return;
@@ -471,237 +725,45 @@ function HomeFeed({ user, onOpenPost }: { user: any; onOpenPost: (id: string) =>
       if (current === value) await removeVote({ data: { postId } });
       else await setVote({ data: { postId, value } });
     } catch {
-      load();
+      loadPosts();
     }
   };
 
-  return (
-    <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 10, fontFamily: FONT }}>
-        COMMUNITY — HOME
-      </div>
-      <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
-        <FKey label="RECENT" active={sort === "recent"} onClick={() => setSort("recent")} />
-        <FKey label="POPULAR" active={sort === "popular"} onClick={() => setSort("popular")} />
-        <FKey label="TRENDING" active={sort === "trending"} onClick={() => setSort("trending")} />
-      </div>
-
-      {error && (
-        <div style={{ padding: "8px 10px", fontSize: 12, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, marginBottom: 10, fontFamily: FONT }}>
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>
-      ) : posts.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
-          {sort === "trending" ? "Nothing trending in the last 3 days." : "No discussions yet — pick a channel and be the first to write one."}
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {posts.map((p) => (
-            <PostCard key={p.id} post={p} myVote={myVotes[p.id] || 0} disabled={!user} onVote={(v) => vote(p.id, v)} onOpen={() => onOpenPost(p.id)} showChannel />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ChannelList({ user, username, isAdmin, onUsernameSet, onOpen }: {
-  user: any; username: string | null | undefined; isAdmin: boolean; onUsernameSet: (u: string) => void; onOpen: (c: CommunityChannel) => void;
-}) {
-  const [channels, setChannels] = useState<CommunityChannel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState("");
-  const [desc, setDesc] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [search, setSearch] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
+  const submitChannel = async () => {
+    if (creatingChannel || !channelName.trim()) return;
+    setCreatingChannel(true); setError("");
     try {
-      setChannels(await listChannels());
+      const ch = await createChannel({ data: { name: channelName, description: channelDesc } });
+      setChannelName(""); setChannelDesc(""); setShowCreateChannel(false);
+      await loadChannels();
+      setSelectedChannel(ch);
+      setDropdownOpen(false);
     } catch (e: any) {
-      setError(e.message || "Error loading channels");
+      setError(e.message || "Error creating topic");
     } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const submit = async () => {
-    if (creating || !name.trim()) return;
-    setCreating(true); setError("");
-    try {
-      const ch = await createChannel({ data: { name, description: desc } });
-      setName(""); setDesc(""); setShowForm(false);
-      await load();
-      onOpen(ch);
-    } catch (e: any) {
-      setError(e.message || "Error creating channel");
-    } finally {
-      setCreating(false);
+      setCreatingChannel(false);
     }
   };
 
-  const removeChannel = async (e: any, c: CommunityChannel) => {
-    e.stopPropagation();
-    if (!window.confirm(`Delete channel "${c.name}" and all its discussions?`)) return;
+  const deleteSelectedChannel = async () => {
+    if (!selectedChannel) return;
+    if (!window.confirm(`Delete topic "${selectedChannel.name}" and all its discussions?`)) return;
     try {
-      await deleteCommunityChannel({ data: { id: c.id } });
-      load();
-    } catch (err: any) {
-      setError(err.message || "Error deleting channel");
+      await deleteCommunityChannel({ data: { id: selectedChannel.id } });
+      setSelectedChannel(null);
+      await loadChannels();
+    } catch (e: any) {
+      setError(e.message || "Error deleting topic");
     }
   };
-
-  const q = search.trim().toLowerCase();
-  const filteredChannels = q
-    ? channels.filter((c) => c.name.toLowerCase().includes(q) || (c.description || "").toLowerCase().includes(q))
-    : channels;
-
-  return (
-    <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 10, fontFamily: FONT }}>
-        COMMUNITY — CHANNELS
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>Choose a channel to read or join the discussions.</div>
-        {user ? (
-          <button disabled={username === undefined} onClick={() => setShowForm((s) => !s)} style={{
-            background: B.blue, border: "none", color: B.white, padding: "8px 14px", borderRadius: 6,
-            fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
-            cursor: username === undefined ? "default" : "pointer", opacity: username === undefined ? 0.5 : 1,
-          }}>{showForm ? "CANCEL" : "+ NEW CHANNEL"}</button>
-        ) : (
-          <Link to="/auth" style={{ fontSize: 12, color: B.blue, fontFamily: FONT, fontWeight: 700, textDecoration: "none" }}>
-            SIGN IN TO PARTICIPATE →
-          </Link>
-        )}
-      </div>
-
-      <div style={{ position: "relative", marginBottom: 12 }}>
-        <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: B.gray3, display: "flex", pointerEvents: "none" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="7" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-        </span>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search channels..."
-          style={{ ...inputStyle, width: "100%", paddingLeft: 30 }}
-        />
-      </div>
-
-      {showForm && user && (
-        username === null
-          ? <div style={{ marginBottom: 12 }}><UsernamePrompt onSet={onUsernameSet} /></div>
-          : (
-            <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Channel name (e.g. US Stocks)" maxLength={60} style={inputStyle} />
-              <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Description (optional)" rows={2} maxLength={300} style={{ ...inputStyle, resize: "vertical" }} />
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button disabled={!name.trim() || creating} onClick={submit} style={primaryBtnStyle(!!name.trim() && !creating)}>
-                  {creating ? "CREATING..." : "CREATE CHANNEL"}
-                </button>
-              </div>
-            </div>
-          )
-      )}
-
-      {error && (
-        <div style={{ padding: "8px 10px", fontSize: 12, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, marginBottom: 10, fontFamily: FONT }}>
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>
-      ) : channels.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
-          No channels yet, be the first to create one.
-        </div>
-      ) : filteredChannels.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
-          No channels match "{search.trim()}".
-        </div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
-          {filteredChannels.map((c) => (
-            <div key={c.id} onClick={() => onOpen(c)} style={{
-              background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", position: "relative",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: B.blue, fontFamily: FONT, marginBottom: 4 }}>{c.name}</div>
-                {user && (user.user_id === c.created_by || isAdmin) && (
-                  <button onClick={(e) => removeChannel(e, c)} style={{
-                    background: "none", border: "none", color: B.red, cursor: "pointer",
-                    fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: 0, flexShrink: 0,
-                  }}>DELETE</button>
-                )}
-              </div>
-              {c.description && (
-                <div style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, marginBottom: 6 }}>{c.description}</div>
-              )}
-              <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{c.post_count} discussions</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ChannelPosts({ channel, user, username, holdings, onUsernameSet, onOpenPost, onBack }: {
-  channel: CommunityChannel; user: any; username: string | null | undefined; holdings: any[];
-  onUsernameSet: (u: string) => void; onOpenPost: (id: string) => void; onBack: () => void;
-}) {
-  const [sort, setSort] = useState<"recent" | "top">("recent");
-  const [posts, setPosts] = useState<CommunityPost[]>([]);
-  const [myVotes, setMyVotes] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [portfolioSnapshot, setPortfolioSnapshot] = useState<PortfolioSnapshot | null>(null);
-  const [posting, setPosting] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
-    try {
-      const rows = await listCommunityPosts({ data: { sort, channelId: channel.id } });
-      setPosts(rows);
-      if (user) {
-        const votes = await listMyVotes({ data: { postIds: rows.map((r) => r.id) } });
-        setMyVotes(votes);
-      } else {
-        setMyVotes({});
-      }
-    } catch (e: any) {
-      setError(e.message || "Error loading discussions");
-    } finally {
-      setLoading(false);
-    }
-  }, [sort, user, channel.id]);
-
-  useEffect(() => { load(); }, [load]);
 
   const submitPost = async () => {
-    if (!user || posting || !title.trim() || !body.trim()) return;
+    if (!user || posting || !title.trim() || !body.trim() || !formChannelId) return;
     setPosting(true); setError("");
     try {
-      await createCommunityPost({ data: { title, body, channelId: channel.id, portfolioSnapshot } });
-      setTitle(""); setBody(""); setPortfolioSnapshot(null); setShowForm(false);
-      await load();
+      await createCommunityPost({ data: { title, body, channelId: formChannelId, postType, portfolioSnapshot } });
+      setTitle(""); setBody(""); setPortfolioSnapshot(null); setPostType("discussion"); setShowForm(false);
+      await loadPosts();
     } catch (e: any) {
       setError(e.message || "Error publishing");
     } finally {
@@ -709,83 +771,244 @@ function ChannelPosts({ channel, user, username, holdings, onUsernameSet, onOpen
     }
   };
 
-  const vote = async (postId: string, value: 1 | -1) => {
-    if (!user) return;
-    const current = myVotes[postId] || 0;
-    const delta = current === value ? -value : value - current;
-    setPosts((ps) => ps.map((p) => (p.id === postId ? { ...p, score: p.score + delta } : p)));
-    setMyVotes((v) => ({ ...v, [postId]: current === value ? 0 : value }));
-    try {
-      if (current === value) await removeVote({ data: { postId } });
-      else await setVote({ data: { postId, value } });
-    } catch {
-      load();
+  // Hot/New/Top are all computed client-side from the same fetched batch —
+  // no separate server query per tab. Hot = score decayed by age, a simple
+  // score / (hours-since-created + 2)^1.5 (no external ranking service).
+  const sortedPosts = useMemo(() => {
+    if (sortTab === "new") return [...posts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    if (sortTab === "top") return [...posts].sort((a, b) => b.score - a.score);
+    if (sortTab === "hot") {
+      const hot = (p: CommunityPost) => {
+        const hours = (Date.now() - new Date(p.created_at).getTime()) / 3600000;
+        return p.score / Math.pow(hours + 2, 1.5);
+      };
+      return [...posts].sort((a, b) => hot(b) - hot(a));
     }
-  };
+    return posts;
+  }, [posts, sortTab]);
+
+  const communityName = selectedChannel ? selectedChannel.name : "Strategic Markets Community";
+  const totalTrendingCount = (trending || []).reduce((s, t) => s + t.count, 0);
+
+  if (channelsLoading) {
+    return <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>;
+  }
 
   return (
-    <div>
-      <button onClick={onBack} style={backBtnStyle}>← CHANNELS</button>
-      <div style={{ fontSize: 16, fontWeight: 700, color: B.gray1, fontFamily: FONT, margin: "10px 0 2px" }}>{channel.name}</div>
-      {channel.description && (
-        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginBottom: 10 }}>{channel.description}</div>
-      )}
+    <>
+    {/* Mobile has no left sidebar (where "+ NEW POST" lives on desktop —
+        see SidebarNav in PortfolioTerminal.tsx), so it needs its own
+        entry point: a floating action button, positioned clear of the
+        bottom tab bar. */}
+    {isMobile && (
+      <button onClick={() => { setFormChannelId(selectedChannel?.id || ""); setShowForm(true); }} aria-label="New post" style={{
+        position: "fixed", bottom: 78, right: 16, zIndex: 15,
+        width: 52, height: 52, borderRadius: "50%", background: B.blue, color: B.white, border: "none",
+        display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.3)", fontSize: 26, fontWeight: 700, fontFamily: FONT, lineHeight: 1,
+      }}>+</button>
+    )}
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 14, alignItems: "flex-start" }}>
+      <div style={{ flex: 1, minWidth: 0, width: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {(["hot", "new", "top", "following"] as const).map((t) => (
+              <button key={t} onClick={() => setSortTab(t)} style={{
+                background: sortTab === t ? B.blue : B.panel2,
+                color: sortTab === t ? B.white : B.gray2,
+                border: `1px solid ${sortTab === t ? B.blue : B.border}`,
+                borderRadius: 999, padding: "6px 14px", fontFamily: FONT, fontSize: 12, fontWeight: 700,
+                letterSpacing: "0.03em", cursor: "pointer", textTransform: "capitalize",
+              }}>{t}</button>
+            ))}
+          </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <div style={{ display: "flex", gap: 4 }}>
-          <FKey label="RECENT" active={sort === "recent"} onClick={() => setSort("recent")} />
-          <FKey label="TOP VOTED" active={sort === "top"} onClick={() => setSort("top")} />
+          <div ref={dropdownRef} style={{ position: "relative" }}>
+            <button onClick={() => setDropdownOpen((v) => !v)} style={{
+              display: "flex", alignItems: "center", gap: 6, background: B.panel2, border: `1px solid ${B.border}`,
+              borderRadius: 8, padding: "7px 12px", color: B.gray1, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}>
+              {selectedChannel ? selectedChannel.name : "All Topics"}
+              <ChevronIcon open={dropdownOpen} />
+            </button>
+            {dropdownOpen && (
+              <div style={{
+                position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 20, width: 220, maxHeight: 320, overflowY: "auto",
+                background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10,
+              }}>
+                <button onClick={() => { setSelectedChannel(null); setDropdownOpen(false); }} style={{
+                  display: "block", width: "100%", textAlign: "left", background: !selectedChannel ? B.panel2 : "none", border: "none",
+                  color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700, padding: "10px 12px",
+                }}>All Topics</button>
+                {channels.map((c) => (
+                  <button key={c.id} onClick={() => { setSelectedChannel(c); setDropdownOpen(false); }} style={{
+                    display: "flex", justifyContent: "space-between", width: "100%", textAlign: "left",
+                    background: selectedChannel?.id === c.id ? B.panel2 : "none", border: "none",
+                    color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "10px 12px",
+                  }}>
+                    <span>{c.name}</span>
+                    <span style={{ color: B.gray3 }}>{c.post_count}</span>
+                  </button>
+                ))}
+                <div style={{ borderTop: `1px solid ${B.border}` }}>
+                  {user ? (
+                    <button onClick={() => setShowCreateChannel((v) => !v)} style={{
+                      display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
+                      color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700, padding: "10px 12px",
+                    }}>+ Create Topic</button>
+                  ) : (
+                    <Link to="/auth" style={{ display: "block", padding: "10px 12px", color: B.blue, fontFamily: FONT, fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
+                      Sign in to create a topic
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        {user ? (
-          <button disabled={username === undefined} onClick={() => setShowForm((s) => !s)} style={{
-            background: B.blue, border: "none", color: B.white, padding: "8px 14px", borderRadius: 6,
-            fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
-            cursor: username === undefined ? "default" : "pointer", opacity: username === undefined ? 0.5 : 1,
-          }}>{showForm ? "CANCEL" : "+ NEW DISCUSSION"}</button>
-        ) : (
-          <Link to="/auth" style={{ fontSize: 12, color: B.blue, fontFamily: FONT, fontWeight: 700, textDecoration: "none" }}>
-            SIGN IN TO PARTICIPATE →
-          </Link>
-        )}
-      </div>
 
-      {showForm && user && (
-        username === null
-          ? <div style={{ marginBottom: 12 }}><UsernamePrompt onSet={onUsernameSet} /></div>
-          : (
+        {showCreateChannel && user && (
+          username === null ? (
+            <div style={{ marginBottom: 12 }}><UsernamePrompt onSet={onUsernameSet} /></div>
+          ) : (
             <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <input value={channelName} onChange={(e) => setChannelName(e.target.value)} placeholder="Topic name (e.g. US Stocks)" maxLength={60} style={inputStyle} />
+              <textarea value={channelDesc} onChange={(e) => setChannelDesc(e.target.value)} placeholder="Description (optional)" rows={2} maxLength={300} style={{ ...inputStyle, resize: "vertical" }} />
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button disabled={!channelName.trim() || creatingChannel} onClick={submitChannel} style={primaryBtnStyle(!!channelName.trim() && !creatingChannel)}>
+                  {creatingChannel ? "CREATING..." : "CREATE TOPIC"}
+                </button>
+              </div>
+            </div>
+          )
+        )}
+
+        {showForm && (
+          !user ? (
+            <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12 }}>
+              <Link to="/auth" style={{ color: B.blue, fontFamily: FONT, fontSize: 12, fontWeight: 700, textDecoration: "none" }}>Sign in to post →</Link>
+            </div>
+          ) : username === null ? (
+            <div style={{ marginBottom: 12 }}><UsernamePrompt onSet={onUsernameSet} /></div>
+          ) : (
+            <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.04em" }}>NEW POST</span>
+                <button onClick={() => setShowForm(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700 }}>CANCEL</button>
+              </div>
+              <select value={formChannelId} onChange={(e) => setFormChannelId(e.target.value)} style={inputStyle}>
+                <option value="">Select a topic…</option>
+                {channels.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {(Object.keys(POST_TYPE_META) as CommunityPostType[]).map((t) => (
+                  <button key={t} type="button" onClick={() => setPostType(t)} style={{
+                    padding: "5px 12px", borderRadius: 999, fontFamily: FONT, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                    background: postType === t ? POST_TYPE_META[t].color : B.panel2,
+                    color: postType === t ? B.bg : POST_TYPE_META[t].color,
+                    border: `1px solid ${POST_TYPE_META[t].color}`,
+                  }}>{POST_TYPE_META[t].label}</button>
+                ))}
+              </div>
               <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={200} style={inputStyle} />
               <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write something..." rows={4} maxLength={8000} style={{ ...inputStyle, resize: "vertical" }} />
               <PortfolioAttachPicker holdings={holdings} value={portfolioSnapshot} onChange={setPortfolioSnapshot} />
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button disabled={!title.trim() || !body.trim() || posting} onClick={submitPost} style={primaryBtnStyle(!!title.trim() && !!body.trim() && !posting)}>
+                <button disabled={!title.trim() || !body.trim() || !formChannelId || posting} onClick={submitPost} style={primaryBtnStyle(!!title.trim() && !!body.trim() && !!formChannelId && !posting)}>
                   {posting ? "PUBLISHING..." : "PUBLISH"}
                 </button>
               </div>
             </div>
           )
-      )}
+        )}
 
-      {error && (
-        <div style={{ padding: "8px 10px", fontSize: 12, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, marginBottom: 10, fontFamily: FONT }}>
-          {error}
-        </div>
-      )}
+        {error && (
+          <div style={{ padding: "8px 10px", fontSize: 12, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, marginBottom: 10, fontFamily: FONT }}>
+            {error}
+          </div>
+        )}
 
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>
-      ) : posts.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
-          No discussions yet, be the first to write one.
+        {sortTab === "following" ? (
+          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13, lineHeight: 1.6 }}>
+            Follow users or topics to see their posts here — coming soon.
+          </div>
+        ) : loading ? (
+          <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>
+        ) : sortedPosts.length === 0 ? (
+          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
+            No discussions yet — be the first to write one.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {sortedPosts.map((p) => (
+              <PostCard key={p.id} post={p} myVote={myVotes[p.id] || 0} disabled={!user} onVote={(v) => vote(p.id, v)} onOpen={() => onOpenPost(p.id)} showChannel={!selectedChannel} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ width: isMobile ? "100%" : 300, flexShrink: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 10 }}>About {communityName}</div>
+          {about ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: FONT }}>
+                <span style={{ color: B.gray3 }}>Members</span><span style={{ color: B.gray1, fontWeight: 700 }}>{about.memberCount}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: FONT }}>
+                <span style={{ color: B.gray3 }}>Posts</span><span style={{ color: B.gray1, fontWeight: 700 }}>{about.postCount}</span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>Loading…</div>
+          )}
+          {selectedChannel && user && (user.user_id === selectedChannel.created_by || isAdmin) && (
+            <button onClick={deleteSelectedChannel} style={{
+              marginTop: 12, background: "none", border: `1px solid ${B.red}`, color: B.red, borderRadius: 6,
+              padding: "6px 10px", fontFamily: FONT, fontSize: 11, fontWeight: 700, cursor: "pointer", width: "100%",
+            }}>DELETE THIS TOPIC</button>
+          )}
         </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {posts.map((p) => (
-            <PostCard key={p.id} post={p} myVote={myVotes[p.id] || 0} disabled={!user} onVote={(v) => vote(p.id, v)} onOpen={() => onOpenPost(p.id)} />
-          ))}
+
+        <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 10 }}>Trending Topics</div>
+          {trending === null ? (
+            <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>Loading…</div>
+          ) : totalTrendingCount < 5 ? (
+            <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, lineHeight: 1.5 }}>
+              Not enough activity yet to show trends — check back once there are more posts.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {trending.map((t, i) => (
+                <div key={t.id} onClick={() => { const c = channels.find((ch) => ch.id === t.id); if (c) setSelectedChannel(c); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <span style={{ fontSize: 12, color: B.gray1, fontFamily: FONT }}>{i + 1}. {t.name}</span>
+                  <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{t.count} posts</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+
+        <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14 }}>
+          <button onClick={() => setRulesOpen((v) => !v)} style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
+            background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: rulesOpen ? 10 : 0,
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>Community Rules</span>
+            <span style={{ color: B.gray3 }}><ChevronIcon open={rulesOpen} /></span>
+          </button>
+          {rulesOpen && (
+            <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
+              {COMMUNITY_RULES.map((r, i) => (
+                <li key={i} style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, lineHeight: 1.4 }}>{r}</li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
     </div>
+    </>
   );
 }
 
@@ -919,26 +1142,31 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
       <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "14px 16px", display: "flex", gap: 14, marginTop: 10 }}>
         <VoteControl score={post.score} myVote={myVote} disabled={!user} onVote={vote} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 6 }}>{post.title}</div>
-          <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <PostTypeTag type={post.post_type} />
             {post.community_channels && (
-              <span style={{ color: B.blue, fontWeight: 700 }}>{post.community_channels.name}</span>
+              <span style={{ fontSize: 11, color: B.blue, fontWeight: 700, fontFamily: FONT }}>{post.community_channels.name}</span>
             )}
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 6 }}>{post.title}</div>
+          <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <Avatar name={post.author_name} size={18} />
             <span>u/{post.author_name}</span>
-            <span>{fmtDate(post.created_at)}</span>
+            <span>· {fmtDate(post.created_at)}</span>
             {user && (user.user_id === post.user_id || isAdmin) && (
-              <button onClick={removePost} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0 }}>
+              <button onClick={removePost} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0, marginLeft: "auto" }}>
                 DELETE
               </button>
             )}
           </div>
           <div style={{ fontSize: 13, color: B.gray1, fontFamily: FONT, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{post.body}</div>
+          <PostActions post={post} onOpenComments={() => document.getElementById("community-comments")?.scrollIntoView({ behavior: "smooth" })} />
         </div>
       </div>
 
       {post.portfolio_snapshot && <PortfolioShareCard snapshot={post.portfolio_snapshot} />}
 
-      <div style={{ marginTop: 16 }}>
+      <div id="community-comments" style={{ marginTop: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 8, fontFamily: FONT }}>
           {comments.length} COMMENTS
         </div>
@@ -971,6 +1199,7 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
                 <VoteControl score={c.score} myVote={myCommentVotes[c.id] || 0} disabled={!user} onVote={(v) => voteComment(c.id, v)} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 4, display: "flex", gap: 8, alignItems: "center" }}>
+                    <Avatar name={c.author_name} size={16} />
                     <span style={{ color: B.gray2, fontWeight: 700 }}>u/{c.author_name}</span>
                     <span>{fmtDate(c.created_at)}</span>
                     {user && (user.user_id === c.user_id || isAdmin) && (
@@ -990,21 +1219,22 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
   );
 }
 
-type PostOrigin = { mode: "home" } | { mode: "channel"; channel: CommunityChannel };
+type View = { mode: "feed" } | { mode: "post"; postId: string };
 
-type View =
-  | { mode: "home" }
-  | { mode: "channels" }
-  | { mode: "channel"; channel: CommunityChannel }
-  | { mode: "post"; postId: string; back: PostOrigin };
-
-export default function CommunityPage({ holdings }: { holdings?: any[] }) {
+// composerOpen/onComposerHandled come from PortfolioTerminal (which also
+// renders the app's left SidebarNav — its own "+ NEW POST" button flips
+// this): they're siblings that stay co-mounted on desktop, so this is
+// plain lifted state, not a cross-page localStorage handoff.
+export default function CommunityPage({ holdings, composerOpen, onComposerHandled }: { holdings?: any[]; composerOpen?: boolean; onComposerHandled?: () => void }) {
   const { user } = useUser();
   const isAdmin = user?.email === OWNER_EMAIL;
-  const [view, setView] = useState<View>({ mode: "home" });
+  const [view, setView] = useState<View>({ mode: "feed" });
   // undefined = not loaded yet, null = signed in but no username set.
   const [username, setUsernameState] = useState<string | null | undefined>(undefined);
   const [pendingPost, setPendingPost] = usePersistentState<string>("community_pending_post", "");
+  // Lifted out of Feed (see its own comment) so switching to a post's
+  // detail view and back doesn't lose which topic/channel you were in.
+  const [selectedChannel, setSelectedChannel] = useState<CommunityChannel | null>(null);
 
   useEffect(() => {
     if (!user) { setUsernameState(undefined); return; }
@@ -1019,39 +1249,27 @@ export default function CommunityPage({ holdings }: { holdings?: any[] }) {
   // up here and jump straight to that post's detail view.
   useEffect(() => {
     if (!pendingPost) return;
-    setView({ mode: "post", postId: pendingPost, back: { mode: "home" } });
+    setView({ mode: "post", postId: pendingPost });
     setPendingPost("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingPost]);
 
-  const showTopNav = view.mode === "home" || view.mode === "channels";
-
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 80, padding: 12 }}>
-        {showTopNav && (
-          <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
-            <FKey label="HOME" active={view.mode === "home"} onClick={() => setView({ mode: "home" })} />
-            <FKey label="CHANNELS" active={view.mode === "channels"} onClick={() => setView({ mode: "channels" })} />
-          </div>
-        )}
-        {view.mode === "home" && (
-          <HomeFeed user={user} onOpenPost={(postId) => setView({ mode: "post", postId, back: { mode: "home" } })} />
-        )}
-        {view.mode === "channels" && (
-          <ChannelList user={user} username={username} isAdmin={isAdmin} onUsernameSet={setUsernameState} onOpen={(channel) => setView({ mode: "channel", channel })} />
-        )}
-        {view.mode === "channel" && (
-          <ChannelPosts
-            channel={view.channel} user={user} username={username} holdings={holdings || []} onUsernameSet={setUsernameState}
-            onOpenPost={(postId) => setView({ mode: "post", postId, back: { mode: "channel", channel: view.channel } })}
-            onBack={() => setView({ mode: "channels" })}
+        {view.mode === "feed" && (
+          <Feed
+            user={user} username={username} isAdmin={isAdmin} holdings={holdings || []}
+            composerOpen={!!composerOpen} onComposerHandled={() => onComposerHandled?.()}
+            onUsernameSet={setUsernameState}
+            onOpenPost={(postId) => setView({ mode: "post", postId })}
+            selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel}
           />
         )}
         {view.mode === "post" && (
           <PostDetail
             postId={view.postId} user={user} username={username} isAdmin={isAdmin} onUsernameSet={setUsernameState}
-            onBack={() => setView(view.back)}
+            onBack={() => setView({ mode: "feed" })}
           />
         )}
       </div>

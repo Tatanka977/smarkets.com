@@ -59,6 +59,8 @@ export interface PortfolioSnapshot {
   allocationByGeo?: PortfolioSnapshotAllocationSlice[];
 }
 
+export type CommunityPostType = "portfolio_review" | "question" | "discussion" | "market_talk";
+
 export interface CommunityPost {
   id: string;
   user_id: string;
@@ -66,6 +68,7 @@ export interface CommunityPost {
   author_name: string;
   title: string;
   body: string;
+  post_type: CommunityPostType;
   score: number;
   comment_count: number;
   portfolio_snapshot: PortfolioSnapshot | null;
@@ -180,7 +183,7 @@ export async function getCommunityPost({ data }: { data: { id: string } }): Prom
 }
 
 export async function createCommunityPost(
-  { data }: { data: { title: string; body: string; channelId: string; portfolioSnapshot?: PortfolioSnapshot | null } }
+  { data }: { data: { title: string; body: string; channelId: string; postType?: CommunityPostType; portfolioSnapshot?: PortfolioSnapshot | null } }
 ): Promise<CommunityPost> {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData?.user;
@@ -194,11 +197,73 @@ export async function createCommunityPost(
   // impersonate another name.
   const { data: row, error } = await supabase
     .from("community_posts")
-    .insert({ user_id: user.id, title, body, channel_id: data.channelId, portfolio_snapshot: data.portfolioSnapshot ?? null })
+    .insert({
+      user_id: user.id, title, body, channel_id: data.channelId,
+      post_type: data.postType || "discussion",
+      portfolio_snapshot: data.portfolioSnapshot ?? null,
+    })
     .select()
     .single();
   if (error) throw error;
   return row as CommunityPost;
+}
+
+// Real (not estimated) counts for the "About" sidebar box: distinct users
+// who have ever posted or commented, and total posts — scoped to one
+// channel, or the whole community when channelId is omitted ("All Topics").
+// No dedicated view/RPC: post/comment volume here is small enough that
+// fetching just the id/user_id columns and deduping client-side is simpler
+// and cheaper than adding a materialized aggregate.
+export async function getCommunityAbout(
+  { data }: { data: { channelId?: string } }
+): Promise<{ postCount: number; memberCount: number }> {
+  let postsQuery = supabase.from("community_posts").select("id, user_id");
+  if (data.channelId) postsQuery = postsQuery.eq("channel_id", data.channelId);
+  const { data: posts, error: postsErr } = await postsQuery;
+  if (postsErr) throw postsErr;
+  const postRows = posts || [];
+
+  const postIds = postRows.map((p: any) => p.id);
+  let commentUserIds: string[] = [];
+  if (postIds.length) {
+    const { data: comments, error: commentsErr } = await supabase
+      .from("community_comments")
+      .select("user_id")
+      .in("post_id", postIds);
+    if (commentsErr) throw commentsErr;
+    commentUserIds = (comments || []).map((c: any) => c.user_id);
+  }
+
+  const memberSet = new Set<string>([...postRows.map((p: any) => p.user_id), ...commentUserIds]);
+  return { postCount: postRows.length, memberCount: memberSet.size };
+}
+
+// Real per-channel post counts over the last 7 days, for the "Trending
+// Topics" sidebar box — channels are this app's "topics". Sorted
+// descending, capped to the top 5; the caller decides what "too little
+// data to be meaningful" means (e.g. total count below some threshold)
+// since that's a display judgment, not a data-fetching one.
+export async function getTrendingChannels(): Promise<{ id: string; name: string; count: number }[]> {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("community_posts")
+    .select("channel_id, community_channels(name)")
+    .gte("created_at", since);
+  if (error) throw error;
+
+  const counts = new Map<string, { name: string; count: number }>();
+  (data || []).forEach((p: any) => {
+    if (!p.channel_id) return;
+    const name = p.community_channels?.name || "Unknown";
+    const cur = counts.get(p.channel_id) || { name, count: 0 };
+    cur.count += 1;
+    counts.set(p.channel_id, cur);
+  });
+
+  return Array.from(counts.entries())
+    .map(([id, v]) => ({ id, name: v.name, count: v.count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
 }
 
 export async function deleteCommunityPost({ data }: { data: { id: string } }): Promise<{ ok: true }> {

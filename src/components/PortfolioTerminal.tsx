@@ -386,7 +386,7 @@ const SIDEBAR_GROUPS = [
   ],
 ];
 
-function SidebarNav({page,setPage,badge}:any) {
+function SidebarNav({page,setPage,badge,onNewPost}:any) {
   const { user } = useUser();
   const itemStyle:any = {
     display:"flex",alignItems:"center",gap:10,padding:"9px 12px",
@@ -438,6 +438,13 @@ function SidebarNav({page,setPage,badge}:any) {
             })}
           </div>
         ))}
+      </div>
+      <div style={{padding:"10px 8px",borderTop:`1px solid ${B.border}`,flexShrink:0}}>
+        <button onClick={onNewPost} style={{
+          width:"100%",background:B.blue,border:"none",color:B.white,borderRadius:6,
+          padding:"10px 12px",cursor:"pointer",fontFamily:"'Courier New',monospace",
+          fontSize:13,fontWeight:700,letterSpacing:"0.04em",
+        }}>+ NEW POST</button>
       </div>
     </div>
   );
@@ -2503,6 +2510,11 @@ export default function PortfolioTerminal() {
   const [refreshing,setRefreshing] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const isMobile = useIsMobile();
+  // SidebarNav's "+ NEW POST" button and CommunityPage's composer are
+  // siblings under this component, always co-mounted on desktop (unlike a
+  // cross-page handoff, there's no unmount/remount in between) — so this
+  // just lives here directly rather than going through localStorage.
+  const [communityComposerOpen, setCommunityComposerOpen] = useState(false);
 
   // ── PERSISTENCE ─────────────────────────────────────────────────────────
   // Hydrate from localStorage on mount (client only). This survives HMR,
@@ -2820,7 +2832,7 @@ export default function PortfolioTerminal() {
         <>
           <TopBar time={time} setPage={setPage}/>
           <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"row"}}>
-            {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length}/>}
+            {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length} onNewPost={()=>{setCommunityComposerOpen(true); setPage("community");}}/>}
             <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",minWidth:0}}>
               <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
                 {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing}/>}
@@ -2829,7 +2841,7 @@ export default function PortfolioTerminal() {
                 {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage}/>}
                 {page==="ai"         && <AIAdvisorPage holdings={displayHoldings}/>}
                 {page==="news"       && <NewsPage holdings={holdings} setPage={setPage}/>}
-                {page==="community"  && <CommunityPage holdings={displayHoldings}/>}
+                {page==="community"  && <CommunityPage holdings={displayHoldings} composerOpen={communityComposerOpen} onComposerHandled={()=>setCommunityComposerOpen(false)}/>}
               </div>
               <DisclaimerBar/>
               {isMobile && <BottomNav page={page} setPage={setPage} badge={holdings.length}/>}
