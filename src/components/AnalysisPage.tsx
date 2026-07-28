@@ -865,11 +865,31 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           const nHoldings = holdings.length;
           const maxDD = m.wVol * 2.5; // rough educational proxy, not real tracked drawdown
 
+          // Educational risk score (0-100), our own scoring method — not an
+          // external credit or risk rating, not a validated quant model.
+          // Four factors, each floored at 0 so being "better than baseline"
+          // never subtracts points:
+          //  - Concentration (HHI): m.hhi is the Herfindahl-Hirschman index
+          //    of position weights (sum of weight% squared, so 10 equal
+          //    positions = 1000, one single position = 10000). Below 1500
+          //    contributes nothing; above it, points scale continuously
+          //    with concentration. This replaces the old flat "single name
+          //    weight * 0.9" term and the old rigid "fewer than 5 positions
+          //    adds 8 points per missing position" step — HHI already
+          //    captures both a dominant position AND a low position count
+          //    as one continuous measure, so a separate headcount penalty
+          //    is redundant.
+          //  - Sector concentration: only for single-sector holdings
+          //    (STOCK/REIT — see sectorRiskHoldings above), weight reduced
+          //    from before since HHI now also picks up part of this signal.
+          //  - Beta vs the market: >1 adds points (more market-sensitive
+          //    than benchmark), <1 adds nothing (not a risk-reducer here).
+          //  - Volatility above a 15% baseline.
           const riskScore = Math.round(Math.min(100,
-            topHPct * 0.9 +
-            Math.max(0, topSectorPct - 20) * 0.6 +
-            Math.max(0, (5 - nHoldings)) * 8 +
-            Math.max(0, m.wVol - 15) * 0.8
+            Math.max(0, (m.hhi - 1500) / 100) +
+            Math.max(0, topSectorPct - 20) * 0.5 +
+            Math.max(0, m.wVol - 15) * 0.8 +
+            Math.max(0, (m.wBeta - 1) * 15)
           ));
           const riskLabel = riskScore >= 70 ? "HIGH RISK" : riskScore >= 40 ? "MODERATE RISK" : "LOW RISK";
           const riskColor = riskScore >= 70 ? B.red : riskScore >= 40 ? B.yellow : B.green;
@@ -904,11 +924,13 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           const hypTopGeoPct = hypGD?.[0]?.pct ?? null;
           const hypNHoldings = hypHoldings ? hypHoldings.length : null;
           const hypMaxDD = hypM ? hypM.wVol * 2.5 : null;
+          // Same exact formula as riskScore above — must stay identical so
+          // the What-If "before vs after" comparison is coherent.
           const hypRiskScore = (whatIf && hypM) ? Math.round(Math.min(100,
-            (hypTopHPct ?? 0) * 0.9 +
-            Math.max(0, (hypTopSectorPct ?? 0) - 20) * 0.6 +
-            Math.max(0, (5 - (hypNHoldings ?? 0))) * 8 +
-            Math.max(0, hypM.wVol - 15) * 0.8
+            Math.max(0, (hypM.hhi - 1500) / 100) +
+            Math.max(0, (hypTopSectorPct ?? 0) - 20) * 0.5 +
+            Math.max(0, hypM.wVol - 15) * 0.8 +
+            Math.max(0, (hypM.wBeta - 1) * 15)
           )) : null;
 
           // One row per risk metric shown in RISK SUMMARY/RISK DRIVERS above,
@@ -938,7 +960,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                     <div style={{fontSize:11,fontWeight:700,color:riskColor,fontFamily:FONT,marginTop:4}}>{riskLabel}</div>
                   </div>
                   <div style={{flex:1,minWidth:180,fontSize:12,color:B.gray1,fontFamily:FONT,lineHeight:1.5}}>
-                    Score based on concentration, sector exposure, diversification and volatility of your current holdings. This is our own educational scoring method, not an external credit or risk rating.
+                    Score based on concentration (HHI), sector exposure, beta and volatility of your current holdings. This is our own educational scoring method, not an external credit or risk rating or a validated quantitative model.
                   </div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px,1fr))",gap:10,padding:"0 16px 16px"}}>
