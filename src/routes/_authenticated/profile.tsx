@@ -348,7 +348,7 @@ function ProfilePage() {
 
   return (
     <div style={{ minHeight: "100vh", background: B.bg, color: B.gray1, fontFamily: FONT }}>
-      <div style={{ maxWidth: 820, margin: "0 auto", borderLeft: `1px solid ${B.border}`, borderRight: `1px solid ${B.border}`, minHeight: "100vh" }}>
+      <div className="sm-shell" style={{ minHeight: "100vh" }}>
         <div style={{ background: B.blue, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <LogoIcon size={26} />

@@ -390,3 +390,17 @@
 [data-theme="aurora"] .sm-bottomnav button[style*="var(--sm-blue)"] span {
   opacity: 1;
 }
+
+/* Responsive width shell, shared by every page (the terminal's PhoneShell
+   and the standalone profile route alike) so they're all the same width
+   at any given viewport size. Mobile (<768px) stays edge-to-edge; from
+   tablet width up, the shell fills almost the full viewport instead of
+   being capped to a narrow fixed column — the max-width is just a safety
+   net for ultra-wide monitors, not an active cap on typical screens. */
+.sm-shell {
+  width: 100%;
+  margin: 0 auto;
+}
+@media (min-width: 768px) {
+  .sm-shell { width: 96%; max-width: 1800px; }
+}

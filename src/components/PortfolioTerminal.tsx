@@ -108,14 +108,8 @@ function PhoneShell({children}:any) {
         ::-webkit-scrollbar { width:6px; background:#000; }
         ::-webkit-scrollbar-thumb { background:${B.blue}; }
 
-        /* ── Responsive shell ──────────────────────────────────────────────
-           Mobile (<768px) stays edge-to-edge, unchanged. From tablet width
-           up, the shell uses almost the full viewport instead of being
-           capped to a narrow phone-mockup column — a very high max-width
-           is just a safety net for ultra-wide monitors, not an active cap
-           on typical screens.                                              */
-        .sm-shell { width:100%; margin:0 auto; }
-        @media (min-width: 768px) { .sm-shell { width:96%; max-width: 1800px; } }
+        /* .sm-shell's width/max-width rule now lives in styles.css, shared
+           with the standalone profile page — see the comment there. */
 
         /* ── Global responsive font-size overrides ─────────────────────
            The app was originally sized for a mid-size phone. Below we
