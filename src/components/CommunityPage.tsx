@@ -126,7 +126,7 @@ function hashStr(s: string): number {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 }
-function Avatar({ name, size = 28 }: { name: string; size?: number }) {
+export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
   const color = PIE_COLS[hashStr(name || "?") % PIE_COLS.length];
   const initial = (name || "?").trim().charAt(0).toUpperCase() || "?";
   return (

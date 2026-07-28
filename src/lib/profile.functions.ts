@@ -127,16 +127,40 @@ export async function deleteConversation({ data }: { data: { id: string } }): Pr
   return { ok: true };
 }
 
-export async function updateProfile({ data }: { data: { display_name: string } }): Promise<{ display_name: string }> {
+export interface MyProfile {
+  display_name: string | null;
+  username: string | null;
+  bio: string | null;
+  created_at: string;
+}
+
+// One round trip for everything the profile page's header needs: name,
+// handle, bio, and the real signup date (profiles.created_at is set by
+// the handle_new_user() trigger at the same moment auth.users gets the
+// row, so it's an exact account-creation timestamp, not an approximation).
+export async function getMyProfile(): Promise<MyProfile | null> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("display_name, username, bio, created_at")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return data as MyProfile | null;
+}
+
+export async function updateProfile({ data }: { data: { display_name?: string; bio?: string } }): Promise<{ display_name?: string; bio?: string }> {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData?.user;
   if (!user) throw new Error("Not signed in");
-  const { error } = await supabase
-    .from("profiles")
-    .update({ display_name: data.display_name, updated_at: new Date().toISOString() })
-    .eq("id", user.id);
+  const update: Record<string, any> = { updated_at: new Date().toISOString() };
+  if (data.display_name !== undefined) update.display_name = data.display_name;
+  if (data.bio !== undefined) update.bio = data.bio;
+  const { error } = await supabase.from("profiles").update(update).eq("id", user.id);
   if (error) throw error;
-  return { display_name: data.display_name };
+  return data;
 }
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;

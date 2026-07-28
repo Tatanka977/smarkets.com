@@ -1257,6 +1257,20 @@ function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddC
   const dm=useMemo(()=>pMet(kpiHoldings),[kpiHoldings]);
   const { user } = useUser();
   const [view, setView] = useState<"positions"|"saved">("positions");
+
+  // Loads a saved portfolio handed off from the profile page's PORTFOLIOS
+  // tab (different route — same cross-route handoff mechanism as the AI
+  // advisor's pendingConvo).
+  const [pendingLoad, setPendingLoad] = usePersistentState<any[]|null>("portfolio_pending_load", null);
+  useEffect(() => {
+    if (pendingLoad && pendingLoad.length) {
+      onLoadPortfolio(pendingLoad);
+      setPendingLoad(null);
+      setView("positions");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingLoad]);
+
   const [sellTarget, setSellTarget] = useState<any>(null);
   const [importRows, setImportRows] = useState<any[]|null>(null);
   const [importBusy, setImportBusy] = useState(false);
