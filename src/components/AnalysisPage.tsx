@@ -8,6 +8,7 @@ import { aiChatAsUser } from "@/lib/ai.functions";
 import { getInvestorProfile } from "@/lib/profile.functions";
 import { fetchQuote as srvQuote, searchSecurities as srvSearch, fetchPriceHistory as srvPriceHistory } from "@/lib/finance.functions";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { useIsMobile } from "@/hooks/use-mobile";
 const FONT = "'Courier New', Courier, monospace";
 
 const BENCHMARKS = [
@@ -633,8 +634,149 @@ function BacktestTab() {
   );
 }
 
+// ── What-If comparison table: small stroke-style icons (same convention
+// as NAV_ICONS in PortfolioTerminal.tsx / the icon set in CommunityPage.tsx),
+// a proportional horizontal bar, and the row renderer used for every metric.
+function IconGauge({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 12 16 8" /><path d="M3 12a9 9 0 0 1 18 0" /><path d="M5 19h14" />
+    </svg>
+  );
+}
+function IconDollar({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="2" x2="12" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  );
+}
+function IconPieSlice({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a10 10 0 1 0 10 10H12Z" /><path d="M12 2v10h10" />
+    </svg>
+  );
+}
+function IconLayers({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 2 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5" /><path d="m3 17 9 5 9-5" />
+    </svg>
+  );
+}
+function IconTarget({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" />
+    </svg>
+  );
+}
+function IconGrid({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+function IconGlobe({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18Z" />
+    </svg>
+  );
+}
+function IconWave({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0" />
+    </svg>
+  );
+}
+function IconTrendDown({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 7 7 7 4-4 7 7" /><path d="M21 11v6h-6" />
+    </svg>
+  );
+}
+function IconScale({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v18M5 7l-3 7a4 4 0 0 0 6 0Zm14 0l-3 7a4 4 0 0 0 6 0Z" /><path d="M5 7h14" />
+    </svg>
+  );
+}
+function IconActivity({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 12 8 12 10 6 14 18 16 12 21 12" />
+    </svg>
+  );
+}
+function IconBulb({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-4 10.5c.5.5.8 1.2.8 2h6.4c0-.8.3-1.5.8-2A6 6 0 0 0 12 3Z" />
+    </svg>
+  );
+}
+
+function MetricBar({ pct, color }: { pct: number; color: string }) {
+  return (
+    <div style={{ width: "100%", height: 6, background: B.panel2, borderRadius: 999, overflow: "hidden" }}>
+      <div style={{ width: `${Math.max(0, Math.min(100, pct))}%`, height: "100%", background: color, borderRadius: 999 }} />
+    </div>
+  );
+}
+
+type WhatIfRowSpec = {
+  key: string; icon: JSX.Element; label: string; sub: string;
+  before: number; after: number | null;
+  fmtValue: (v: number) => string;
+  barPct: (v: number) => number;
+  impactText: string; impactLabel: string; impactColor: string; arrow: "up" | "down" | "flat";
+};
+
+function WhatIfTableRow({ row }: { row: WhatIfRowSpec }) {
+  const arrowGlyph = row.arrow === "up" ? "▲" : row.arrow === "down" ? "▼" : "—";
+  return (
+    <div style={{
+      display: "grid", gridTemplateColumns: "minmax(170px,1.7fr) minmax(100px,1fr) 20px minmax(100px,1fr) minmax(120px,1fr)",
+      gap: 10, alignItems: "center", padding: "10px 0", borderTop: `1px solid ${B.border}`,
+    }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
+        <span style={{ color: B.gray3, marginTop: 2, flexShrink: 0 }}>{row.icon}</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12, color: B.gray1, fontFamily: FONT, fontWeight: 700 }}>{row.label}</div>
+          <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT }}>{row.sub}</div>
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize: 12, color: B.gray1, fontFamily: FONT, fontWeight: 700, marginBottom: 3 }}>{row.fmtValue(row.before)}</div>
+        <MetricBar pct={row.barPct(row.before)} color={B.blue} />
+      </div>
+      <div style={{ textAlign: "center", color: B.gray3, fontSize: 13 }}>→</div>
+      <div>
+        <div style={{ fontSize: 12, color: B.gray1, fontFamily: FONT, fontWeight: 700, marginBottom: 3 }}>
+          {row.after != null ? row.fmtValue(row.after) : "—"}
+        </div>
+        <MetricBar pct={row.after != null ? row.barPct(row.after) : 0} color={B.green} />
+      </div>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: row.impactColor, fontFamily: FONT }}>
+          {arrowGlyph} {row.impactText}
+        </div>
+        <div style={{ fontSize: 10, color: row.impactColor, fontFamily: FONT }}>{row.impactLabel}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function AnalysisPage({ holdings, setPage }: any) {
   const m = useMemo(() => pMet(holdings), [holdings]);
+  const isMobile = useIsMobile();
   const [sub, setSub] = useState<"alloc" | "risk" | "perf" | "corr" | "backtest">("alloc");
   const [aiExplain, setAiExplain] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
@@ -666,6 +808,14 @@ export default function AnalysisPage({ holdings, setPage }: any) {
     setWhatIfTicker(r.symbol);
     setShowSuggestions(false);
     setSuggestions([]);
+  };
+
+  const clearWhatIfTicker = () => {
+    setWhatIfTicker("");
+    setWhatIfQuote(null);
+    setWhatIfError("");
+    setSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const runWhatIf = async () => {
@@ -901,13 +1051,6 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
             { l:"GEOGRAPHIC RISK", v:`${topGeoPct}%`, sub:gD[0]?.name||"—", sev: topGeoPct>80?"MED":"OK" },
           ];
 
-          const alertRows = [
-            { l:"Single Name Exposure", cur:topHPct, target:20, isPct:true },
-            { l:`Sector Exposure (${sDRisk[0]?.name||"—"})`, cur:topSectorPct, target:30, isPct:true },
-            { l:"Geographic Exposure", cur:topGeoPct, target:70, isPct:true, inverse:true },
-            { l:"Diversification (Positions)", cur:nHoldings, target:10, isPct:false, more:true },
-          ];
-
           // Full hypothetical portfolio if the What-If simulation below is
           // applied — rebuilt with the exact same holdings + math used for
           // the "before" figures above (pMet/groupBy), not approximations,
@@ -946,6 +1089,111 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
             { l: "Sharpe Ratio", before: m.sharpe, after: hypM?.sharpe, dp: 2, suffix: "", worse: "lower" },
             { l: "Beta (vs S&P 500)", before: m.wBeta, after: hypM?.wBeta, dp: 2, suffix: "", worse: "higher" },
           ] : [];
+
+          // Turns one riskDeltaRows entry into a full WhatIfTableRow spec —
+          // icon + bar scale picked by label, since riskDeltaRows itself is
+          // shared with the plain-text summary above and doesn't carry
+          // presentation info.
+          const clampPct = (v: number) => Math.max(0, Math.min(100, v));
+          const buildDeltaRowSpec = (r: any): WhatIfRowSpec => {
+            const icon = r.l.startsWith("Single Name") ? <IconTarget/>
+              : r.l.startsWith("Sector") ? <IconGrid/>
+              : r.l.startsWith("Geographic") ? <IconGlobe/>
+              : r.l.startsWith("Diversification") ? <IconLayers/>
+              : r.l.startsWith("Volatility") ? <IconWave/>
+              : r.l.startsWith("Max Drawdown") ? <IconTrendDown/>
+              : r.l.startsWith("Sharpe") ? <IconScale/>
+              : <IconActivity/>;
+            const barPct = (v: number) => {
+              if (r.l.startsWith("Volatility")) return clampPct((v / 50) * 100);
+              if (r.l.startsWith("Max Drawdown")) return clampPct((v / 100) * 100);
+              if (r.l.startsWith("Sharpe")) return clampPct(((v + 1) / 4) * 100);
+              if (r.l.startsWith("Beta")) return clampPct((v / 2.5) * 100);
+              if (r.l.startsWith("Diversification")) return clampPct((v / 20) * 100);
+              return clampPct(v); // Single Name / Sector / Geographic are already 0-100%
+            };
+            const sign = r.negate ? "-" : "";
+            const fmtValue = (v: number) => `${sign}${fmt(v, r.dp)}${r.suffix}`;
+            const delta = r.after != null ? r.after - r.before : 0;
+            const changed = r.after != null && Math.abs(delta) > 0.005;
+            const isWorse = changed && (r.worse === "higher" ? r.after > r.before : r.after < r.before);
+            // Max Drawdown is stored/compared as a positive magnitude but
+            // displayed with a "-" sign, so its delta needs flipping too —
+            // a magnitude increase (isWorse) must read as the displayed
+            // (negative) number moving further down, not up.
+            const displayDelta = r.negate ? -delta : delta;
+            return {
+              key: r.l, icon, label: r.l,
+              sub: r.worse === "higher" ? "Lower is better" : "Higher is better",
+              before: r.before, after: r.after, fmtValue, barPct,
+              impactText: !changed ? "—" : `${pSign(fmt(displayDelta, r.dp))}${r.suffix === "%" ? "pp" : ""}`,
+              impactLabel: !changed ? "No change" : isWorse ? "Higher risk" : "Lower risk",
+              impactColor: !changed ? B.gray3 : isWorse ? B.yellow : B.green,
+              arrow: !changed ? "flat" : (delta > 0 ? "up" : "down"),
+            };
+          };
+
+          // The full What-If comparison table: 4 composition rows (score,
+          // cash, weight, position count) followed by every riskDeltaRows
+          // metric, in that exact order — nothing invented, all real numbers
+          // already computed above.
+          const whatIfRows: WhatIfRowSpec[] = !whatIf ? [] : [
+            {
+              key: "score", icon: <IconGauge/>, label: "Portfolio Risk Score (HHI)", sub: "Lower is better",
+              before: riskScore, after: hypRiskScore,
+              fmtValue: (v) => `${Math.round(v)}`,
+              barPct: (v) => clampPct(v),
+              impactText: hypRiskScore === riskScore ? "—" : pSign(fmt((hypRiskScore ?? riskScore) - riskScore, 0)),
+              impactLabel: (hypRiskScore ?? riskScore) > riskScore ? "Riskier" : (hypRiskScore ?? riskScore) < riskScore ? "Improves" : "No change",
+              impactColor: (hypRiskScore ?? riskScore) > riskScore ? B.yellow : (hypRiskScore ?? riskScore) < riskScore ? B.green : B.gray3,
+              arrow: (hypRiskScore ?? riskScore) > riskScore ? "up" : (hypRiskScore ?? riskScore) < riskScore ? "down" : "flat",
+            },
+            {
+              key: "cash", icon: <IconDollar/>, label: "Cash Outlay", sub: "Capital required for this position",
+              before: 0, after: whatIf.amount,
+              fmtValue: (v) => `$${fmt(v, 2)}`,
+              barPct: (v) => clampPct((v / Math.max(m.total, 1)) * 100),
+              impactText: whatIf.amount === 0 ? "—" : `+$${fmt(whatIf.amount, 2)}`,
+              impactLabel: whatIf.amount === 0 ? "No change" : "New capital",
+              impactColor: whatIf.amount === 0 ? B.gray3 : B.gray2,
+              arrow: whatIf.amount === 0 ? "flat" : "up",
+            },
+            {
+              key: "weight", icon: <IconPieSlice/>, label: "New Position Weight", sub: "As % of portfolio after adding",
+              before: 0, after: whatIf.newWeight,
+              fmtValue: (v) => `${fmt(v, 2)}%`,
+              barPct: (v) => clampPct(v),
+              impactText: `+${fmt(whatIf.newWeight, 2)}pp`,
+              impactLabel: "As set",
+              impactColor: B.gray2,
+              arrow: "up",
+            },
+            {
+              key: "positions", icon: <IconLayers/>, label: "Total Positions", sub: "More positions, more diversification",
+              before: nHoldings, after: hypNHoldings,
+              fmtValue: (v) => `${Math.round(v)}`,
+              barPct: (v) => clampPct((v / 20) * 100),
+              impactText: hypNHoldings != null
+                ? `${pSign(fmt(hypNHoldings - nHoldings, 0))} (${pSign(fmt(((hypNHoldings - nHoldings) / Math.max(nHoldings, 1)) * 100, 0))}%)`
+                : "—",
+              impactLabel: "More diversified",
+              impactColor: B.green,
+              arrow: "up",
+            },
+            ...riskDeltaRows.map(buildDeltaRowSpec),
+          ];
+
+          // AI Insight box: 1-2 sentences built locally from the real numbers
+          // above — no AI call, just a template, so it's instant and free.
+          // "VIEW ADVANCED ANALYSIS" is what actually calls the AI (sendToAI).
+          const hhiDeltaPct = whatIf && whatIf.oldHHI > 0 ? ((whatIf.newHHI - whatIf.oldHHI) / whatIf.oldHHI) * 100 : 0;
+          const scoreDirection = hypRiskScore == null ? "unchanged" : hypRiskScore > riskScore ? "higher" : hypRiskScore < riskScore ? "lower" : "unchanged";
+          const aiInsightText = whatIf ? [
+            `Adding ${fmt(whatIf.qty, whatIf.qty < 1 ? 4 : 2)} shares of ${whatIfTicker} changes concentration risk (HHI) by ${pSign(fmt(hhiDeltaPct, 1))}%, resulting in a ${scoreDirection === "unchanged" ? "similar" : scoreDirection} overall risk score (${riskScore} → ${hypRiskScore}).`,
+            whatIf.afterSectorPct > whatIf.beforeSectorPct
+              ? `This also raises your ${whatIf.sector} exposure from ${fmt(whatIf.beforeSectorPct, 1)}% to ${fmt(whatIf.afterSectorPct, 1)}%.`
+              : "",
+          ].filter(Boolean).join(" ") : "";
 
           return (
           <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12}}>
@@ -1007,35 +1255,49 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
               {/* What-If Analysis */}
               <BPanel title="WHAT-IF ANALYSIS">
                 <div style={{padding:"10px 12px"}}>
-                  <div style={{display:"flex",gap:6,marginBottom:10}}>
-                    <div style={{position:"relative",flex:1}}>
-                      <input value={whatIfTicker} onChange={e => handleTickerInput(e.target.value)}
-                        onKeyDown={e => e.key === "Enter" && runWhatIf()}
-                        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                        placeholder="SEARCH TICKER..." style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:12,borderRadius:6}} />
-                      {showSuggestions && suggestions.length > 0 && (
-                        <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:20,
-                          background:B.panel,border:`1px solid ${B.border}`,borderRadius:6,marginTop:2,maxHeight:200,overflowY:"auto"}}>
-                          {suggestions.slice(0, 8).map((r: any) => (
-                            <div key={r.symbol} onClick={() => pickSuggestion(r)} style={{
-                              padding:"6px 10px",cursor:"pointer",fontFamily:FONT,fontSize:12,
-                              borderBottom:`1px solid ${B.border}`,
-                            }}>
-                              <span style={{color:B.blue,fontWeight:700}}>{r.symbol}</span>
-                              <span style={{color:B.gray3,marginLeft:6}}>{r.shortName}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:12}}>
+                    <div style={{flex:"1 1 200px",minWidth:160}}>
+                      <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>Add Position</div>
+                      <div style={{position:"relative"}}>
+                        <input value={whatIfTicker} onChange={e => handleTickerInput(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && runWhatIf()}
+                          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                          placeholder="SEARCH TICKER..." style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 28px 6px 8px",fontFamily:FONT,fontSize:12,borderRadius:6}} />
+                        {whatIfTicker && (
+                          <button onClick={clearWhatIfTicker} aria-label="Clear ticker" style={{
+                            position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",
+                            background:"none",border:"none",color:B.gray3,cursor:"pointer",fontSize:14,lineHeight:1,padding:2,
+                          }}>✕</button>
+                        )}
+                        {showSuggestions && suggestions.length > 0 && (
+                          <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:20,
+                            background:B.panel,border:`1px solid ${B.border}`,borderRadius:6,marginTop:2,maxHeight:200,overflowY:"auto"}}>
+                            {suggestions.slice(0, 8).map((r: any) => (
+                              <div key={r.symbol} onClick={() => pickSuggestion(r)} style={{
+                                padding:"6px 10px",cursor:"pointer",fontFamily:FONT,fontSize:12,
+                                borderBottom:`1px solid ${B.border}`,
+                              }}>
+                                <span style={{color:B.blue,fontWeight:700}}>{r.symbol}</span>
+                                <span style={{color:B.gray3,marginLeft:6}}>{r.shortName}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <input value={whatIfQty} onChange={e => setWhatIfQty(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && runWhatIf()}
-                      type="number" step="any" placeholder="SHARES" style={{width:90,background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:12,borderRadius:6}} />
-                    <button onClick={runWhatIf} disabled={whatIfBusy || !whatIfTicker.trim()} style={{
-                      background:B.blue,border:"none",color:B.white,padding:"6px 14px",borderRadius:6,
-                      cursor:whatIfBusy ? "wait" : "pointer",fontFamily:FONT,fontSize:12,fontWeight:700,
-                    }}>{whatIfBusy ? "..." : "SIMULATE"}</button>
+                    <div style={{width:100}}>
+                      <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>Quantity</div>
+                      <input value={whatIfQty} onChange={e => setWhatIfQty(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && runWhatIf()}
+                        type="number" step="any" placeholder="SHARES" style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:12,borderRadius:6}} />
+                    </div>
+                    <div style={{display:"flex",alignItems:"flex-end"}}>
+                      <button onClick={runWhatIf} disabled={whatIfBusy || !whatIfTicker.trim()} style={{
+                        background:B.blue,border:"none",color:B.white,padding:"7px 16px",borderRadius:6,
+                        cursor:whatIfBusy ? "wait" : "pointer",fontFamily:FONT,fontSize:12,fontWeight:700,
+                      }}>{whatIfBusy ? "..." : "SIMULATE"}</button>
+                    </div>
                   </div>
 
                   {whatIfError && (
@@ -1047,110 +1309,41 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                       Enter a ticker and a hypothetical number of shares, then tap Simulate to see the immediate impact on your risk parameters and score — before you actually buy it.
                     </div>
                   ) : (
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px,1fr))",gap:10}}>
-                      <div>
-                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Portfolio Risk Score</div>
-                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
-                          {riskScore} → {hypRiskScore}
-                        </div>
-                        <div style={{fontSize:11,fontWeight:700,color: hypRiskScore>riskScore?B.yellow:hypRiskScore<riskScore?B.green:B.gray3,fontFamily:FONT}}>
-                          {hypRiskScore>riskScore?"Riskier":hypRiskScore<riskScore?"Improves":"No change"}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Cash Outlay</div>
-                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>${fmt(whatIf.amount,2)}</div>
-                        <div style={{fontSize:11,color:B.gray3,fontFamily:FONT}}>
-                          {fmt(whatIf.qty,whatIf.qty<1?4:2)} sh @ ${whatIf.price.toFixed(2)}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>New Position Weight</div>
-                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{fmt(whatIf.newWeight,2)}%</div>
-                      </div>
-                      <div>
-                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{whatIf.sector} Exposure</div>
-                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
-                          {fmt(whatIf.beforeSectorPct,1)}% → {fmt(whatIf.afterSectorPct,1)}%
-                        </div>
-                        <div style={{fontSize:11,fontWeight:700,color: whatIf.afterSectorPct>whatIf.beforeSectorPct?B.yellow:B.green,fontFamily:FONT}}>
-                          {pSign(fmt(whatIf.afterSectorPct-whatIf.beforeSectorPct,1))}%
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Concentration (HHI)</div>
-                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
-                          {whatIf.oldHHI.toFixed(0)} → {whatIf.newHHI.toFixed(0)}
-                        </div>
-                        <div style={{fontSize:11,fontWeight:700,color: whatIf.newHHI>whatIf.oldHHI?B.yellow:B.green,fontFamily:FONT}}>
-                          {whatIf.newHHI>whatIf.oldHHI?"More concentrated":"More diversified"}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Total Positions</div>
-                        <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{holdings.length} → {whatIf.newPositionCount}</div>
-                      </div>
-                      {riskDeltaRows.map((r,i)=>{
-                        const changed = r.after!=null && Math.abs(r.after - r.before) > 0.005;
-                        const isWorse = changed && (r.worse === "higher" ? r.after > r.before : r.after < r.before);
-                        const color = !changed ? B.gray3 : isWorse ? B.yellow : B.green;
-                        const sign = r.negate ? "-" : "";
-                        return (
-                          <div key={i}>
-                            <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{r.l}</div>
-                            <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
-                              {sign}{fmt(r.before,r.dp)}{r.suffix} → {r.after!=null ? `${sign}${fmt(r.after,r.dp)}${r.suffix}` : "—"}
-                            </div>
-                            <div style={{fontSize:11,fontWeight:700,color,fontFamily:FONT}}>
-                              {!changed ? "No change" : isWorse ? "Higher risk" : "Lower risk"}
-                            </div>
+                    <>
+                      <div style={{overflowX: isMobile ? "auto" : "visible"}}>
+                        <div style={{minWidth: isMobile ? 640 : "auto"}}>
+                          <div style={{
+                            display:"grid", gridTemplateColumns:"minmax(170px,1.7fr) minmax(100px,1fr) 20px minmax(100px,1fr) minmax(120px,1fr)",
+                            gap:10, fontSize:9, color:B.gray3, fontFamily:FONT, textTransform:"uppercase", paddingBottom:6,
+                          }}>
+                            <div>Metric</div>
+                            <div>Current Portfolio</div>
+                            <div/>
+                            <div>What-If (After Adding {whatIfTicker})</div>
+                            <div>Impact</div>
                           </div>
-                        );
-                      })}
+                          {whatIfRows.map((row) => <WhatIfTableRow key={row.key} row={row} />)}
+                        </div>
+                      </div>
                       <button onClick={sendToAI} style={{
-                        marginTop:10,width:"100%",background:"transparent",border:`1px solid ${B.cyan}`,
+                        marginTop:14,width:"100%",background:"transparent",border:`1px solid ${B.cyan}`,
                         color:B.cyan,padding:"8px",borderRadius:6,cursor:"pointer",
                         fontFamily:FONT,fontSize:12,fontWeight:700,letterSpacing:"0.06em",
-                        gridColumn:"1 / -1",
                       }}>
-                        AI ADVANCED ANALYSIS →
+                        VIEW ADVANCED ANALYSIS →
                       </button>
-                    </div>
+
+                      {/* AI Insight — locally-built from the real numbers above, no AI call */}
+                      <div style={{marginTop:14,padding:"10px 12px",background:B.panel2,borderRadius:8,display:"flex",gap:10}}>
+                        <span style={{color:B.cyan,flexShrink:0,marginTop:1}}><IconBulb size={16}/></span>
+                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT}}>
+                          <div style={{textTransform:"uppercase",marginBottom:4,fontWeight:700}}>AI Insight</div>
+                          <div style={{fontSize:12,color:B.gray1,lineHeight:1.5}}>{aiInsightText}</div>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
-              </BPanel>
-
-              {/* Risk Alerts table */}
-              <BPanel title="RISK ALERTS">
-                <table style={{width:"100%",borderCollapse:"collapse",fontFamily:FONT,fontSize:12}}>
-                  <thead>
-                    <tr style={{color:B.gray3,fontSize:10}}>
-                      <th style={{textAlign:"left",padding:"6px 10px"}}>ALERT</th>
-                      <th style={{textAlign:"right",padding:"6px 10px"}}>CURRENT</th>
-                      <th style={{textAlign:"right",padding:"6px 10px"}}>TARGET</th>
-                      <th style={{textAlign:"center",padding:"6px 10px"}}>STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {alertRows.map((r,i)=>{
-                      const breach = r.more ? r.cur < r.target : (r.inverse ? r.cur > r.target : r.cur > r.target);
-                      return (
-                        <tr key={i} style={{borderTop:`1px solid ${B.border}`}}>
-                          <td style={{padding:"6px 10px",color:B.gray1}}>{r.l}</td>
-                          <td style={{padding:"6px 10px",textAlign:"right",color:B.gray1,fontWeight:700}}>{r.isPct?`${r.cur.toFixed(1)}%`:r.cur}</td>
-                          <td style={{padding:"6px 10px",textAlign:"right",color:B.gray3}}>{r.more?`> ${r.target}`:r.isPct?`< ${r.target}%`:r.target}</td>
-                          <td style={{padding:"6px 10px",textAlign:"center"}}>
-                            <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4,
-                              background: breach?"rgba(255,51,51,0.1)":"rgba(0,255,102,0.1)",
-                              color: breach?B.red:B.green}}>
-                              {breach ? "BREACH" : "WITHIN TARGET"}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
               </BPanel>
             </div>
 
