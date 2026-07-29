@@ -88,7 +88,7 @@ const TT_STYLE = {background:"#111",border:`1px solid ${B.blue}`,borderRadius:0,
 
 const PW=393, PH=852;
 
-function PhoneShell({children}:any) {
+function PhoneShell({children,naturalScroll}:any) {
   const [time,setTime]=useState("");
   useEffect(()=>{
     const upd=()=>setTime(new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:false}));
@@ -96,9 +96,15 @@ function PhoneShell({children}:any) {
     const t=setInterval(upd,10000);
     return()=>clearInterval(t);
   },[]);
+  // naturalScroll (mobile Portfolio page only, see PortfolioTerminal's own
+  // return below): lets the shell grow past one viewport instead of
+  // capping at 100dvh with its own internal scrollbar — the actual
+  // document/window scrolls instead, with TopBar/BottomNav pinned via
+  // position:sticky so they stay reachable exactly as before.
   return (
-    <div className="sm-shell" style={{background:B.bg,height:"100dvh",display:"flex",flexDirection:"column",
-      fontFamily:"'Courier New',Courier,monospace",overflow:"hidden"}}>
+    <div className="sm-shell" style={{background:B.bg, height: naturalScroll ? "auto" : "100dvh", minHeight:"100dvh",
+      display:"flex",flexDirection:"column",
+      fontFamily:"'Courier New',Courier,monospace",overflow: naturalScroll ? "visible" : "hidden"}}>
       {children(time)}
       <style>{`
         @keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
@@ -178,7 +184,8 @@ function TopBar({time,setPage}:any) {
   const isMobile = useIsMobile();
   return (
     <div className="sm-topbar" style={{background:B.blue,display:"flex",alignItems:"center",
-      justifyContent:"space-between",padding:"6px 12px",flexShrink:0,gap:8,flexWrap:"wrap"}}>
+      justifyContent:"space-between",padding:"6px 12px",flexShrink:0,gap:8,flexWrap:"wrap",
+      position:"sticky",top:0,zIndex:50}}>
       <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
         <img src="/sm-icon.png" alt="" style={{height:22,width:"auto",filter:"brightness(0) invert(1)"}} />
         <span style={{fontSize:16,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
@@ -333,7 +340,8 @@ function BottomNav({page,setPage,badge}:any) {
   // sm-navlabel class below hides labels entirely on very narrow phones.
   return (
     <div className="sm-bottomnav" style={{background:B.panel2,borderTop:`1px solid ${B.borderB}`,
-      display:"flex",paddingBottom:"env(safe-area-inset-bottom, 6px)",flexShrink:0}}>
+      display:"flex",paddingBottom:"env(safe-area-inset-bottom, 6px)",flexShrink:0,
+      position:"sticky",bottom:0,zIndex:50}}>
       {tabs.map(t=>{
         const active=page===t.id;
         return (
@@ -1645,7 +1653,7 @@ const addCash = () => {
   };
 
   return (
-    <div style={{flex:1,overflowY:"auto",padding:14,display:"flex",flexDirection:"column",gap:14,background:B.bg}}>
+    <div style={{flex:1,overflowY: isMobile ? "visible" : "auto",padding:14,display:"flex",flexDirection:"column",gap:14,background:B.bg}}>
       {Tabs}
 
       {/* KPI row 1 */}
@@ -2822,15 +2830,25 @@ export default function PortfolioTerminal() {
     setShowDisclaimerModal(false);
   };
 
+  // Portfolio's Holdings list on mobile: instead of being capped to one
+  // viewport height with its own internal scrollbar (fine for other pages,
+  // but on Portfolio it turned "how many holdings you have" into a tiny
+  // row-by-row scroll box), let it grow to its natural content height and
+  // have the actual page scroll — TopBar/BottomNav stay reachable via
+  // position:sticky (see above) rather than the nested-flex bounding.
+  // Scoped to this one page + mobile only; every other page keeps the
+  // existing bounded-viewport-with-internal-scroll behavior untouched.
+  const mobilePortfolioNaturalScroll = isMobile && page === "portfolio";
+
   return (
-    <PhoneShell>
+    <PhoneShell naturalScroll={mobilePortfolioNaturalScroll}>
       {(time:string) => (
         <>
           <TopBar time={time} setPage={setPage}/>
-          <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"row"}}>
+          <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"row"}}>
             {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length}/>}
-            <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",minWidth:0}}>
-              <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+            <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column",minWidth:0}}>
+              <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column"}}>
                 {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing}/>}
                 {page==="search"     && <SearchPage   onAdd={addToPortfolio} portfolio={displayHoldings} onWatchlistChange={loadWatchlist}/>}
                 {page==="portfolio"  && <PortfolioPage holdings={holdings} onRemove={removeFromPortfolio} onUpdate={updateHolding} onSell={sellFromPortfolio} onLoadPortfolio={setHoldings} onAddCash={addToPortfolio}/>}

@@ -431,6 +431,7 @@ function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
 
 // The compact teaser shown inside a post card in the channel's post list.
 function PostPortfolioWidget({ snapshot }: { snapshot: PortfolioSnapshot }) {
+  const isMobile = useIsMobile();
   const data = snapshot.allocationByCategory?.length
     ? snapshot.allocationByCategory
     : snapshot.allocationBySector?.length
@@ -442,7 +443,10 @@ function PostPortfolioWidget({ snapshot }: { snapshot: PortfolioSnapshot }) {
   const top = [...data].sort((a, b) => b.pct - a.pct).slice(0, 4);
 
   return (
-    <div style={{ width: 190, flexShrink: 0, background: B.panel2, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px" }}>
+    <div style={{
+      width: isMobile ? "100%" : 190, flexShrink: isMobile ? undefined : 0,
+      background: B.panel2, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px",
+    }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <ResponsiveContainer width={64} height={64}>
           <PieChart>
@@ -594,13 +598,18 @@ function UsernamePrompt({ onSet }: { onSet: (username: string) => void }) {
 function PostCard({ post, myVote, disabled, onVote, onOpen, showChannel }: {
   post: CommunityPost; myVote: number; disabled: boolean; onVote: (v: 1 | -1) => void; onOpen: () => void; showChannel?: boolean;
 }) {
+  const isMobile = useIsMobile();
   return (
     <div onClick={onOpen} style={{
       background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "12px 14px",
       display: "flex", gap: 12, cursor: "pointer",
     }}>
       <VoteControl score={post.score} myVote={myVote} disabled={disabled} onVote={onVote} />
-      <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 12 }}>
+      {/* The attached-portfolio widget is a fixed 190px side panel on
+          desktop, but that same fixed width squeezed the text column to
+          nothing on narrow screens and visually overlapped it — stack
+          them instead of forcing a row once there isn't room. */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
             <PostTypeTag type={post.post_type} />
