@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { B, PIE_COLS, pMet, pCol, computeAlerts, groupBy, SEV_STYLE } from "@/lib/uiShared";
+import { B, PIE_COLS, pMet, pCol, computeAlerts, groupBy, groupBySectorLookThrough, SEV_STYLE } from "@/lib/uiShared";
 import { useUser } from "@/hooks/useUser";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -278,7 +278,7 @@ function buildSnapshotFromHoldings(holdings: any[], sourceName: string): Portfol
     },
     alerts: computeAlerts(holdings, m).map((a: any) => ({ sev: a.sev, title: a.title, detail: a.detail, metric: a.metric })),
     allocationByCategory: groupBy(holdings, "category", m.total),
-    allocationBySector: groupBy(holdings, "sector", m.total),
+    allocationBySector: groupBySectorLookThrough(holdings, m.total),
     allocationByGeo: groupBy(holdings, "geo", m.total),
   };
 }

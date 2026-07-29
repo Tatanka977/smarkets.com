@@ -39,6 +39,33 @@ export const groupBy = (arr, key, total) => {
   arr.forEach(h=>{ const k=h.asset[key]||"OTHER"; m[k]=(m[k]||0)+h.value; });
   return Object.entries(m).map(([name,value])=>({name,value,pct:+(value/total*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
 };
+
+// Sector breakdown with ETF look-through: a stock/REIT (or any holding with
+// no weighting data) contributes its full value to its one `asset.sector`,
+// same as groupBy above — but a fund with real sector-weighting data
+// (asset.sectorWeights, fetched from Yahoo's topHoldings module for ETFs)
+// instead splits its value fractionally across every sector it actually
+// holds, so e.g. a broad-market ETF shows up as Technology/Financials/
+// Healthcare/etc. in proportion, rather than one opaque "Other" bucket.
+// Weights are already fractions of the fund's total value (not just its
+// equity sleeve), so no fund's own bond/cash slice is double-counted —
+// it's simply left unattributed to any sector, same as it would be if
+// that slice were its own separate BOND/CASH holding.
+export const groupBySectorLookThrough = (holdings, total) => {
+  const m = {};
+  holdings.forEach(h => {
+    const weights = h.asset.sectorWeights;
+    if (weights && Object.keys(weights).length) {
+      Object.entries(weights).forEach(([sector, w]) => {
+        m[sector] = (m[sector]||0) + h.value * w;
+      });
+    } else {
+      const k = h.asset.sector || "OTHER";
+      m[k] = (m[k]||0) + h.value;
+    }
+  });
+  return Object.entries(m).map(([name,value])=>({name,value,pct:+(value/total*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
+};
 export const pMet = (hs) => {
   if (!hs.length) return null;
   const total = hs.reduce((s,h)=>s+h.value,0);
@@ -91,18 +118,14 @@ export function computeAlerts(holdings:any[], m:any) {
   else if (maxWeight > 25) alerts.push({sev:"MED", title:"SINGLE-NAME EXPOSURE", metric:`${maxWeight.toFixed(1)}%`,
     detail:`${topPos?.asset.ticker} represents >25% of portfolio. Moderate concentration risk.`});
 
-  // 2. Sector concentration — only meaningful for single-sector exposures
-  // (individual stocks/REITs). ETFs, bonds, commodities, crypto, FX and cash
-  // are diversified-by-construction or not a "sector" concept at all, so
-  // grouping them under one generic label and flagging that as concentration
-  // risk is a false positive (a broad-market ETF at 60% isn't sector risk).
-  const sectorMap = new Map<string,number>();
-  holdings.forEach((h:any) => {
-    if (h.asset.category && !["STOCK","REIT"].includes(h.asset.category)) return;
-    const s = h.asset.sector || h.asset.industry || "OTHER";
-    sectorMap.set(s, (sectorMap.get(s)||0) + h.value);
-  });
-  const secArr = Array.from(sectorMap.entries()).map(([k,v]) => ({k, pct: v/m.total*100})).sort((a,b)=>b.pct-a.pct);
+  // 2. Sector concentration — look-through (see groupBySectorLookThrough):
+  // stocks/REITs contribute their one sector directly; ETFs with real
+  // sector-weighting data split fractionally across every sector they
+  // actually hold, instead of being excluded wholesale as before. Bonds,
+  // commodities, crypto, FX and cash aren't a "sector" concept at all, so
+  // they stay excluded regardless.
+  const sectorEligible = holdings.filter((h:any) => !["BOND","COMMODITY","CRYPTO","FX","CASH"].includes(h.asset.category));
+  const secArr = groupBySectorLookThrough(sectorEligible, m.total).map((s:any) => ({k: s.name, pct: s.pct}));
   const topSector = secArr[0];
   if (topSector && topSector.pct > 50) alerts.push({sev:"HIGH", title:"SECTOR CONCENTRATION", metric:`${topSector.pct.toFixed(1)}%`,
     detail:`Over half of portfolio is in ${topSector.k}. Sector-specific shocks would drive most of the loss.`});

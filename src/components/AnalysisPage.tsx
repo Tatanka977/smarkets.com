@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Legend } from "recharts";
 import {
-  B, fmt, fmtM, pCol, pSign, groupBy, pMet, PIE_COLS,
+  B, fmt, fmtM, pCol, pSign, groupBy, groupBySectorLookThrough, pMet, PIE_COLS,
   BPanel, FKey, computeAlerts, SEV_STYLE, computeCagr,
 } from "@/lib/uiShared";
 import { aiChatAsUser } from "@/lib/ai.functions";
@@ -889,7 +889,10 @@ Give a deeper educational breakdown: what does this concentration/diversificatio
     </div>
   );
 
-  const sD = groupBy(holdings, "sector", m.total);
+  // Look-through: ETFs with real sector-weighting data (see finance.
+  // functions.ts's fetchYahooProfile) split fractionally across the
+  // sectors they actually hold instead of landing in one "Other" bucket.
+  const sD = groupBySectorLookThrough(holdings, m.total);
   const gD = groupBy(holdings, "geo", m.total);
   const tD = groupBy(holdings, "type", m.total);
   const topHoldings = [...holdings].sort((a: any, b: any) => b.value - a.value).slice(0, 5);
@@ -1004,12 +1007,16 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
         {sub === "risk" && (() => {
           const topH = topHoldings[0];
           const topHPct = topH ? (topH.value/m.total)*100 : 0;
-          // Sector concentration only applies to single-sector exposures (stocks/REITs) —
-          // ETFs/bonds/commodities/crypto/FX are diversified-by-construction or not a
-          // "sector" concept, so they're excluded here (kept in the alloc tab's `sD`,
-          // which is a display breakdown, not a risk judgment).
-          const sectorRiskHoldings = holdings.filter((h:any) => !h.asset.category || ["STOCK","REIT"].includes(h.asset.category));
-          const sDRisk = groupBy(sectorRiskHoldings, "sector", m.total);
+          // Sector concentration: look-through. Stocks/REITs contribute their
+          // one sector directly; ETFs with real sector-weighting data (see
+          // fetchYahooProfile in finance.functions.ts) split fractionally
+          // across every sector they actually hold instead of being excluded
+          // wholesale — a single-sector ETF (e.g. an all-tech fund) genuinely
+          // is sector-concentrated, so it should count as such here. Bonds,
+          // commodities, crypto and FX still aren't a "sector" concept at
+          // all, so they stay excluded.
+          const sectorRiskHoldings = holdings.filter((h:any) => !["BOND","COMMODITY","CRYPTO","FX","CASH"].includes(h.asset.category));
+          const sDRisk = groupBySectorLookThrough(sectorRiskHoldings, m.total);
           const topSectorPct = sDRisk[0]?.pct ?? 0;
           const topGeoPct = gD[0]?.pct ?? 0;
           const nHoldings = holdings.length;
@@ -1058,8 +1065,9 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           // precise "after" counterpart.
           const hypHoldings = whatIf ? [...holdings, { asset: whatIfQuote, value: whatIf.amount }] : null;
           const hypM = hypHoldings ? pMet(hypHoldings) : null;
-          const hypSectorRiskHoldings = hypHoldings ? hypHoldings.filter((h:any) => !h.asset.category || ["STOCK","REIT"].includes(h.asset.category)) : null;
-          const hypSDRisk = hypSectorRiskHoldings && hypM ? groupBy(hypSectorRiskHoldings, "sector", hypM.total) : null;
+          // Same look-through filter as sectorRiskHoldings above.
+          const hypSectorRiskHoldings = hypHoldings ? hypHoldings.filter((h:any) => !["BOND","COMMODITY","CRYPTO","FX","CASH"].includes(h.asset.category)) : null;
+          const hypSDRisk = hypSectorRiskHoldings && hypM ? groupBySectorLookThrough(hypSectorRiskHoldings, hypM.total) : null;
           const hypGD = hypHoldings && hypM ? groupBy(hypHoldings, "geo", hypM.total) : null;
           const hypTopH = hypHoldings ? [...hypHoldings].sort((a:any,b:any) => b.value - a.value)[0] : null;
           const hypTopHPct = hypM && hypTopH ? (hypTopH.value / hypM.total) * 100 : null;

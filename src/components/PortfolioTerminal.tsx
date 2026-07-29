@@ -20,6 +20,7 @@ import {
   fetchHistoricalPrice as srvHistorical,
   fetchFxRates as srvFx,
   fetchPriceHistory as srvPriceHistory,
+  fetchSectorWeights as srvSectorWeights,
 } from "@/lib/finance.functions";
 import { aiChatAsUser } from "@/lib/ai.functions";
 import {
@@ -2582,6 +2583,33 @@ export default function PortfolioTerminal() {
   // Ref keeps the latest holdings without invalidating callbacks/intervals
   const holdingsRef = useRef<any[]>(holdings);
   useEffect(() => { holdingsRef.current = holdings; }, [holdings]);
+
+  // One-time ETF sector-weights backfill: holdings added before ETF
+  // look-through sector data existed (or whose original fetchQuote's Yahoo
+  // lookup failed at the time) never get a second chance otherwise — this
+  // runs once right after hydration, not on every 60s refreshPrices tick,
+  // since that would otherwise re-hit Yahoo for the same unchanged data
+  // indefinitely.
+  const sectorBackfillDone = useRef(false);
+  useEffect(() => {
+    if (!hydrated || sectorBackfillDone.current) return;
+    sectorBackfillDone.current = true;
+    const missing = holdingsRef.current.filter((h: any) => h.asset.category === "ETF" && !h.asset.sectorWeights);
+    if (!missing.length) return;
+    (async () => {
+      const results = await Promise.all(missing.map((h: any) =>
+        srvSectorWeights({ data: { symbol: h.asset.ticker } }).catch(() => null)
+      ));
+      const bySymbol: Record<string, any> = {};
+      missing.forEach((h: any, i: number) => { if (results[i]?.sectorWeights) bySymbol[h.asset.ticker] = results[i]; });
+      if (!Object.keys(bySymbol).length) return;
+      setHoldings(prev => prev.map(h => {
+        const found = bySymbol[h.asset.ticker];
+        if (!found) return h;
+        return { ...h, asset: { ...h.asset, sectorWeights: found.sectorWeights, sector: h.asset.sector || found.sector } };
+      }));
+    })();
+  }, [hydrated]);
 
   // ── PRICE ALERTS ─────────────────────────────────────────────────────────
   // Watchlist entries with a target_price/direction are checked on the same

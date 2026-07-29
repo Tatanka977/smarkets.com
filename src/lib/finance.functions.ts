@@ -40,6 +40,12 @@ export interface Quote {
   er?: number;
   dy?: number;
   ticker?: string;
+  // ETF/fund look-through sector breakdown (fraction of the fund's total
+  // value per sector, e.g. { Technology: 0.385, Healthcare: 0.089, ... }) —
+  // from Yahoo's topHoldings module, see fetchYahooProfile below. Absent
+  // for individual stocks/REITs (they use `sector` directly instead) and
+  // for funds Yahoo has no holdings breakdown for.
+  sectorWeights?: Record<string, number>;
 }
 
 const BASE = "https://finnhub.io/api/v1";
@@ -371,8 +377,7 @@ export const fetchQuote = createServerFn({ method: "GET" })
             q.industry = q.industry || mock.industry;
             q.type = q.type || mock.type;
           }
-          const ySec = await fetchYahooSector(sym);
-          if (ySec) { q.sector = ySec.sector; q.industry = ySec.industry; }
+          await applyYahooProfile(q, sym);
           return q;
         }
       } catch (e) {
@@ -389,8 +394,7 @@ export const fetchQuote = createServerFn({ method: "GET" })
         yq.industry = yq.industry || mock.industry;
         yq.type = yq.type || mock.type;
       }
-      const ySec = await fetchYahooSector(sym);
-      if (ySec) { yq.sector = ySec.sector; yq.industry = ySec.industry; }
+      await applyYahooProfile(yq, sym);
       return yq;
     }
 
@@ -412,17 +416,29 @@ export const fetchQuote = createServerFn({ method: "GET" })
             alt.industry = alt.industry || mock.industry;
             alt.type = alt.type || mock.type;
           }
-          const ySec = await fetchYahooSector(c.symbol);
-          if (ySec) { alt.sector = ySec.sector; alt.industry = ySec.industry; }
+          await applyYahooProfile(alt, c.symbol);
           return alt;
         }
       }
     }
 
     const m = findMock(sym);
-    const ySec = await fetchYahooSector(sym);
-    if (ySec) { m.sector = ySec.sector; m.industry = ySec.industry; }
+    await applyYahooProfile(m, sym);
     return m;
+  });
+
+// One-off enrichment for holdings that predate ETF look-through sector data
+// (or whose original fetchQuote's Yahoo lookup failed): PortfolioTerminal
+// calls this once per ETF holding missing sectorWeights, right after
+// hydrating from localStorage — not on every batchRefresh tick, since that
+// runs every 60s and would otherwise re-hit Yahoo for the same unchanged
+// data indefinitely.
+export const fetchSectorWeights = createServerFn({ method: "GET" })
+  .inputValidator((d: { symbol: string }) => d)
+  .handler(async ({ data }) => {
+    const sym = (data.symbol || "").trim().toUpperCase();
+    if (!sym) return null;
+    return fetchYahooProfile(sym);
   });
 
 // Bounds the work a single request can trigger — without this, an
@@ -633,24 +649,126 @@ async function fetchYahooQuoteFull(symbol: string): Promise<Quote | null> {
     return null;
   }
 }
+// Yahoo's quoteSummary endpoint (unlike its search/chart endpoints) now
+// requires a session cookie + "crumb" token — cached process-wide and
+// refreshed on expiry/failure so normal quote lookups only pay for it once
+// every few hours, not on every request.
+let yahooCrumbCache: { cookie: string; crumb: string; fetchedAt: number } | null = null;
+const YAHOO_CRUMB_TTL_MS = 12 * 60 * 60 * 1000;
+
+async function getYahooCrumb(): Promise<{ cookie: string; crumb: string } | null> {
+  if (yahooCrumbCache && Date.now() - yahooCrumbCache.fetchedAt < YAHOO_CRUMB_TTL_MS) {
+    return yahooCrumbCache;
+  }
+  const ua = "Mozilla/5.0 (StrategicMarkets)";
+  try {
+    const cookieRes = await fetch("https://fc.yahoo.com", { headers: { "user-agent": ua } });
+    const setCookie = cookieRes.headers.get("set-cookie");
+    if (!setCookie) return null;
+    const cookie = setCookie.split(";")[0];
+    const crumbRes = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+      headers: { "user-agent": ua, cookie },
+    });
+    const crumb = (await crumbRes.text()).trim();
+    if (!crumb || crumb.includes("<")) return null; // error page, not a real crumb
+    yahooCrumbCache = { cookie, crumb, fetchedAt: Date.now() };
+    return yahooCrumbCache;
+  } catch (e) {
+    console.warn("[Yahoo crumb]", (e as Error).message);
+    return null;
+  }
+}
+
+// Yahoo's fund sector-weighting keys → display labels. Anything not in this
+// map (rare/new categories) falls back to the raw key rather than being
+// dropped, so a portfolio evaluation never silently loses a slice of a fund.
+const YAHOO_SECTOR_LABELS: Record<string, string> = {
+  realestate: "Real Estate",
+  consumer_cyclical: "Consumer Cyclical",
+  basic_materials: "Basic Materials",
+  consumer_defensive: "Consumer Defensive",
+  technology: "Technology",
+  communication_services: "Communication Services",
+  financial_services: "Financial Services",
+  utilities: "Utilities",
+  industrials: "Industrials",
+  energy: "Energy",
+  healthcare: "Healthcare",
+};
+
 interface YahooProfileResult {
   quoteSummary?: {
-    result?: Array<{ assetProfile?: { sector?: string; industry?: string } }>;
+    result?: Array<{
+      assetProfile?: { sector?: string; industry?: string };
+      // Equity-fund holdings breakdown — present for ETFs/mutual funds,
+      // absent for individual stocks. Each entry is `{ [sectorKey]: { raw } }`,
+      // already expressed as a fraction of the fund's TOTAL value (not just
+      // its equity sleeve), so no re-normalization is needed downstream.
+      topHoldings?: { sectorWeightings?: Array<Record<string, { raw?: number }>> };
+    }>;
   };
 }
 
-async function fetchYahooSector(symbol: string): Promise<{ sector: string; industry: string } | null> {
-  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=assetProfile`;
+// Combines what used to be two lookups (assetProfile for stock sector,
+// nothing at all for ETF sectors — they came back "OTHER" everywhere) into
+// one quoteSummary call: a stock gets `sector`/`industry` same as before,
+// and a fund additionally gets `sectorWeights` — its real look-through
+// sector breakdown — instead of no sector data at all.
+async function fetchYahooProfile(symbol: string): Promise<{ sector?: string; industry?: string; sectorWeights?: Record<string, number> } | null> {
+  const auth = await getYahooCrumb();
+  if (!auth) return null;
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=assetProfile,topHoldings&crumb=${encodeURIComponent(auth.crumb)}`;
   try {
-    const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 (StrategicMarkets)" } });
-    if (!r.ok) return null;
+    const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 (StrategicMarkets)", cookie: auth.cookie } });
+    if (!r.ok) {
+      if (r.status === 401) yahooCrumbCache = null; // crumb expired server-side; refetch next call
+      return null;
+    }
     const j = (await r.json()) as YahooProfileResult;
-    const profile = j.quoteSummary?.result?.[0]?.assetProfile;
-    if (!profile?.sector) return null;
-    return { sector: profile.sector, industry: profile.industry || profile.sector };
+    const result = j.quoteSummary?.result?.[0];
+    if (!result) return null;
+
+    const out: { sector?: string; industry?: string; sectorWeights?: Record<string, number> } = {};
+    if (result.assetProfile?.sector) {
+      out.sector = result.assetProfile.sector;
+      out.industry = result.assetProfile.industry || result.assetProfile.sector;
+    }
+    const weightings = result.topHoldings?.sectorWeightings;
+    if (weightings?.length) {
+      const weights: Record<string, number> = {};
+      for (const entry of weightings) {
+        for (const [key, v] of Object.entries(entry)) {
+          const raw = v?.raw;
+          if (typeof raw === "number" && raw > 0) {
+            const label = YAHOO_SECTOR_LABELS[key] || key;
+            weights[label] = (weights[label] || 0) + raw;
+          }
+        }
+      }
+      if (Object.keys(weights).length) out.sectorWeights = weights;
+    }
+    return (out.sector || out.sectorWeights) ? out : null;
   } catch (e) {
     console.warn("[Yahoo profile]", symbol, (e as Error).message);
     return null;
+  }
+}
+
+// Applies fetchYahooProfile's result onto a Quote in place: sector/industry
+// same as the old fetchYahooSector did, plus sectorWeights when this turns
+// out to be a fund — and if nothing else has classified it as an ETF yet
+// (e.g. Finnhub's profile2 doesn't distinguish funds from stocks at all),
+// having real sector-weighting data back is itself strong evidence it is one.
+async function applyYahooProfile(q: Quote, symbol: string): Promise<void> {
+  const profile = await fetchYahooProfile(symbol);
+  if (!profile) return;
+  if (profile.sector) {
+    q.sector = profile.sector;
+    q.industry = profile.industry;
+  }
+  if (profile.sectorWeights) {
+    q.sectorWeights = profile.sectorWeights;
+    if (!q.category) q.category = "ETF";
   }
 }
 /** Convert 'YYYY-MM-DD' → unix seconds at 00:00 UTC. */
