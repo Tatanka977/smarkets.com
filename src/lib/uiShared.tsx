@@ -106,6 +106,25 @@ export const BPanel = ({title,children,style,accent}:any) => (
   </div>
 );
 
+// Educational risk score (0-100), our own scoring method — not an external
+// credit or risk rating, not a validated quantitative model. Shared here
+// (not left inline in AnalysisPage) so every consumer — the portfolio's
+// own score, its What-If "after" counterpart, and the community risk-score
+// percentile comparison, which recomputes this from every shared
+// portfolio_snapshot — is guaranteed to use the exact identical formula,
+// never a separately-drifting copy. Four factors, each floored at 0 so
+// being "better than baseline" never subtracts points: concentration
+// (HHI), sector concentration (look-through), volatility above a 15%
+// baseline, and beta above 1.
+export function computeRiskScore(hhi: number, topSectorPct: number, wVol: number, wBeta: number): number {
+  return Math.round(Math.min(100,
+    Math.max(0, (hhi - 1500) / 100) +
+    Math.max(0, topSectorPct - 20) * 0.5 +
+    Math.max(0, wVol - 15) * 0.8 +
+    Math.max(0, (wBeta - 1) * 15)
+  ));
+}
+
 export function computeAlerts(holdings:any[], m:any) {
   const alerts: {sev:"HIGH"|"MED"|"LOW"|"OK", title:string, detail:string, metric:string}[] = [];
   if (!holdings.length) return alerts;

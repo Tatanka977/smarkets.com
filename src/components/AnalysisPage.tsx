@@ -2,11 +2,13 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Legend } from "recharts";
 import {
   B, fmt, fmtM, pCol, pSign, groupBy, groupBySectorLookThrough, pMet, PIE_COLS,
-  BPanel, FKey, computeAlerts, SEV_STYLE, computeCagr,
+  BPanel, FKey, computeAlerts, computeRiskScore, SEV_STYLE, computeCagr,
 } from "@/lib/uiShared";
 import { aiChatAsUser } from "@/lib/ai.functions";
 import { getInvestorProfile } from "@/lib/profile.functions";
 import { fetchQuote as srvQuote, searchSecurities as srvSearch, fetchPriceHistory as srvPriceHistory } from "@/lib/finance.functions";
+import { getCommunityRiskScores } from "@/lib/community.functions";
+import ShareToCommunityModal from "./ShareToCommunityModal";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useIsMobile } from "@/hooks/use-mobile";
 const FONT = "'Courier New', Courier, monospace";
@@ -802,6 +804,18 @@ export default function AnalysisPage({ holdings, setPage }: any) {
   const [, setPendingAiPrompt] = usePersistentState<string>("ai_pending_prompt", "");
   const suggestDebounce = useRef<any>(null);
 
+  // Real risk scores from every portfolio shared in the community, for the
+  // Risk tab's percentile comparison — fetched once, not gated to the Risk
+  // sub-tab (cheap, and avoids a hook inside the risk-tab's conditional
+  // IIFE below, which would break the rules of hooks).
+  const [communityScores, setCommunityScores] = useState<number[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getCommunityRiskScores().then((scores) => { if (alive) setCommunityScores(scores); }).catch(() => { if (alive) setCommunityScores([]); });
+    return () => { alive = false; };
+  }, []);
+  const [showShareModal, setShowShareModal] = useState(false);
+
   const handleTickerInput = (v: string) => {
     setWhatIfTicker(v.toUpperCase());
     setWhatIfQuote(null);
@@ -1035,34 +1049,23 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           const nHoldings = holdings.length;
           const maxDD = m.wVol * 2.5; // rough educational proxy, not real tracked drawdown
 
-          // Educational risk score (0-100), our own scoring method — not an
-          // external credit or risk rating, not a validated quant model.
-          // Four factors, each floored at 0 so being "better than baseline"
-          // never subtracts points:
-          //  - Concentration (HHI): m.hhi is the Herfindahl-Hirschman index
-          //    of position weights (sum of weight% squared, so 10 equal
-          //    positions = 1000, one single position = 10000). Below 1500
-          //    contributes nothing; above it, points scale continuously
-          //    with concentration. This replaces the old flat "single name
-          //    weight * 0.9" term and the old rigid "fewer than 5 positions
-          //    adds 8 points per missing position" step — HHI already
-          //    captures both a dominant position AND a low position count
-          //    as one continuous measure, so a separate headcount penalty
-          //    is redundant.
-          //  - Sector concentration: only for single-sector holdings
-          //    (STOCK/REIT — see sectorRiskHoldings above), weight reduced
-          //    from before since HHI now also picks up part of this signal.
-          //  - Beta vs the market: >1 adds points (more market-sensitive
-          //    than benchmark), <1 adds nothing (not a risk-reducer here).
-          //  - Volatility above a 15% baseline.
-          const riskScore = Math.round(Math.min(100,
-            Math.max(0, (m.hhi - 1500) / 100) +
-            Math.max(0, topSectorPct - 20) * 0.5 +
-            Math.max(0, m.wVol - 15) * 0.8 +
-            Math.max(0, (m.wBeta - 1) * 15)
-          ));
+          // Educational risk score (0-100) — formula lives in uiShared.tsx's
+          // computeRiskScore now (shared with the What-If "after" score
+          // below and the community risk-score percentile comparison), so
+          // there's exactly one copy of it, never a drifting duplicate.
+          const riskScore = computeRiskScore(m.hhi, topSectorPct, m.wVol, m.wBeta);
           const riskLabel = riskScore >= 70 ? "HIGH RISK" : riskScore >= 40 ? "MODERATE RISK" : "LOW RISK";
           const riskColor = riskScore >= 70 ? B.red : riskScore >= 40 ? B.yellow : B.green;
+
+          // Percentile vs every real portfolio_snapshot shared in the
+          // community (see getCommunityRiskScores) — never shown below a
+          // sensible sample size, since a percentile out of 2-3 portfolios
+          // isn't a meaningful comparison, just noise dressed up as a stat.
+          const MIN_COMMUNITY_SAMPLE = 10;
+          const communitySampleSize = communityScores?.length ?? 0;
+          const communityPercentile = (communityScores && communitySampleSize >= MIN_COMMUNITY_SAMPLE)
+            ? Math.round((communityScores.filter((s) => s < riskScore).length / communitySampleSize) * 100)
+            : null;
 
           const drivers = [
             { l:"SINGLE NAME RISK", v:`${topHPct.toFixed(1)}%`, sub:topH?.asset.ticker||"—", sev: topHPct>40?"HIGH":topHPct>25?"MED":"OK" },
@@ -1088,14 +1091,10 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           const hypTopGeoPct = hypGD?.[0]?.pct ?? null;
           const hypNHoldings = hypHoldings ? hypHoldings.length : null;
           const hypMaxDD = hypM ? hypM.wVol * 2.5 : null;
-          // Same exact formula as riskScore above — must stay identical so
-          // the What-If "before vs after" comparison is coherent.
-          const hypRiskScore = (whatIf && hypM) ? Math.round(Math.min(100,
-            Math.max(0, (hypM.hhi - 1500) / 100) +
-            Math.max(0, (hypTopSectorPct ?? 0) - 20) * 0.5 +
-            Math.max(0, hypM.wVol - 15) * 0.8 +
-            Math.max(0, (hypM.wBeta - 1) * 15)
-          )) : null;
+          // Same computeRiskScore as riskScore above, guaranteed identical
+          // since it's the same shared function — the What-If "before vs
+          // after" comparison stays coherent by construction.
+          const hypRiskScore = (whatIf && hypM) ? computeRiskScore(hypM.hhi, hypTopSectorPct ?? 0, hypM.wVol, hypM.wBeta) : null;
 
           // One row per risk metric shown in RISK SUMMARY/RISK DRIVERS above,
           // paired with its hypothetical "after" value — this is what actually
@@ -1230,7 +1229,27 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                   </div>
                   <div style={{flex:1,minWidth:180,fontSize:12,color:B.gray1,fontFamily:FONT,lineHeight:1.5}}>
                     Score based on concentration (HHI), sector exposure, beta and volatility of your current holdings. This is our own educational scoring method, not an external credit or risk rating or a validated quantitative model.
+                    <div style={{marginTop:8,fontSize:11,color:B.gray3}}>
+                      {communityScores === null ? (
+                        "Loading community comparison…"
+                      ) : communityPercentile !== null ? (
+                        <>Your Risk Score is higher than <span style={{color:B.gray1,fontWeight:700}}>{communityPercentile}%</span> of portfolios shared in the community ({communitySampleSize} shared).</>
+                      ) : (
+                        `Not enough shared portfolios yet for a meaningful comparison (${communitySampleSize} so far) — check back as the community grows.`
+                      )}
+                    </div>
                   </div>
+                  <button onClick={()=>setShowShareModal(true)} style={{
+                    display:"flex",alignItems:"center",gap:6,alignSelf:"flex-start",
+                    background:"transparent",border:`1px solid ${B.blue}`,color:B.blue,borderRadius:6,
+                    padding:"7px 12px",fontFamily:FONT,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    Share to Community
+                  </button>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px,1fr))",gap:10,padding:"0 16px 16px"}}>
                   <div>
@@ -1403,6 +1422,14 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
         {sub === "corr" && <CorrelationTab holdings={holdings}/>}
         {sub === "backtest" && <BacktestTab/>}
       </div>
+      {showShareModal && (
+        <ShareToCommunityModal
+          holdings={holdings}
+          defaultTitle="Thoughts on my portfolio?"
+          setPage={setPage}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }

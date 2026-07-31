@@ -6,6 +6,9 @@ import AnalysisPage from "./AnalysisPage";
 import HomePage from "./HomePage";
 import CommunityPage from "./CommunityPage";
 import NotificationBell from "./NotificationBell";
+import ShareToCommunityModal from "./ShareToCommunityModal";
+import { listChannels as srvListChannels } from "@/lib/community.functions";
+import type { CommunityChannel } from "@/lib/community.functions";
 import { getInvestorProfile } from "@/lib/profile.functions";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
@@ -1237,7 +1240,7 @@ function ImportCsvModal({rows, onCancel, onConfirm, busy}:any) {
   );
 }
 
-function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddCash}:any) {
+function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddCash,setPage}:any) {
   const isMobile = useIsMobile();
 
   // View-currency toggle, local to this page: converts only the KPI row
@@ -1297,6 +1300,26 @@ function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddC
   const [collapsedCats, setCollapsedCats] = useState<Record<string,boolean>>({});
   const toggleCat = (cat:string) => setCollapsedCats(prev => ({...prev, [cat]: !prev[cat]}));
 
+  // Share to Community — one modal instance, opened either from the
+  // toolbar button below or from the post-save prompt.
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareDefaultChannelId, setShareDefaultChannelId] = useState<string | null>(null);
+
+  // Post-save "want to share?" prompt: shown at most a couple of times,
+  // never once the user has actually shared once (via this prompt or the
+  // toolbar button) or dismissed it a couple of times — never every save.
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [savePromptChannels, setSavePromptChannels] = useState<CommunityChannel[]>([]);
+  const [savePromptChannelId, setSavePromptChannelId] = useState("");
+  const [shareDismissCount, setShareDismissCount] = usePersistentState<number>("share_prompt_dismiss_count", 0);
+  const [hasEverShared, setHasEverShared] = usePersistentState<boolean>("has_shared_to_community", false);
+  const MAX_SAVE_PROMPT_DISMISSALS = 2;
+
+  useEffect(() => {
+    if (!showSavePrompt) return;
+    srvListChannels().then(setSavePromptChannels).catch(() => setSavePromptChannels([]));
+  }, [showSavePrompt]);
+
   const handleSave = async () => {
     if (!user) { window.location.href = "/auth"; return; }
     const name = prompt("Portfolio name:", "Portfolio " + new Date().toLocaleDateString());
@@ -1305,6 +1328,10 @@ function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddC
     try {
       await savePortfolio({ data: { name, holdings } });
       setSaveMsg("✓ SAVED");
+      if (!hasEverShared && shareDismissCount < MAX_SAVE_PROMPT_DISMISSALS) {
+        setSavePromptChannelId("");
+        setShowSavePrompt(true);
+      }
     } catch (e:any) { setSaveMsg("ERROR: " + e.message); }
     finally { setSaving(false); setTimeout(() => setSaveMsg(""), 2000); }
   };
@@ -1395,6 +1422,18 @@ const addCash = () => {
           padding:"6px 12px", borderRadius:6, cursor:(saving||!holdings.length)?(saving?"wait":"not-allowed"):"pointer",
           fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700,
         }}>{saving ? "..." : saveMsg || "SAVE"}</button>
+        <button onClick={()=>{ setShareDefaultChannelId(null); setShowShareModal(true); }} style={{
+          display:"flex", alignItems:"center", gap:6,
+          background:"transparent", border:`1px solid ${B.border}`, color:B.gray1,
+          padding:"6px 12px", borderRadius:6, cursor:"pointer",
+          fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          Share to Community
+        </button>
         <button onClick={addCash} style={{
           background:"transparent", border:`1px solid ${B.green}`, color:B.green,
           padding:"6px 12px", borderRadius:6, cursor:"pointer",
@@ -1801,6 +1840,71 @@ const addCash = () => {
           onConfirm={confirmImport}
         />
       )}
+      {showSavePrompt && (
+        <SavePromptModal
+          channels={savePromptChannels}
+          channelId={savePromptChannelId}
+          onChannelChange={setSavePromptChannelId}
+          onShare={() => {
+            setShowSavePrompt(false);
+            setShareDefaultChannelId(savePromptChannelId || null);
+            setShowShareModal(true);
+          }}
+          onSkip={() => {
+            setShowSavePrompt(false);
+            setShareDismissCount((c: number) => c + 1);
+          }}
+        />
+      )}
+      {showShareModal && (
+        <ShareToCommunityModal
+          holdings={holdings}
+          defaultChannelId={shareDefaultChannelId}
+          defaultTitle="Thoughts on my portfolio?"
+          setPage={setPage}
+          onClose={() => setShowShareModal(false)}
+          onShared={() => setHasEverShared(true)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Small, dismissible, never-blocking prompt shown right after a
+// successful portfolio save — offers sharing but a plain "Skip" always
+// closes it with no further action.
+function SavePromptModal({channels, channelId, onChannelChange, onShare, onSkip}:any) {
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }} onClick={onSkip}>
+      <div onClick={(e:any)=>e.stopPropagation()} style={{
+        background:B.panel, border:`1px solid ${B.border}`, borderRadius:12, padding:16,
+        width:"100%", maxWidth:380, display:"flex", flexDirection:"column", gap:10,
+      }}>
+        <div style={{ fontSize:14, fontWeight:700, color:B.gray1, fontFamily:"'Courier New',monospace" }}>
+          Portfolio saved! Want to share it with the community?
+        </div>
+        <div>
+          <div style={{ fontSize:10, color:B.gray3, fontFamily:"'Courier New',monospace", marginBottom:4 }}>TOPIC (OPTIONAL)</div>
+          <select value={channelId} onChange={(e:any)=>onChannelChange(e.target.value)} style={{
+            width:"100%", background:B.panel2, border:`1px solid ${B.border}`, color:B.gray1, borderRadius:6,
+            padding:"8px 10px", fontFamily:"'Courier New',monospace", fontSize:13,
+          }}>
+            <option value="">No specific channel</option>
+            {channels.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
+          <button onClick={onSkip} style={{ background:"none", border:"none", color:B.gray3, cursor:"pointer", fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700 }}>
+            Skip
+          </button>
+          <button onClick={onShare} style={{
+            background:B.blue, color:B.white, border:"none", padding:"8px 18px", borderRadius:6,
+            fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, cursor:"pointer",
+          }}>
+            Share
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1985,6 +2089,27 @@ const AI_SUGGESTIONS = [
   { label: "Explain Sharpe", icon: null, prompt: "Explain my Sharpe ratio" },
 ];
 
+// Heuristic for "was this message actually a portfolio-analysis request?"
+// — checked against the user's own message (not the AI's reply, which
+// mentions "portfolio" in almost every answer regardless of what was
+// asked) so the share suggestion only fires on real intent: any of the 5
+// welcome-screen suggestion pills above, the QUICK_Q bar's buttons
+// (ANALYZE PORTFOLIO, RISK ASSESSMENT, etc.), or a free-typed question
+// using similar words.
+const SHARE_SUGGESTION_TRIGGER = /portfolio|allocation|\brisk\b|diversif|sector|sharpe|volatility/i;
+
+// A short, editable starting point for the share form's body — not the
+// full AI reply (which can run to hundreds of words), just its first
+// couple of sentences, so the user still has to actively decide what to
+// post rather than one-click-publishing an unreviewed AI answer.
+function summarizeForShare(text: string): string {
+  const plain = text.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
+  const sentences = plain.match(/[^.!?]+[.!?]+/g) || [plain];
+  let summary = sentences.slice(0, 2).join(" ").trim();
+  if (summary.length > 220) summary = summary.slice(0, 217) + "...";
+  return summary;
+}
+
 // Shown only until the user's first real message (see isEmpty in
 // AIAdvisorPage below) — replaces the plain assistant welcome bubble with
 // a centered hero, same spirit as the landing page's hero treatment.
@@ -2049,7 +2174,7 @@ function AIWelcomeScreen({name, input, setInput, onSend, loading}:any) {
   );
 }
 
-function AIAdvisorPage({holdings}:any) {
+function AIAdvisorPage({holdings,setPage}:any) {
   const [msgs,setMsgs]=useState<any[]>([{role:"assistant",content:"**STRATEGIC MARKETS AI TERMINAL ONLINE**\n\nThis is an EDUCATIONAL analytics terminal with access to your simulated portfolio data (stocks, bonds, ETFs, commodities, crypto, REITs, FX).\n\nI can provide quantitative observations on diversification, risk metrics, sector exposure, performance attribution and hypothetical allocation scenarios.\n\n**I do not provide personalized investment recommendations** nor financial advice under MiFID II. All analyses are for educational and informational purposes only.\n\nSMKT>_"}]);
   // No real exchange yet (no user-authored message) — shows the welcome
   // hero below instead of this initial assistant bubble. Becomes false the
@@ -2096,6 +2221,15 @@ function AIAdvisorPage({holdings}:any) {
 
   const portCtx=useCallback(()=>buildPortfolioContext(holdings),[holdings]);
 
+  // Contextual "share this with the community" suggestion — offered at most
+  // once per session, right under the first assistant reply that actually
+  // answered a portfolio-analysis-flavored question (checked against the
+  // user's own message, see SHARE_SUGGESTION_TRIGGER above).
+  const [suggestionOffered,setSuggestionOffered]=useState(false);
+  const [shareSuggestion,setShareSuggestion]=useState<{msgIndex:number;summary:string}|null>(null);
+  const [showShareModal,setShowShareModal]=useState(false);
+  const [shareDefaultBody,setShareDefaultBody]=useState("");
+
   const send=async(text?:string)=>{
     const msg=text||input.trim();
     if(!msg||loading) return;
@@ -2107,7 +2241,14 @@ function AIAdvisorPage({holdings}:any) {
     try {
       const sys = await buildSysPrompt();
       const { reply } = await aiChatAsUser({ messages: apiMsgs, system: sys });
-      setMsgs(m=>[...m,{role:"assistant",content:reply}]);
+      setMsgs(m=>{
+        const next=[...m,{role:"assistant",content:reply}];
+        if(!suggestionOffered && SHARE_SUGGESTION_TRIGGER.test(msg)){
+          setSuggestionOffered(true);
+          setShareSuggestion({msgIndex:next.length-1,summary:summarizeForShare(reply)});
+        }
+        return next;
+      });
     } catch(e:any) {
       setMsgs(m=>[...m,{role:"assistant",content:`ERROR: ${e.message}`}]);
     } finally {setLoading(false);}
@@ -2189,6 +2330,27 @@ function AIAdvisorPage({holdings}:any) {
                         ? <div style={{fontSize:15,color:B.white,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>{m.content}</div>
                         : renderMsg(m.content)}
                     </div>
+                    {!isUser && shareSuggestion?.msgIndex===i && (
+                      <div style={{
+                        display:"flex",alignItems:"center",gap:8,marginTop:4,padding:"6px 10px",
+                        background:B.panel2,border:`1px solid ${B.border}`,borderRadius:20,
+                      }}>
+                        <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace"}}>
+                          Want a second opinion? Share this with the community
+                        </span>
+                        <button onClick={()=>{ setShareDefaultBody(shareSuggestion.summary); setShowShareModal(true); }} style={{
+                          background:"none",border:`1px solid ${B.blue}`,color:B.blue,borderRadius:14,
+                          padding:"3px 10px",fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,cursor:"pointer",
+                        }}>
+                          Share
+                        </button>
+                        <button onClick={()=>setShareSuggestion(null)} style={{
+                          background:"none",border:"none",color:B.gray3,cursor:"pointer",fontSize:13,lineHeight:1,padding:0,
+                        }}>
+                          ✕
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -2253,6 +2415,15 @@ function AIAdvisorPage({holdings}:any) {
             FOR INFORMATIONAL PURPOSES ONLY. NOT FINANCIAL ADVICE.
           </div>
         </div>
+      )}
+      {showShareModal && (
+        <ShareToCommunityModal
+          holdings={holdings}
+          defaultTitle="Thoughts on my portfolio?"
+          defaultBody={shareDefaultBody}
+          setPage={setPage}
+          onClose={()=>setShowShareModal(false)}
+        />
       )}
     </div>
   );
@@ -3065,9 +3236,9 @@ export default function PortfolioTerminal() {
               <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column"}}>
                 {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing}/>}
                 {page==="search"     && <SearchPage   onAdd={addToPortfolio} portfolio={displayHoldings} onWatchlistChange={loadWatchlist}/>}
-                {page==="portfolio"  && <PortfolioPage holdings={holdings} onRemove={removeFromPortfolio} onUpdate={updateHolding} onSell={sellFromPortfolio} onLoadPortfolio={setHoldings} onAddCash={addToPortfolio}/>}
+                {page==="portfolio"  && <PortfolioPage holdings={holdings} onRemove={removeFromPortfolio} onUpdate={updateHolding} onSell={sellFromPortfolio} onLoadPortfolio={setHoldings} onAddCash={addToPortfolio} setPage={setPage}/>}
                 {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage}/>}
-                {page==="ai"         && <AIAdvisorPage holdings={displayHoldings}/>}
+                {page==="ai"         && <AIAdvisorPage holdings={displayHoldings} setPage={setPage}/>}
                 {page==="news"       && <NewsPage holdings={holdings} setPage={setPage}/>}
                 {page==="community"  && <CommunityPage holdings={displayHoldings}/>}
               </div>

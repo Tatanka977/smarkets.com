@@ -244,7 +244,7 @@ function PostActions({ post, onOpenComments }: { post: CommunityPost; onOpenComm
 // allocation are computed with the exact same pMet/computeAlerts/groupBy
 // helpers AnalysisPage's own Risk/Allocation tabs use, so numbers a viewer
 // sees here match what the poster themselves would see in Analysis.
-function buildSnapshotFromHoldings(holdings: any[], sourceName: string): PortfolioSnapshot | null {
+export function buildSnapshotFromHoldings(holdings: any[], sourceName: string): PortfolioSnapshot | null {
   if (!holdings?.length) return null;
   const m = pMet(holdings);
   if (!m || m.total <= 0) return null;
@@ -468,7 +468,7 @@ function PostPortfolioWidget({ snapshot }: { snapshot: PortfolioSnapshot }) {
     </div>
   );
 }
-function PortfolioBadge({ snapshot }: { snapshot: PortfolioSnapshot }) {
+export function PortfolioBadge({ snapshot }: { snapshot: PortfolioSnapshot }) {
   const highRisk = (snapshot.alerts || []).some((a) => a.sev === "HIGH");
   return (
     <div style={{

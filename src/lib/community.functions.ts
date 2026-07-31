@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { computeRiskScore } from "@/lib/uiShared";
 
 export interface CommunityChannel {
   id: string;
@@ -322,6 +323,31 @@ export async function getTrendingChannels(): Promise<{ id: string; name: string;
     .map(([id, v]) => ({ id, name: v.name, count: v.count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
+}
+
+// Real risk scores computed from every portfolio snapshot ever shared in
+// the community (across all topics, not scoped to one), used for the "your
+// risk score vs the community" percentile comparison in Analysis. Uses the
+// exact same computeRiskScore formula the user's own score is computed
+// with — never a separately-drifting copy. Snapshots saved before
+// `metrics` existed can't produce a comparable score and are skipped
+// rather than guessed at; the caller decides what sample size is large
+// enough to show a percentile at all.
+export async function getCommunityRiskScores(): Promise<number[]> {
+  const { data, error } = await supabase
+    .from("community_posts")
+    .select("portfolio_snapshot")
+    .not("portfolio_snapshot", "is", null);
+  if (error) throw error;
+  const scores: number[] = [];
+  for (const row of data || []) {
+    const snap = (row as any).portfolio_snapshot as PortfolioSnapshot | null;
+    const m = snap?.metrics;
+    if (!m) continue;
+    const topSectorPct = snap?.allocationBySector?.[0]?.pct ?? 0;
+    scores.push(computeRiskScore(m.hhi, topSectorPct, m.weightedVol, m.weightedBeta));
+  }
+  return scores;
 }
 
 // Following a topic ("channel") — same idea as following a subreddit.
