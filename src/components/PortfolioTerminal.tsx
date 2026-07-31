@@ -34,6 +34,7 @@ import {
   saveConversation,
   addToWatchlist as srvAddWatch,
   listWatchlist,
+  getMyProfile,
 } from "@/lib/profile.functions";
 import { createNotification } from "@/lib/notifications.functions";
 import { useUser } from "@/hooks/useUser";
@@ -1939,8 +1940,136 @@ ALWAYS respond in ENGLISH.${profileText}`;
 
 const QUICK_Q=["ANALYZE PORTFOLIO","DIVERSIFICATION CHECK","RISK ASSESSMENT","IMPROVE ALLOCATION","EXPLAIN SHARPE","VAR ANALYSIS","SECTOR EXPOSURE","REDUCE VOLATILITY"];
 
+// Small stroke-style icons for the welcome screen's 5 suggestion pills —
+// same convention as NAV_ICONS above (24x24 viewBox, currentColor stroke).
+function IconPie({size=14}:{size?:number}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a10 10 0 1 0 10 10H12Z" /><path d="M12 2v10h10" />
+    </svg>
+  );
+}
+function IconShield({size=14}:{size?:number}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5Z" />
+    </svg>
+  );
+}
+function IconBars({size=14}:{size?:number}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="6" y1="20" x2="6" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="18" y1="20" x2="18" y2="14" />
+    </svg>
+  );
+}
+function IconTrend({size=14}:{size?:number}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 17 9 11 13 15 21 7" /><path d="M21 13V7h-6" />
+    </svg>
+  );
+}
+function IconUpArrow({size=15,color}:{size?:number;color?:string}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color||"currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
+    </svg>
+  );
+}
+
+const AI_SUGGESTIONS = [
+  { label: "Analyze portfolio", icon: IconPie, prompt: "Analyze my portfolio" },
+  { label: "Assess risk", icon: IconShield, prompt: "Assess the risk in my portfolio" },
+  { label: "Improve allocation", icon: IconBars, prompt: "How can I improve my allocation?" },
+  { label: "What-If scenario", icon: IconTrend, prompt: "Walk me through a What-If scenario for my portfolio" },
+  { label: "Explain Sharpe", icon: null, prompt: "Explain my Sharpe ratio" },
+];
+
+// Shown only until the user's first real message (see isEmpty in
+// AIAdvisorPage below) — replaces the plain assistant welcome bubble with
+// a centered hero, same spirit as the landing page's hero treatment.
+function AIWelcomeScreen({name, input, setInput, onSend, loading}:any) {
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:18,padding:"20px 16px",maxWidth:680,margin:"0 auto",textAlign:"center"}}>
+      <div style={{
+        width:56,height:56,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",
+        background:`linear-gradient(135deg, ${B.panel2}, ${B.panel})`,border:`1px solid ${B.border}`,color:B.blue,
+      }}>
+        {NAV_ICONS.ai}
+      </div>
+
+      <div>
+        <div style={{fontSize:28,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>Hi {name}.</div>
+        <div style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",lineHeight:1.6,marginTop:8}}>
+          Ask me anything about your portfolio.<br/>
+          I can help with analysis, risk, allocation, and scenarios.
+        </div>
+      </div>
+
+      <div style={{width:"100%",maxWidth:640}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,background:B.bg,
+          border:`1px solid ${B.border}`,borderRadius:24,padding:"4px 6px 4px 16px"}}>
+          <input value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>{ if(e.key==="Enter") onSend(); }}
+            placeholder="Ask something about your portfolio..."
+            style={{flex:1,background:"transparent",border:"none",
+              padding:"10px 0",color:B.gray1,fontSize:14,
+              fontFamily:"'Courier New',monospace",outline:"none"}}/>
+          <button onClick={()=>onSend()} disabled={loading||!input.trim()} style={{
+            background:loading||!input.trim()?B.panel:B.blue,
+            border:"none",borderRadius:"50%",width:36,height:36,flexShrink:0,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            cursor:loading||!input.trim()?"not-allowed":"pointer"}}>
+            <IconUpArrow size={16} color={loading||!input.trim()?B.gray3:B.white}/>
+          </button>
+        </div>
+      </div>
+
+      <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:8,maxWidth:640}}>
+        {AI_SUGGESTIONS.map((s,i)=>(
+          <button key={i} onClick={()=>onSend(s.prompt)} disabled={loading} style={{
+            display:"flex",alignItems:"center",gap:6,
+            background:B.panel,border:`1px solid ${B.border}`,borderRadius:20,
+            padding:"8px 14px",color:B.gray1,fontSize:12,fontWeight:700,
+            fontFamily:"'Courier New',monospace",cursor:loading?"not-allowed":"pointer",
+          }}>
+            {s.icon ? <s.icon size={14}/> : <span style={{fontWeight:700,fontSize:13}}>Σ</span>}
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{display:"flex",alignItems:"center",gap:6,color:B.gray4,fontSize:11,fontFamily:"'Courier New',monospace"}}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        For informational purposes only. Not financial advice.
+      </div>
+    </div>
+  );
+}
+
 function AIAdvisorPage({holdings}:any) {
   const [msgs,setMsgs]=useState<any[]>([{role:"assistant",content:"**STRATEGIC MARKETS AI TERMINAL ONLINE**\n\nThis is an EDUCATIONAL analytics terminal with access to your simulated portfolio data (stocks, bonds, ETFs, commodities, crypto, REITs, FX).\n\nI can provide quantitative observations on diversification, risk metrics, sector exposure, performance attribution and hypothetical allocation scenarios.\n\n**I do not provide personalized investment recommendations** nor financial advice under MiFID II. All analyses are for educational and informational purposes only.\n\nSMKT>_"}]);
+  // No real exchange yet (no user-authored message) — shows the welcome
+  // hero below instead of this initial assistant bubble. Becomes false the
+  // instant send() appends the user's first message, whether typed, from
+  // a welcome-screen suggestion pill, or from the QUICK_Q bar below.
+  const isEmpty = !msgs.some((m:any) => m.role==="user");
+
+  // Same source the redesigned Profile page uses for the header greeting:
+  // profiles.display_name first, falling back to the auth-derived name/
+  // email prefix useUser() already resolves when there's no display_name.
+  const { user } = useUser();
+  const [profileName, setProfileName] = useState<string|null>(null);
+  useEffect(() => {
+    let alive = true;
+    getMyProfile().then((p:any) => { if (alive) setProfileName(p?.display_name || null); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const greetName = profileName || user?.name || (user?.email ? user.email.split("@")[0] : "there");
+
   const [pendingPrompt, setPendingPrompt] = usePersistentState<string>("ai_pending_prompt", "");
 
   useEffect(() => {
@@ -2008,8 +2137,8 @@ function AIAdvisorPage({holdings}:any) {
       <div style={{background:B.panel2,borderBottom:`1px solid ${B.border}`,padding:"8px 12px",
         display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
         <div>
-          <span style={{fontSize:13,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>STRATEGIC MARKETS</span>
-          <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:8}}>AI FINANCIAL TERMINAL</span>
+          <span style={{fontSize:13,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>AI ADVISOR</span>
+          <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:8}}>Your AI financial assistant</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <button onClick={async()=>{
@@ -2035,41 +2164,50 @@ function AIAdvisorPage({holdings}:any) {
           </div>
         </div>
       </div>
-      <div style={{flex:1,overflowY:"auto",padding:"12px 10px",display:"flex",flexDirection:"column",gap:10}}>
-        {msgs.map((m,i)=>{
-          const isUser = m.role==="user";
-          return (
-            <div key={i} style={{display:"flex",gap:8,justifyContent:isUser?"flex-end":"flex-start"}}>
-              {!isUser && <Avatar/>}
-              <div style={{maxWidth:"85%",display:"flex",flexDirection:"column",gap:2,alignItems:isUser?"flex-end":"flex-start"}}>
-                <span style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",padding:"0 4px"}}>
-                  {isUser?"YOU":"STRATEGIC MARKETS AI"}
-                </span>
-                <div style={{
-                  background:isUser?B.blue:B.panel, border:`1px solid ${isUser?B.blue:B.border}`,
-                  borderRadius:14, borderTopRightRadius:isUser?4:14, borderTopLeftRadius:isUser?14:4,
-                  padding:"10px 14px",
-                }}>
-                  {isUser
-                    ? <div style={{fontSize:15,color:B.white,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>{m.content}</div>
-                    : renderMsg(m.content)}
+      <div style={{
+        flex:1,overflowY:"auto",padding:"12px 10px",display:"flex",flexDirection:"column",gap:10,
+        ...(isEmpty ? {alignItems:"center",justifyContent:"center"} : {}),
+      }}>
+        {isEmpty ? (
+          <AIWelcomeScreen name={greetName} input={input} setInput={setInput} onSend={send} loading={loading}/>
+        ) : (
+          <>
+            {msgs.map((m,i)=>{
+              const isUser = m.role==="user";
+              return (
+                <div key={i} style={{display:"flex",gap:8,justifyContent:isUser?"flex-end":"flex-start"}}>
+                  {!isUser && <Avatar/>}
+                  <div style={{maxWidth:"85%",display:"flex",flexDirection:"column",gap:2,alignItems:isUser?"flex-end":"flex-start"}}>
+                    <span style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",padding:"0 4px"}}>
+                      {isUser?"YOU":"STRATEGIC MARKETS AI"}
+                    </span>
+                    <div style={{
+                      background:isUser?B.blue:B.panel, border:`1px solid ${isUser?B.blue:B.border}`,
+                      borderRadius:14, borderTopRightRadius:isUser?4:14, borderTopLeftRadius:isUser?14:4,
+                      padding:"10px 14px",
+                    }}>
+                      {isUser
+                        ? <div style={{fontSize:15,color:B.white,fontFamily:"'Courier New',monospace",lineHeight:1.5}}>{m.content}</div>
+                        : renderMsg(m.content)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {loading&&(
+              <div style={{display:"flex",gap:8}}>
+                <Avatar/>
+                <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:14,borderTopLeftRadius:4,
+                  padding:"10px 14px",display:"flex",gap:4,alignItems:"center"}}>
+                  {[0,1,2].map(j=>(
+                    <div key={j} style={{width:5,height:5,borderRadius:"50%",background:B.blue,
+                      animation:`pulse 1s ${j*0.2}s infinite ease-in-out`}}/>
+                  ))}
+                  <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:4}}>Analyzing live data...</span>
                 </div>
               </div>
-            </div>
-          );
-        })}
-        {loading&&(
-          <div style={{display:"flex",gap:8}}>
-            <Avatar/>
-            <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:14,borderTopLeftRadius:4,
-              padding:"10px 14px",display:"flex",gap:4,alignItems:"center"}}>
-              {[0,1,2].map(j=>(
-                <div key={j} style={{width:5,height:5,borderRadius:"50%",background:B.blue,
-                  animation:`pulse 1s ${j*0.2}s infinite ease-in-out`}}/>
-              ))}
-              <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:4}}>Analyzing live data...</span>
-            </div>
-          </div>
+            )}
+          </>
         )}
         <div ref={bottomRef}/>
       </div>
