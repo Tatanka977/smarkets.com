@@ -20,7 +20,6 @@ import {
   fetchHistoricalPrice as srvHistorical,
   fetchFxRates as srvFx,
   fetchPriceHistory as srvPriceHistory,
-  fetchSectorWeights as srvSectorWeights,
 } from "@/lib/finance.functions";
 import { aiChatAsUser } from "@/lib/ai.functions";
 import {
@@ -2753,29 +2752,47 @@ export default function PortfolioTerminal() {
   const holdingsRef = useRef<any[]>(holdings);
   useEffect(() => { holdingsRef.current = holdings; }, [holdings]);
 
-  // One-time ETF sector-weights backfill: holdings added before ETF
-  // look-through sector data existed (or whose original fetchQuote's Yahoo
-  // lookup failed at the time) never get a second chance otherwise — this
-  // runs once right after hydration, not on every 60s refreshPrices tick,
-  // since that would otherwise re-hit Yahoo for the same unchanged data
+  // One-time classification backfill: holdings added before category/geo/
+  // sector were reliably resolved (or whose original fetchQuote lookup
+  // failed at the time — e.g. Finnhub down, or Yahoo's crumb-gated sector
+  // endpoint unavailable) never get a second chance otherwise. Re-runs the
+  // exact same fetchQuote used when a holding is first added — it now
+  // reliably resolves category/geo even when Yahoo's quoteSummary crumb
+  // fails, since fetchYahooQuoteFull/classifyCategory don't depend on it —
+  // and merges in just the classification fields, not price/value. Runs
+  // once right after hydration, not on every 60s refreshPrices tick, since
+  // that would otherwise re-hit these lookups for the same unchanged data
   // indefinitely.
-  const sectorBackfillDone = useRef(false);
+  const classificationBackfillDone = useRef(false);
   useEffect(() => {
-    if (!hydrated || sectorBackfillDone.current) return;
-    sectorBackfillDone.current = true;
-    const missing = holdingsRef.current.filter((h: any) => h.asset.category === "ETF" && !h.asset.sectorWeights);
+    if (!hydrated || classificationBackfillDone.current) return;
+    classificationBackfillDone.current = true;
+    const NON_EQUITY_CATS = ["BOND", "COMMODITY", "CRYPTO", "FX", "CASH"];
+    const missing = holdingsRef.current.filter((h: any) => {
+      const a = h.asset;
+      if (!a.category || !a.geo) return true;
+      if (a.category === "ETF") return !a.sectorWeights;
+      return !NON_EQUITY_CATS.includes(a.category) && !a.sector;
+    });
     if (!missing.length) return;
     (async () => {
       const results = await Promise.all(missing.map((h: any) =>
-        srvSectorWeights({ data: { symbol: h.asset.ticker } }).catch(() => null)
+        fetchQuote(h.asset.ticker, h.isin).catch(() => null)
       ));
       const bySymbol: Record<string, any> = {};
-      missing.forEach((h: any, i: number) => { if (results[i]?.sectorWeights) bySymbol[h.asset.ticker] = results[i]; });
+      missing.forEach((h: any, i: number) => { if (results[i]) bySymbol[h.asset.ticker] = results[i]; });
       if (!Object.keys(bySymbol).length) return;
       setHoldings(prev => prev.map(h => {
         const found = bySymbol[h.asset.ticker];
         if (!found) return h;
-        return { ...h, asset: { ...h.asset, sectorWeights: found.sectorWeights, sector: h.asset.sector || found.sector } };
+        return { ...h, asset: {
+          ...h.asset,
+          category: h.asset.category || found.category,
+          geo: h.asset.geo || found.geo,
+          sector: h.asset.sector || found.sector,
+          industry: h.asset.industry || found.industry,
+          sectorWeights: h.asset.sectorWeights || found.sectorWeights,
+        } };
       }));
     })();
   }, [hydrated]);

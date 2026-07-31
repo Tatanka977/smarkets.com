@@ -128,6 +128,22 @@ function geoFromCountry(c?: string): string {
   return c;
 }
 
+// Fallback geo classification for the Yahoo-only quote path (see
+// fetchYahooQuoteFull below), which has no country field at all — its
+// exchange's IANA timezone is real exchange metadata (not a guess) and a
+// reliable enough proxy for where that exchange sits.
+function geoFromExchangeTimezone(tz?: string): string {
+  if (!tz) return "WORLD";
+  if (tz.startsWith("America/")) {
+    return ["America/Toronto", "America/Vancouver", "America/Montreal"].includes(tz) ? "CANADA" : "USA";
+  }
+  if (tz === "Europe/London") return "UK";
+  if (tz.startsWith("Europe/")) return "EUROPE";
+  if (["Asia/Tokyo", "Asia/Hong_Kong", "Asia/Shanghai", "Asia/Seoul", "Asia/Singapore", "Asia/Kolkata", "Asia/Calcutta"].includes(tz)) return "ASIA";
+  if (tz.startsWith("Australia/")) return "AUSTRALIA";
+  return "WORLD";
+}
+
 async function buildQuote(symbol: string): Promise<Quote> {
   const sym = symbol.trim().toUpperCase();
 
@@ -281,6 +297,21 @@ async function searchYahoo(query: string): Promise<SearchResult[]> {
   }
 }
 
+// Crumb-free category backfill for quotes that came back from Finnhub
+// (buildQuote never sets category at all — Finnhub's profile2 endpoint has
+// no stock/ETF/REIT distinction) and weren't a MOCK_UNIVERSE match either.
+// Yahoo's search endpoint (unlike quoteSummary) needs no crumb/cookie and
+// already resolves quoteType exactly for this.
+async function classifyCategory(sym: string): Promise<Category | undefined> {
+  try {
+    const results = await searchYahoo(sym);
+    const hit = results.find(r => r.symbol.toUpperCase() === sym) || results[0];
+    return hit?.category;
+  } catch {
+    return undefined;
+  }
+}
+
 interface OpenFigiResult {
   data?: Array<{ ticker?: string; name?: string; exchCode?: string; securityType?: string; marketSector?: string }>;
 }
@@ -376,8 +407,15 @@ export const fetchQuote = createServerFn({ method: "GET" })
             q.sector = q.sector || mock.industry;
             q.industry = q.industry || mock.industry;
             q.type = q.type || mock.type;
+            q.geo = q.geo || mock.geo;
           }
           await applyYahooProfile(q, sym);
+          // buildQuote (Finnhub) never sets category at all — Finnhub's
+          // profile2 endpoint has no stock/ETF/REIT distinction — so
+          // anything not already classified via mock/applyYahooProfile's
+          // ETF-detection is backfilled with a crumb-free Yahoo search
+          // lookup instead of silently staying uncategorized.
+          if (!q.category) q.category = await classifyCategory(sym);
           return q;
         }
       } catch (e) {
@@ -393,6 +431,7 @@ export const fetchQuote = createServerFn({ method: "GET" })
         yq.sector = yq.sector || mock.industry;
         yq.industry = yq.industry || mock.industry;
         yq.type = yq.type || mock.type;
+        yq.geo = yq.geo || mock.geo;
       }
       await applyYahooProfile(yq, sym);
       return yq;
@@ -415,6 +454,7 @@ export const fetchQuote = createServerFn({ method: "GET" })
             alt.sector = alt.sector || mock.industry;
             alt.industry = alt.industry || mock.industry;
             alt.type = alt.type || mock.type;
+            alt.geo = alt.geo || mock.geo;
           }
           await applyYahooProfile(alt, c.symbol);
           return alt;
@@ -425,20 +465,6 @@ export const fetchQuote = createServerFn({ method: "GET" })
     const m = findMock(sym);
     await applyYahooProfile(m, sym);
     return m;
-  });
-
-// One-off enrichment for holdings that predate ETF look-through sector data
-// (or whose original fetchQuote's Yahoo lookup failed): PortfolioTerminal
-// calls this once per ETF holding missing sectorWeights, right after
-// hydrating from localStorage — not on every batchRefresh tick, since that
-// runs every 60s and would otherwise re-hit Yahoo for the same unchanged
-// data indefinitely.
-export const fetchSectorWeights = createServerFn({ method: "GET" })
-  .inputValidator((d: { symbol: string }) => d)
-  .handler(async ({ data }) => {
-    const sym = (data.symbol || "").trim().toUpperCase();
-    if (!sym) return null;
-    return fetchYahooProfile(sym);
   });
 
 // Bounds the work a single request can trigger — without this, an
@@ -612,6 +638,7 @@ interface YahooQuoteMetaResult {
         longName?: string;
         shortName?: string;
         instrumentType?: string;
+        exchangeTimezoneName?: string;
       };
     }>;
     error?: unknown;
@@ -643,6 +670,13 @@ async function fetchYahooQuoteFull(symbol: string): Promise<Quote | null> {
       exchange: meta.exchangeName || "—",
       marketCap: null, pe: null, dividendYield: null,
       type: meta.instrumentType || "Equity",
+      // This chart endpoint (unlike quoteSummary) needs no crumb, so these
+      // two are reliable regardless of Yahoo's crumb auth working or not —
+      // previously left unset here entirely, which meant any quote that
+      // fell through to this path (Finnhub unconfigured/failed, e.g. most
+      // non-US exchanges) had no category or geo at all further downstream.
+      category: inferCategoryFromType(meta.instrumentType || ""),
+      geo: geoFromExchangeTimezone(meta.exchangeTimezoneName),
     };
   } catch (e) {
     console.warn("[Yahoo full quote] error:", symbol, (e as Error).message);

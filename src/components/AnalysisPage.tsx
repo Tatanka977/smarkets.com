@@ -17,6 +17,18 @@ const BENCHMARKS = [
   { sym: "ACWI", label: "MSCI ACWI" },
 ];
 
+// Display labels for the controlled asset.category enum, used by the Asset
+// Allocation donut below. Grouping by asset.category (not asset.type) is
+// deliberate: `type` is free text populated inconsistently across data
+// sources (MOCK_UNIVERSE writes "Equity", Yahoo search can return "EQUITY"
+// for the same concept) so the same holding class could split into more
+// than one donut slice; `category` is the controlled enum already used
+// everywhere else (What-If, search filters).
+const CATEGORY_LABELS: Record<string, string> = {
+  STOCK: "Stocks", ETF: "ETFs", BOND: "Bonds", COMMODITY: "Commodities",
+  CRYPTO: "Crypto", REIT: "REITs", FX: "Forex", CASH: "Cash", OTHER: "Other",
+};
+
 function KpiCard({ label, value, sub, subColor }: any) {
   return (
     <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "14px 16px", flex: 1, minWidth: 150 }}>
@@ -894,7 +906,8 @@ Give a deeper educational breakdown: what does this concentration/diversificatio
   // sectors they actually hold instead of landing in one "Other" bucket.
   const sD = groupBySectorLookThrough(holdings, m.total);
   const gD = groupBy(holdings, "geo", m.total);
-  const tD = groupBy(holdings, "type", m.total);
+  const tD = groupBy(holdings, "category", m.total)
+    .map(d => ({ ...d, name: CATEGORY_LABELS[d.name] || d.name }));
   const topHoldings = [...holdings].sort((a: any, b: any) => b.value - a.value).slice(0, 5);
   const alerts = useMemo(() => computeAlerts(holdings, m), [holdings, m]);
   const highCount = alerts.filter(a => a.sev === "HIGH").length;
