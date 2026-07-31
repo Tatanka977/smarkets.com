@@ -70,6 +70,19 @@ const HOLDINGS_CATEGORY_LABELS: Record<string,string> = {
   CRYPTO: "CRYPTO", REIT: "REIT", FX: "FX", CASH: "CASH", OTHER: "OTHER",
 };
 
+// A security's price/value is always stored and shown in ITS OWN native
+// currency (never silently converted) — this just picks the right symbol
+// to label it with instead of always assuming USD. Falls back to the ISO
+// code itself (e.g. "SEK ") for anything not in this short list, rather
+// than a wrong symbol.
+const CCY_SYMBOLS: Record<string,string> = {
+  USD:"$", EUR:"€", GBP:"£", JPY:"¥", CNY:"¥", CHF:"CHF ", CAD:"C$", AUD:"A$", HKD:"HK$",
+};
+function ccySymbol(code?: string | null): string {
+  const c = (code || "USD").toUpperCase();
+  return CCY_SYMBOLS[c] || `${c} `;
+}
+
 const Spinner = ({text}:any) => (
   <div style={{padding:"12px 8px",textAlign:"center"}}>
     <div style={{fontSize:15,color:B.blue,fontFamily:"'Courier New',monospace",
@@ -803,7 +816,7 @@ useEffect(()=>{
     onAdd(detail, q1, costPrice, buyDt);
     // Keep search results & detail view open so user can continue browsing.
     // Just give a clear confirmation that the position was added.
-    setAddMsg(`✓ ADDED ${q1} ${detail.ticker || detail.symbol} @ ${costPrice.toFixed(2)}`);
+    setAddMsg(`✓ ADDED ${q1} ${detail.ticker || detail.symbol} @ ${ccySymbol(detail.currency)}${costPrice.toFixed(2)}`);
     setTimeout(() => setAddMsg(""), 3000);
   };
 
@@ -939,7 +952,7 @@ useEffect(()=>{
                   padding:"6px 8px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
             </div>
             <div>
-              <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>BUY PRICE</div>
+              <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>BUY PRICE ({detail.currency||"USD"})</div>
               <input value={buyPx} onChange={e=>setBuyPx(e.target.value)} type="number" min="0" step="any"
                 placeholder={detail.price!=null?detail.price.toFixed(2):""}
                 style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,borderRadius:6,
@@ -971,7 +984,7 @@ useEffect(()=>{
             background:B.panel2,borderRadius:8,padding:"10px 12px",marginBottom:10}}>
             <div>
               <div style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Investment Value</div>
-              <div style={{fontSize:14,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>${fmtM(investmentValue)}</div>
+              <div style={{fontSize:14,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{ccySymbol(detail.currency)}{fmtM(investmentValue)}</div>
             </div>
             <div>
               <div style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Expected Weight</div>
@@ -985,7 +998,7 @@ useEffect(()=>{
             </div>
             <div>
               <div style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Cash Impact</div>
-              <div style={{fontSize:14,fontWeight:700,color:B.red,fontFamily:"'Courier New',monospace"}}>-${fmtM(investmentValue)}</div>
+              <div style={{fontSize:14,fontWeight:700,color:B.red,fontFamily:"'Courier New',monospace"}}>-{ccySymbol(detail.currency)}{fmtM(investmentValue)}</div>
             </div>
           </div>
 
@@ -1226,7 +1239,6 @@ function ImportCsvModal({rows, onCancel, onConfirm, busy}:any) {
 
 function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddCash}:any) {
   const isMobile = useIsMobile();
-  const m=useMemo(()=>pMet(holdings),[holdings]);
 
   // View-currency toggle, local to this page: converts only the KPI row
   // totals below (not the per-row table/cards, which stay in each
@@ -1494,15 +1506,29 @@ const addCash = () => {
     const cat = h.asset.category || "OTHER";
     (catMap[cat] ||= []).push(h);
   }
+  // Per-holding value in the selected base currency, looked up by key —
+  // used for each row's "% of portfolio" weight below, so a holding's
+  // native-currency value is never compared against a total that mixes
+  // several currencies together.
+  const kpiValueByKey = new Map<string, number>();
+  kpiHoldings.forEach((h:any) => kpiValueByKey.set(h.isin || h.asset.ticker, h.value));
+  // Category subtotals in the selected base currency (kpiHoldings — same
+  // conversion the KPI row above uses): summing each holding's raw native
+  // value directly here would silently add e.g. USD + EUR as if they were
+  // the same unit whenever a category mixes currencies.
+  const catTotalsBase: Record<string, number> = {};
+  for (const h of kpiHoldings) {
+    const cat = h.asset.category || "OTHER";
+    catTotalsBase[cat] = (catTotalsBase[cat] || 0) + h.value;
+  }
   const catOrder = [...HOLDINGS_CATEGORY_ORDER, ...Object.keys(catMap).filter(c=>!HOLDINGS_CATEGORY_ORDER.includes(c))];
   const grouped = catOrder.filter(c=>catMap[c]?.length).map(cat => {
     const catHoldings = catMap[cat];
-    const total = catHoldings.reduce((s:number,h:any)=>s+h.value,0);
-    return { cat, label: HOLDINGS_CATEGORY_LABELS[cat] || cat, holdings: catHoldings, total };
+    return { cat, label: HOLDINGS_CATEGORY_LABELS[cat] || cat, holdings: catHoldings, total: catTotalsBase[cat] || 0 };
   });
 
   const renderHoldingRow = (h:any) => {
-    const w = m.total>0 ? (h.value/m.total*100) : 0;
+    const w = dm.total>0 ? ((kpiValueByKey.get(h.isin || h.asset.ticker) ?? h.value)/dm.total*100) : 0;
     const cb = h.costBasis ?? (h.costPrice!=null ? h.costPrice*h.qty : null);
     const pl = cb!=null ? h.value-cb : null;
     const plPct = (cb!=null && cb>0) ? (pl!/cb*100) : null;
@@ -1520,9 +1546,9 @@ const addCash = () => {
           {h.asset.dayChangePct!=null?`${pSign(fmt(h.asset.dayChangePct,2))}%`:"—"}
         </td>
         <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>{w.toFixed(1)}%</td>
-        <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>${fmtM(h.value)}</td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>{ccySymbol(h.asset.currency)}{fmtM(h.value)}</td>
         <td style={{padding:"9px 8px",textAlign:"right",color:pl!=null?pCol(pl):B.gray3}}>
-          {pl!=null?`${pl>=0?"+":"−"}$${fmtM(Math.abs(pl))}`:"—"}
+          {pl!=null?`${pl>=0?"+":"−"}${ccySymbol(h.asset.currency)}${fmtM(Math.abs(pl))}`:"—"}
         </td>
         <td style={{padding:"9px 8px",textAlign:"right",color:plPct!=null?pCol(plPct):B.gray3}}>
           {plPct!=null?`${pSign(fmt(plPct,1))}%`:"—"}
@@ -1574,7 +1600,7 @@ const addCash = () => {
   // reach the SELL/remove buttons — a stacked card per holding instead,
   // with actions always visible and no side-scrolling required.
   const renderHoldingCard = (h:any) => {
-    const w = m.total>0 ? (h.value/m.total*100) : 0;
+    const w = dm.total>0 ? ((kpiValueByKey.get(h.isin || h.asset.ticker) ?? h.value)/dm.total*100) : 0;
     const cb = h.costBasis ?? (h.costPrice!=null ? h.costPrice*h.qty : null);
     const pl = cb!=null ? h.value-cb : null;
     const plPct = (cb!=null && cb>0) ? (pl!/cb*100) : null;
@@ -1591,7 +1617,7 @@ const addCash = () => {
             <div style={{color:B.gray3,fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{h.asset.shortName||h.asset.ticker}</div>
           </div>
           <div style={{textAlign:"right",flexShrink:0}}>
-            <div style={{color:B.gray1,fontWeight:700,fontSize:16}}>${fmtM(h.value)}</div>
+            <div style={{color:B.gray1,fontWeight:700,fontSize:16}}>{ccySymbol(h.asset.currency)}{fmtM(h.value)}</div>
             <div style={{color:pCol(h.asset.dayChangePct),fontWeight:700,fontSize:12}}>
               {h.asset.dayChangePct!=null?`${pSign(fmt(h.asset.dayChangePct,2))}%`:"—"}
             </div>
@@ -1606,7 +1632,7 @@ const addCash = () => {
           <div>
             <div style={{fontSize:9,color:B.gray3,textTransform:"uppercase"}}>P&amp;L</div>
             <div style={{fontSize:12,fontWeight:700,color:pl!=null?pCol(pl):B.gray3}}>
-              {pl!=null?`${pl>=0?"+":"−"}$${fmtM(Math.abs(pl))}`:"—"}
+              {pl!=null?`${pl>=0?"+":"−"}${ccySymbol(h.asset.currency)}${fmtM(Math.abs(pl))}`:"—"}
               {plPct!=null && <span style={{fontSize:10,marginLeft:3}}>({pSign(fmt(plPct,1))}%)</span>}
             </div>
           </div>
@@ -1706,7 +1732,7 @@ const addCash = () => {
         </div>
         {grouped.map(g=>{
           const isCollapsed = !!collapsedCats[g.cat];
-          const catPct = m.total>0 ? (g.total/m.total*100) : 0;
+          const catPct = dm.total>0 ? (g.total/dm.total*100) : 0;
           return (
             <div key={g.cat} style={{marginBottom:10,border:isMobile?"none":`1px solid ${B.border}`,borderTop:isMobile?`1px solid ${B.border}`:undefined,borderRadius:isMobile?0:10,overflow:"hidden"}}>
               <button onClick={()=>toggleCat(g.cat)} style={{
@@ -1721,7 +1747,7 @@ const addCash = () => {
                 </span>
                 <span style={{display:"flex",alignItems:"center",gap:isMobile?10:16}}>
                   {!isMobile && <span style={{fontSize:13,color:B.gray3}}>{catPct.toFixed(1)}%</span>}
-                  <span style={{fontSize:16,fontWeight:700,color:B.gray1}}>${fmtM(g.total)}</span>
+                  <span style={{fontSize:16,fontWeight:700,color:B.gray1}}>{ccySym}{fmtM(g.total)}</span>
                 </span>
               </button>
               {!isCollapsed && (isMobile ? (
