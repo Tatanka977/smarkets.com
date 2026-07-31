@@ -2009,7 +2009,7 @@ function AIWelcomeScreen({name, input, setInput, onSend, loading}:any) {
 
       <div style={{width:"100%",maxWidth:640}}>
         <div style={{display:"flex",alignItems:"center",gap:6,background:B.bg,
-          border:`1px solid ${B.border}`,borderRadius:24,padding:"4px 6px 4px 16px"}}>
+          border:`1px solid ${B.border}`,borderRadius:24,padding:"4px 6px 4px 22px"}}>
           <input value={input} onChange={e=>setInput(e.target.value)}
             onKeyDown={e=>{ if(e.key==="Enter") onSend(); }}
             placeholder="Ask something about your portfolio..."
@@ -2211,7 +2211,10 @@ function AIAdvisorPage({holdings}:any) {
         )}
         <div ref={bottomRef}/>
       </div>
-      {showQ&&(
+      {/* Both the QUICK_Q bar and the chat input/disclaimer below duplicate
+          what the welcome hero above already shows centered — only render
+          them once there's an actual conversation. */}
+      {!isEmpty && showQ&&(
         <div style={{padding:"8px 10px",borderTop:`1px solid ${B.border}`,background:B.panel2,flexShrink:0}}>
           <div className="sm-fkeys" style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2}}>
             {QUICK_Q.map((q,i)=>(
@@ -2225,31 +2228,33 @@ function AIAdvisorPage({holdings}:any) {
           </div>
         </div>
       )}
-      <div style={{background:B.panel2,flexShrink:0,padding:"8px 10px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:6,background:B.bg,
-          border:`1px solid ${B.border}`,borderRadius:24,padding:"4px 6px 4px 14px"}}>
-          <input value={input} onChange={e=>setInput(e.target.value)}
-            onKeyDown={e=>{ if(e.key==="Enter") send(); }}
-            placeholder="Ask about your portfolio, risk, or a scenario..."
-            style={{flex:1,background:"transparent",border:"none",
-              padding:"8px 0",color:B.gray1,fontSize:14,
-              fontFamily:"'Courier New',monospace",outline:"none"}}/>
-          <button onClick={()=>send()} disabled={loading||!input.trim()} style={{
-            background:loading||!input.trim()?B.panel:B.blue,
-            border:"none",borderRadius:"50%",width:34,height:34,flexShrink:0,
-            display:"flex",alignItems:"center",justifyContent:"center",
-            cursor:loading||!input.trim()?"not-allowed":"pointer"}}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={loading||!input.trim()?B.gray3:B.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </button>
+      {!isEmpty && (
+        <div style={{background:B.panel2,flexShrink:0,padding:"8px 10px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,background:B.bg,
+            border:`1px solid ${B.border}`,borderRadius:24,padding:"4px 6px 4px 14px"}}>
+            <input value={input} onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>{ if(e.key==="Enter") send(); }}
+              placeholder="Ask about your portfolio, risk, or a scenario..."
+              style={{flex:1,background:"transparent",border:"none",
+                padding:"8px 0",color:B.gray1,fontSize:14,
+                fontFamily:"'Courier New',monospace",outline:"none"}}/>
+            <button onClick={()=>send()} disabled={loading||!input.trim()} style={{
+              background:loading||!input.trim()?B.panel:B.blue,
+              border:"none",borderRadius:"50%",width:34,height:34,flexShrink:0,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              cursor:loading||!input.trim()?"not-allowed":"pointer"}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={loading||!input.trim()?B.gray3:B.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
+          <div style={{fontSize:10,color:B.gray4,fontFamily:"'Courier New',monospace",
+            padding:"6px 4px 0",letterSpacing:"0.03em",textAlign:"center"}}>
+            FOR INFORMATIONAL PURPOSES ONLY. NOT FINANCIAL ADVICE.
+          </div>
         </div>
-        <div style={{fontSize:10,color:B.gray4,fontFamily:"'Courier New',monospace",
-          padding:"6px 4px 0",letterSpacing:"0.03em",textAlign:"center"}}>
-          FOR INFORMATIONAL PURPOSES ONLY. NOT FINANCIAL ADVICE.
-        </div>
-      </div>
+      )}
     </div>
   );
 }
