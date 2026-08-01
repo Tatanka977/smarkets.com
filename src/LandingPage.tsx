@@ -228,8 +228,9 @@ export default function LandingPage() {
           <div className="footer-copy">© 2026 Strategic Markets. All rights reserved.</div>
 
           <div className="footer-links">
-            <a href="/disclaimer">Privacy</a>
-            <a href="/disclaimer">Terms</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/disclaimer">Disclaimer</a>
             <a href="mailto:info@s-markets.com">Contact</a>
             <a href="mailto:support@s-markets.com">Support</a>
           </div>

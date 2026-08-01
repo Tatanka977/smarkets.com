@@ -154,8 +154,8 @@ function DisclaimerPage() {
             Market data is provided by Finnhub.io, Yahoo Finance and other public
             sources and may be delayed or inaccurate. User sessions and
             portfolio settings are stored on Supabase (EU/US-hosted). For
-            details on personal data processing please refer to the Privacy
-            Policy (in preparation).
+            details on personal data processing please refer to the{" "}
+            <Link to="/privacy" style={{ color: B.blue }}>Privacy Policy</Link>.
           </Section>
 
           <Section num="6" title="Generative AI">
@@ -179,6 +179,19 @@ function DisclaimerPage() {
             under the exclusive jurisdiction of the consumer forum where
             applicable, or the Court of Milan on a residual basis.
           </Section>
+
+          <div style={{
+            background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12,
+            padding: "14px 16px", color: B.gray2, fontSize: 12, lineHeight: 1.7, marginBottom: 12,
+          }}>
+            <div style={{ color: B.blue, fontWeight: 700, marginBottom: 6, fontSize: 12, letterSpacing: "0.08em" }}>
+              RELATED
+            </div>
+            See also the <Link to="/privacy" style={{ color: B.blue }}>Privacy Policy</Link>{" "}
+            for how we handle your personal data, and the{" "}
+            <Link to="/terms" style={{ color: B.blue }}>Terms of Service</Link>{" "}
+            for the terms governing your use of the platform itself.
+          </div>
 
           <div style={{
             background: B.panel, border: `1px solid ${B.blue}`, borderRadius: 12,
