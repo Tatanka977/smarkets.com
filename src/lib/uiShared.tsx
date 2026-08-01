@@ -66,6 +66,36 @@ export const groupBySectorLookThrough = (holdings, total) => {
   });
   return Object.entries(m).map(([name,value])=>({name,value,pct:+(value/total*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
 };
+
+// Single-stock exposure with ETF look-through — same idea as
+// groupBySectorLookThrough above, but keyed by underlying ticker instead
+// of sector: a large ETF position isn't itself "single name risk", since
+// underneath it's a basket of stocks — what matters is how concentrated
+// YOUR effective exposure to any one company is once you add up direct
+// stock holdings AND each fund's slice of that same company. A holding
+// with real constituent-weighting data (asset.holdingWeights, fetched
+// from Yahoo's topHoldings module) splits its value fractionally across
+// the underlying tickers it actually holds; a plain stock/REIT (or a fund
+// Yahoo has no holdings breakdown for) contributes its full value to its
+// own ticker, same as before. Note Yahoo only ever returns a fund's top
+// ~10 constituents, so this can under-count — never over-count — a
+// stock's true exposure through funds outside their top 10.
+export const computeSingleNameExposure = (holdings, total) => {
+  const m = {};
+  holdings.forEach(h => {
+    const weights = h.asset.holdingWeights;
+    if (weights && Object.keys(weights).length) {
+      Object.entries(weights).forEach(([ticker, w]) => {
+        m[ticker] = (m[ticker]||0) + h.value * w;
+      });
+    } else {
+      const k = h.asset.ticker || h.asset.symbol || "OTHER";
+      m[k] = (m[k]||0) + h.value;
+    }
+  });
+  return Object.entries(m).map(([ticker,value])=>({ticker,value,pct:+(value/total*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
+};
+
 export const pMet = (hs) => {
   if (!hs.length) return null;
   const total = hs.reduce((s,h)=>s+h.value,0);
@@ -129,13 +159,18 @@ export function computeAlerts(holdings:any[], m:any) {
   const alerts: {sev:"HIGH"|"MED"|"LOW"|"OK", title:string, detail:string, metric:string}[] = [];
   if (!holdings.length) return alerts;
 
-  // 1. Single-position concentration
-  const maxWeight = Math.max(...holdings.map((h:any) => (h.value / m.total) * 100));
-  const topPos = holdings.find((h:any) => (h.value / m.total) * 100 === maxWeight);
+  // 1. Single-name concentration, with ETF look-through (see
+  // computeSingleNameExposure): a large ETF position isn't itself
+  // single-name risk — it's a basket of stocks — so this looks through
+  // each fund's own constituent weights and adds them to any direct stock
+  // holdings of the same company before flagging the largest true
+  // single-company exposure.
+  const topSingleName = computeSingleNameExposure(holdings, m.total)[0];
+  const maxWeight = topSingleName?.pct ?? 0;
   if (maxWeight > 40) alerts.push({sev:"HIGH", title:"SINGLE-NAME CONCENTRATION", metric:`${maxWeight.toFixed(1)}%`,
-    detail:`${topPos?.asset.ticker} exceeds 40% of portfolio. Consider diversifying — a single-name loss could severely impact total return.`});
+    detail:`${topSingleName?.ticker} exceeds 40% of portfolio. Consider diversifying — a single-name loss could severely impact total return.`});
   else if (maxWeight > 25) alerts.push({sev:"MED", title:"SINGLE-NAME EXPOSURE", metric:`${maxWeight.toFixed(1)}%`,
-    detail:`${topPos?.asset.ticker} represents >25% of portfolio. Moderate concentration risk.`});
+    detail:`${topSingleName?.ticker} represents >25% of portfolio. Moderate concentration risk.`});
 
   // 2. Sector concentration — look-through (see groupBySectorLookThrough):
   // stocks/REITs contribute their one sector directly; ETFs with real

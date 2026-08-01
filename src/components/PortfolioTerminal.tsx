@@ -2942,7 +2942,7 @@ export default function PortfolioTerminal() {
     const missing = holdingsRef.current.filter((h: any) => {
       const a = h.asset;
       if (!a.category || !a.geo) return true;
-      if (a.category === "ETF") return !a.sectorWeights;
+      if (a.category === "ETF") return !a.sectorWeights || !a.holdingWeights;
       return !NON_EQUITY_CATS.includes(a.category) && !a.sector;
     });
     if (!missing.length) return;
@@ -2963,6 +2963,7 @@ export default function PortfolioTerminal() {
           sector: h.asset.sector || found.sector,
           industry: h.asset.industry || found.industry,
           sectorWeights: h.asset.sectorWeights || found.sectorWeights,
+          holdingWeights: h.asset.holdingWeights || found.holdingWeights,
         } };
       }));
     })();

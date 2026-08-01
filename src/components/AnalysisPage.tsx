@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Legend } from "recharts";
 import {
-  B, fmt, fmtM, pCol, pSign, groupBy, groupBySectorLookThrough, pMet, PIE_COLS,
+  B, fmt, fmtM, pCol, pSign, groupBy, groupBySectorLookThrough, computeSingleNameExposure, pMet, PIE_COLS,
   BPanel, FKey, computeAlerts, computeRiskScore, SEV_STYLE, computeCagr,
 } from "@/lib/uiShared";
 import { aiChatAsUser } from "@/lib/ai.functions";
@@ -1032,8 +1032,16 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
         )}
 
         {sub === "risk" && (() => {
-          const topH = topHoldings[0];
-          const topHPct = topH ? (topH.value/m.total)*100 : 0;
+          // Single-name risk with ETF look-through (see computeSingleNameExposure
+          // in uiShared.tsx): a big ETF position isn't itself concentrated in one
+          // stock — it's a basket — so this adds direct stock holdings to each
+          // fund's own slice of the same underlying company before picking the
+          // largest true single-company exposure, instead of just taking
+          // whichever one holding (possibly a diversified ETF) has the highest
+          // portfolio weight.
+          const singleNameExposure = computeSingleNameExposure(holdings, m.total);
+          const topSingleName = singleNameExposure[0];
+          const topHPct = topSingleName?.pct ?? 0;
           // Sector concentration: look-through. Stocks/REITs contribute their
           // one sector directly; ETFs with real sector-weighting data (see
           // fetchYahooProfile in finance.functions.ts) split fractionally
@@ -1068,7 +1076,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
             : null;
 
           const drivers = [
-            { l:"SINGLE NAME RISK", v:`${topHPct.toFixed(1)}%`, sub:topH?.asset.ticker||"—", sev: topHPct>40?"HIGH":topHPct>25?"MED":"OK" },
+            { l:"SINGLE NAME RISK", v:`${topHPct.toFixed(1)}%`, sub:topSingleName?.ticker||"—", sev: topHPct>40?"HIGH":topHPct>25?"MED":"OK" },
             { l:"SECTOR RISK", v:`${topSectorPct}%`, sub:sDRisk[0]?.name||"—", sev: topSectorPct>50?"HIGH":topSectorPct>35?"MED":"OK" },
             { l:"DIVERSIFICATION RISK", v:`${nHoldings}`, sub:"Positions", sev: nHoldings<5?"HIGH":nHoldings<10?"MED":"OK" },
             { l:"GEOGRAPHIC RISK", v:`${topGeoPct}%`, sub:gD[0]?.name||"—", sev: topGeoPct>80?"MED":"OK" },
@@ -1085,8 +1093,8 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           const hypSectorRiskHoldings = hypHoldings ? hypHoldings.filter((h:any) => !["BOND","COMMODITY","CRYPTO","FX","CASH"].includes(h.asset.category)) : null;
           const hypSDRisk = hypSectorRiskHoldings && hypM ? groupBySectorLookThrough(hypSectorRiskHoldings, hypM.total) : null;
           const hypGD = hypHoldings && hypM ? groupBy(hypHoldings, "geo", hypM.total) : null;
-          const hypTopH = hypHoldings ? [...hypHoldings].sort((a:any,b:any) => b.value - a.value)[0] : null;
-          const hypTopHPct = hypM && hypTopH ? (hypTopH.value / hypM.total) * 100 : null;
+          // Same look-through single-name exposure as topHPct above.
+          const hypTopHPct = hypM && hypHoldings ? (computeSingleNameExposure(hypHoldings, hypM.total)[0]?.pct ?? 0) : null;
           const hypTopSectorPct = hypSDRisk?.[0]?.pct ?? null;
           const hypTopGeoPct = hypGD?.[0]?.pct ?? null;
           const hypNHoldings = hypHoldings ? hypHoldings.length : null;

@@ -46,6 +46,12 @@ export interface Quote {
   // for individual stocks/REITs (they use `sector` directly instead) and
   // for funds Yahoo has no holdings breakdown for.
   sectorWeights?: Record<string, number>;
+  // ETF/fund look-through SINGLE-STOCK breakdown (fraction of the fund's
+  // total value per underlying ticker, e.g. { AAPL: 0.0721, MSFT: 0.0654 }) —
+  // same topHoldings module as sectorWeights, but Yahoo only ever returns
+  // the fund's top ~10 holdings, not the full constituent list, so this
+  // under-counts a stock that's in the fund but outside its top 10.
+  holdingWeights?: Record<string, number>;
 }
 
 const BASE = "https://finnhub.io/api/v1";
@@ -735,10 +741,15 @@ interface YahooProfileResult {
     result?: Array<{
       assetProfile?: { sector?: string; industry?: string };
       // Equity-fund holdings breakdown — present for ETFs/mutual funds,
-      // absent for individual stocks. Each entry is `{ [sectorKey]: { raw } }`,
-      // already expressed as a fraction of the fund's TOTAL value (not just
-      // its equity sleeve), so no re-normalization is needed downstream.
-      topHoldings?: { sectorWeightings?: Array<Record<string, { raw?: number }>> };
+      // absent for individual stocks. Each sectorWeightings entry is
+      // `{ [sectorKey]: { raw } }`, already expressed as a fraction of the
+      // fund's TOTAL value (not just its equity sleeve), so no
+      // re-normalization is needed downstream. `holdings` is the fund's
+      // top ~10 individual constituents with their own weight fraction.
+      topHoldings?: {
+        sectorWeightings?: Array<Record<string, { raw?: number }>>;
+        holdings?: Array<{ symbol?: string; holdingPercent?: { raw?: number } }>;
+      };
     }>;
   };
 }
@@ -748,7 +759,7 @@ interface YahooProfileResult {
 // one quoteSummary call: a stock gets `sector`/`industry` same as before,
 // and a fund additionally gets `sectorWeights` — its real look-through
 // sector breakdown — instead of no sector data at all.
-async function fetchYahooProfile(symbol: string): Promise<{ sector?: string; industry?: string; sectorWeights?: Record<string, number> } | null> {
+async function fetchYahooProfile(symbol: string): Promise<{ sector?: string; industry?: string; sectorWeights?: Record<string, number>; holdingWeights?: Record<string, number> } | null> {
   const auth = await getYahooCrumb();
   if (!auth) return null;
   const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=assetProfile,topHoldings&crumb=${encodeURIComponent(auth.crumb)}`;
@@ -762,7 +773,7 @@ async function fetchYahooProfile(symbol: string): Promise<{ sector?: string; ind
     const result = j.quoteSummary?.result?.[0];
     if (!result) return null;
 
-    const out: { sector?: string; industry?: string; sectorWeights?: Record<string, number> } = {};
+    const out: { sector?: string; industry?: string; sectorWeights?: Record<string, number>; holdingWeights?: Record<string, number> } = {};
     if (result.assetProfile?.sector) {
       out.sector = result.assetProfile.sector;
       out.industry = result.assetProfile.industry || result.assetProfile.sector;
@@ -781,7 +792,16 @@ async function fetchYahooProfile(symbol: string): Promise<{ sector?: string; ind
       }
       if (Object.keys(weights).length) out.sectorWeights = weights;
     }
-    return (out.sector || out.sectorWeights) ? out : null;
+    const constituents = result.topHoldings?.holdings;
+    if (constituents?.length) {
+      const holdingWeights: Record<string, number> = {};
+      for (const h of constituents) {
+        const raw = h.holdingPercent?.raw;
+        if (h.symbol && typeof raw === "number" && raw > 0) holdingWeights[h.symbol] = raw;
+      }
+      if (Object.keys(holdingWeights).length) out.holdingWeights = holdingWeights;
+    }
+    return (out.sector || out.sectorWeights || out.holdingWeights) ? out : null;
   } catch (e) {
     console.warn("[Yahoo profile]", symbol, (e as Error).message);
     return null;
@@ -802,6 +822,10 @@ async function applyYahooProfile(q: Quote, symbol: string): Promise<void> {
   }
   if (profile.sectorWeights) {
     q.sectorWeights = profile.sectorWeights;
+    if (!q.category) q.category = "ETF";
+  }
+  if (profile.holdingWeights) {
+    q.holdingWeights = profile.holdingWeights;
     if (!q.category) q.category = "ETF";
   }
 }
