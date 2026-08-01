@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Legend } from "recharts";
 import {
   B, fmt, fmtM, pCol, pSign, groupBy, groupBySectorLookThrough, computeSingleNameExposure, pMet, PIE_COLS,
-  BPanel, FKey, computeAlerts, computeRiskScore, SEV_STYLE, computeCagr,
+  BPanel, FKey, computeAlerts, computeRiskScore, SEV_STYLE,
 } from "@/lib/uiShared";
 import { aiChatAsUser } from "@/lib/ai.functions";
 import { getInvestorProfile } from "@/lib/profile.functions";
@@ -401,253 +401,6 @@ function PerformanceTab({ holdings, m }: any) {
   );
 }
 
-function pearsonCorr(a: (number|null)[], b: (number|null)[]) {
-  const pairs: [number, number][] = [];
-  for (let i = 0; i < a.length; i++) if (a[i] != null && b[i] != null) pairs.push([a[i] as number, b[i] as number]);
-  const n = pairs.length;
-  if (n < 2) return 0;
-  const meanA = pairs.reduce((s, p) => s + p[0], 0) / n;
-  const meanB = pairs.reduce((s, p) => s + p[1], 0) / n;
-  let cov = 0, varA = 0, varB = 0;
-  for (const [x, y] of pairs) { cov += (x - meanA) * (y - meanB); varA += (x - meanA) ** 2; varB += (y - meanB) ** 2; }
-  const denom = Math.sqrt(varA * varB);
-  return denom > 0 ? cov / denom : 0;
-}
-
-function corrCellStyle(v: number) {
-  const t = Math.max(-1, Math.min(1, v));
-  const bg = t >= 0 ? `rgba(0,200,120,${(t * 0.55).toFixed(2)})` : `rgba(255,51,51,${(-t * 0.55).toFixed(2)})`;
-  return { background: bg };
-}
-
-const CORR_MAX_HOLDINGS = 8;
-
-function CorrelationTab({ holdings }: any) {
-  const top = useMemo(() => [...holdings].sort((a: any, b: any) => b.value - a.value).slice(0, CORR_MAX_HOLDINGS), [holdings]);
-  const topKey = useMemo(() => top.map((h: any) => h.asset.ticker).join("|"), [top]);
-  const [matrix, setMatrix] = useState<number[][] | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let alive = true;
-    if (top.length < 2) { setLoading(false); setMatrix(null); return; }
-    setLoading(true);
-    Promise.all(top.map((h: any) => srvPriceHistory({ data: { symbol: h.asset.ticker, range: "1y", interval: "1d" } })))
-      .then((seriesList: any) => {
-        if (!alive) return;
-        const tsSets = seriesList.map((s: any) => new Set((s || []).map((p: any) => p.t)));
-        const common = tsSets.length ? [...tsSets[0]].filter(t => tsSets.every((set: Set<number>) => set.has(t))).sort((a: number, b: number) => a - b) : [];
-        const closesByHolding = seriesList.map((s: any) => {
-          const map = new Map((s || []).map((p: any) => [p.t, p.close]));
-          return common.map(t => map.get(t) ?? null);
-        });
-        const returns = closesByHolding.map((closes: any[]) => {
-          const r: (number|null)[] = [];
-          for (let i = 1; i < closes.length; i++) {
-            r.push(closes[i] != null && closes[i-1] != null && closes[i-1] !== 0 ? (closes[i] - closes[i-1]) / closes[i-1] : null);
-          }
-          return r;
-        });
-        const n = top.length;
-        const m2: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
-        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) m2[i][j] = i === j ? 1 : pearsonCorr(returns[i], returns[j]);
-        setMatrix(m2);
-        setLoading(false);
-      }).catch(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topKey]);
-
-  if (!holdings.length || holdings.length < 2) return (
-    <div style={{ padding: 30, textAlign: "center", color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
-      Add at least 2 positions to see correlation.
-    </div>
-  );
-
-  return (
-    <BPanel title="CORRELATION MATRIX (1Y DAILY RETURNS)">
-      <div style={{ padding: "12px 14px" }}>
-        {holdings.length > CORR_MAX_HOLDINGS && (
-          <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 10 }}>
-            Showing top {CORR_MAX_HOLDINGS} of {holdings.length} holdings by weight.
-          </div>
-        )}
-        {loading ? (
-          <div style={{ textAlign: "center", color: B.gray3, fontFamily: FONT, fontSize: 13, padding: 20 }}>LOADING…</div>
-        ) : !matrix ? (
-          <div style={{ textAlign: "center", color: B.gray3, fontFamily: FONT, fontSize: 13, padding: 20 }}>Not enough price history yet.</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", fontFamily: FONT, fontSize: 11 }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: 4 }} />
-                  {top.map((h: any) => (
-                    <th key={h.asset.ticker} style={{ padding: 4, color: B.blue, fontWeight: 700, minWidth: 44 }}>{h.asset.ticker}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {top.map((h: any, i: number) => (
-                  <tr key={h.asset.ticker}>
-                    <td style={{ padding: 4, color: B.blue, fontWeight: 700, textAlign: "right" }}>{h.asset.ticker}</td>
-                    {top.map((_: any, j: number) => (
-                      <td key={j} style={{ padding: "6px 8px", textAlign: "center", color: B.gray1, ...corrCellStyle(matrix[i][j]) }}>
-                        {matrix[i][j].toFixed(2)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, marginTop: 10 }}>
-          +1 = move together · 0 = unrelated · −1 = move opposite. Lower correlation across holdings generally means more diversification benefit.
-        </div>
-      </div>
-    </BPanel>
-  );
-}
-
-function BacktestTab() {
-  const [ticker, setTicker] = useState("");
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const suggestDebounce = useRef<any>(null);
-  const [amount, setAmount] = useState("5000");
-  const oneYearAgo = new Date(Date.now() - 365*86400000).toISOString().slice(0,10);
-  const [startDate, setStartDate] = useState(oneYearAgo);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [result, setResult] = useState<any>(null);
-  const todayYmd = new Date().toISOString().slice(0,10);
-
-  const handleTickerInput = (v: string) => {
-    setTicker(v.toUpperCase());
-    setResult(null);
-    clearTimeout(suggestDebounce.current);
-    if (!v.trim()) { setSuggestions([]); setShowSuggestions(false); return; }
-    suggestDebounce.current = setTimeout(async () => {
-      try {
-        const res = await srvSearch({ data: { q: v } });
-        setSuggestions(res || []);
-        setShowSuggestions(true);
-      } catch { setSuggestions([]); }
-    }, 350);
-  };
-
-  const run = async () => {
-    const sym = ticker.trim().toUpperCase();
-    if (!sym || !startDate) return;
-    setBusy(true); setError(""); setResult(null);
-    try {
-      const series = await srvPriceHistory({ data: { symbol: sym, range: "max", interval: "1d" } });
-      if (!series || !series.length) { setError("No historical data available for this ticker."); return; }
-      const startT = new Date(startDate).getTime();
-      const fromStart = series.filter((p: any) => p.t >= startT);
-      if (!fromStart.length) { setError("No trading data on or after this date."); return; }
-      const entryPrice = fromStart[0].close;
-      const amt = parseFloat(amount) || 0;
-      if (amt <= 0 || entryPrice <= 0) { setError("Enter a valid amount."); return; }
-      const shares = amt / entryPrice;
-      const chartData = fromStart.map((p: any) => ({
-        t: p.t,
-        label: new Date(p.t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" }),
-        value: shares * p.close,
-      }));
-      const finalValue = chartData[chartData.length-1].value;
-      const days = (fromStart[fromStart.length-1].t - fromStart[0].t) / 86400000;
-      const cagr = computeCagr(amt, finalValue, days);
-      const totalReturnPct = ((finalValue - amt) / amt) * 100;
-      setResult({
-        chartData, finalValue, shares, entryPrice, cagr, totalReturnPct,
-        actualStartDate: new Date(fromStart[0].t).toISOString().slice(0,10),
-      });
-    } catch (e: any) {
-      setError(e.message || "Lookup failed.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <BPanel title="HISTORICAL BACKTEST">
-      <div style={{ padding: "12px 14px" }}>
-        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginBottom: 10, lineHeight: 1.5 }}>
-          "What if I'd invested $X on date Y?" — a direct historical replay using real closing prices, not a forecast.
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-          <div style={{ position: "relative", flex: "1 1 140px" }}>
-            <input value={ticker} onChange={e => handleTickerInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && run()}
-              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-              placeholder="TICKER" style={{ width: "100%", background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, padding: "6px 8px", fontFamily: FONT, fontSize: 12, borderRadius: 6 }} />
-            {showSuggestions && suggestions.length > 0 && (
-              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20,
-                background: B.panel, border: `1px solid ${B.border}`, borderRadius: 6, marginTop: 2, maxHeight: 200, overflowY: "auto" }}>
-                {suggestions.slice(0, 8).map((r: any) => (
-                  <div key={r.symbol} onClick={() => { setTicker(r.symbol); setShowSuggestions(false); setSuggestions([]); }} style={{
-                    padding: "6px 10px", cursor: "pointer", fontFamily: FONT, fontSize: 12, borderBottom: `1px solid ${B.border}`,
-                  }}>
-                    <span style={{ color: B.blue, fontWeight: 700 }}>{r.symbol}</span>
-                    <span style={{ color: B.gray3, marginLeft: 6 }}>{r.shortName}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <input value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && run()}
-            type="number" placeholder="AMOUNT ($)" style={{ width: 110, background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, padding: "6px 8px", fontFamily: FONT, fontSize: 12, borderRadius: 6 }} />
-          <input value={startDate} onChange={e => setStartDate(e.target.value)} type="date" max={todayYmd}
-            style={{ background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, padding: "6px 8px", fontFamily: FONT, fontSize: 12, borderRadius: 6 }} />
-          <button onClick={run} disabled={busy || !ticker.trim()} style={{
-            background: B.blue, border: "none", color: B.white, padding: "6px 14px", borderRadius: 6,
-            cursor: busy ? "wait" : "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700,
-          }}>{busy ? "..." : "RUN BACKTEST"}</button>
-        </div>
-
-        {error && <div style={{ fontSize: 11, color: B.red, fontFamily: FONT, marginBottom: 8 }}>{error}</div>}
-
-        {result && (
-          <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px,1fr))", gap: 10, marginBottom: 10 }}>
-              <div>
-                <div style={{ fontSize: 9, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>Final Value</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>${fmtM(result.finalValue)}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 9, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>Total Return</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: pCol(result.totalReturnPct), fontFamily: FONT }}>{pSign(fmt(result.totalReturnPct,1))}%</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 9, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>CAGR</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: pCol(result.cagr), fontFamily: FONT }}>{fmt(result.cagr,1)}%</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 9, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>Entry</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{fmt(result.shares,4)} sh @ {result.entryPrice.toFixed(2)}</div>
-                <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT }}>{result.actualStartDate}</div>
-              </div>
-            </div>
-            <div style={{ height: 220 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={result.chartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: B.gray3 }} minTickGap={50} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: B.gray3 }} tickFormatter={(v) => `$${fmtM(v)}`} axisLine={false} tickLine={false} width={50} />
-                  <Tooltip formatter={(v: any) => `$${fmtM(v)}`} contentStyle={{ fontFamily: FONT, fontSize: 12, borderRadius: 8 }} />
-                  <Line type="monotone" dataKey="value" stroke={B.blue} strokeWidth={2.5} dot={false} name="Hypothetical Value" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </>
-        )}
-      </div>
-    </BPanel>
-  );
-}
-
 // ── What-If comparison table: small stroke-style icons (same convention
 // as NAV_ICONS in PortfolioTerminal.tsx / the icon set in CommunityPage.tsx),
 // a proportional horizontal bar, and the row renderer used for every metric.
@@ -791,7 +544,7 @@ function WhatIfTableRow({ row }: { row: WhatIfRowSpec }) {
 export default function AnalysisPage({ holdings, setPage }: any) {
   const m = useMemo(() => pMet(holdings), [holdings]);
   const isMobile = useIsMobile();
-  const [sub, setSub] = useState<"alloc" | "risk" | "perf" | "corr" | "backtest">("alloc");
+  const [sub, setSub] = useState<"alloc" | "risk" | "perf">("alloc");
   const [aiExplain, setAiExplain] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [whatIfTicker, setWhatIfTicker] = useState("");
@@ -955,7 +708,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ display: "flex", gap: 2, padding: "3px 4px", borderBottom: `1px solid ${B.border}`, background: B.panel2, flexShrink: 0 }}>
-        {[{ id: "alloc", l: "ALLOCATION" }, { id: "risk", l: `RISK${highCount+medCount>0?` (${highCount+medCount})`:""}` }, { id: "perf", l: "PERFORMANCE" }, { id: "corr", l: "CORRELATION" }, { id: "backtest", l: "BACKTEST" }].map(t => (
+        {[{ id: "alloc", l: "ALLOCATION" }, { id: "risk", l: `RISK${highCount+medCount>0?` (${highCount+medCount})`:""}` }, { id: "perf", l: "PERFORMANCE" }].map(t => (
           <FKey key={t.id} label={t.l} active={sub === t.id} onClick={() => setSub(t.id as any)} />
         ))}
       </div>
@@ -1427,8 +1180,6 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
         })()}
 
         {sub === "perf" && <PerformanceTab holdings={holdings} m={m}/>}
-        {sub === "corr" && <CorrelationTab holdings={holdings}/>}
-        {sub === "backtest" && <BacktestTab/>}
       </div>
       {showShareModal && (
         <ShareToCommunityModal
