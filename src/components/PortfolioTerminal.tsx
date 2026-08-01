@@ -670,6 +670,23 @@ function PricePerformancePanel({symbol, currency}:any) {
     </div>
   );
 }
+// The detail page's overview panel used to always say "Company Overview" —
+// wrong for anything that isn't an equity/REIT, since an ETF is a basket
+// (not a company) and bonds/commodities/crypto/FX have no company profile
+// at all. Label + fallback copy (shown only when Yahoo has no real
+// longBusinessSummary/summaryProfile text for this symbol) both key off
+// asset.category so each security type gets an accurate description.
+const OVERVIEW_COPY: Record<string, { label: string; fallback: string }> = {
+  STOCK:     { label: "COMPANY OVERVIEW",    fallback: "Company description isn't available yet — this needs a data source we haven't connected." },
+  REIT:      { label: "COMPANY OVERVIEW",    fallback: "Company description isn't available yet — this needs a data source we haven't connected." },
+  ETF:       { label: "FUND OVERVIEW",       fallback: "Fund description isn't available yet — an ETF is a basket of underlying holdings, not a company." },
+  BOND:      { label: "BOND OVERVIEW",       fallback: "This is a fixed-income instrument, not a company — no business description applies." },
+  COMMODITY: { label: "COMMODITY OVERVIEW",  fallback: "This is a physically-traded/referenced commodity, not a company — no business description applies." },
+  CRYPTO:    { label: "ASSET OVERVIEW",      fallback: "This is a decentralized digital asset, not a company — no business description applies." },
+  FX:        { label: "CURRENCY OVERVIEW",   fallback: "This is a currency pair, not a company — no business description applies." },
+  CASH:      { label: "OVERVIEW",            fallback: "Cash position — no business description applies." },
+};
+
 function SearchPage({onAdd,portfolio,onWatchlistChange}:any) {
   const isMobile = useIsMobile();
   const [q,setQ] = useState<string>("");
@@ -877,9 +894,6 @@ useEffect(()=>{
           </div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button onClick={()=>document.getElementById("add-position-panel")?.scrollIntoView({behavior:"smooth"})} style={{
-            background:B.blue,border:"none",color:B.white,padding:"8px 16px",borderRadius:8,cursor:"pointer",
-            fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700}}>+ ADD TO PORTFOLIO</button>
           <button onClick={addWatch} disabled={watchBusy} style={{
             background:"none",border:`1px solid ${B.border}`,color:B.blue,padding:"8px 16px",borderRadius:8,
             cursor:watchBusy?"wait":"pointer",fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700}}>
@@ -944,13 +958,13 @@ useEffect(()=>{
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1.2fr",gap:14}}>
-        {/* Company overview */}
+        {/* Company/fund/instrument overview — copy varies by category, see OVERVIEW_COPY */}
         <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
           <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
-            COMPANY OVERVIEW
+            {(OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).label}
           </div>
-          <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",lineHeight:1.6}}>
-            Company description isn't available yet — this needs a data source we haven't connected.
+          <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",lineHeight:1.6,maxHeight:260,overflowY:"auto"}}>
+            {detail.description || (OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).fallback}
           </div>
         </div>
 

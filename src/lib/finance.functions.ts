@@ -52,6 +52,10 @@ export interface Quote {
   // the fund's top ~10 holdings, not the full constituent list, so this
   // under-counts a stock that's in the fund but outside its top 10.
   holdingWeights?: Record<string, number>;
+  // Long-form description — a company's business summary for stocks/REITs,
+  // or a fund's stated objective/strategy for ETFs. Absent for categories
+  // Yahoo has no profile text for at all (bonds, commodities, crypto, FX).
+  description?: string;
 }
 
 const BASE = "https://finnhub.io/api/v1";
@@ -739,7 +743,12 @@ const YAHOO_SECTOR_LABELS: Record<string, string> = {
 interface YahooProfileResult {
   quoteSummary?: {
     result?: Array<{
-      assetProfile?: { sector?: string; industry?: string };
+      // longBusinessSummary is populated here for individual equities;
+      // funds/ETFs instead get it (or nothing at all) under summaryProfile
+      // below — a symbol only ever has one of the two, so the caller tries
+      // assetProfile first and falls back to summaryProfile.
+      assetProfile?: { sector?: string; industry?: string; longBusinessSummary?: string };
+      summaryProfile?: { longBusinessSummary?: string };
       // Equity-fund holdings breakdown — present for ETFs/mutual funds,
       // absent for individual stocks. Each sectorWeightings entry is
       // `{ [sectorKey]: { raw } }`, already expressed as a fraction of the
@@ -759,10 +768,10 @@ interface YahooProfileResult {
 // one quoteSummary call: a stock gets `sector`/`industry` same as before,
 // and a fund additionally gets `sectorWeights` — its real look-through
 // sector breakdown — instead of no sector data at all.
-async function fetchYahooProfile(symbol: string): Promise<{ sector?: string; industry?: string; sectorWeights?: Record<string, number>; holdingWeights?: Record<string, number> } | null> {
+async function fetchYahooProfile(symbol: string): Promise<{ sector?: string; industry?: string; sectorWeights?: Record<string, number>; holdingWeights?: Record<string, number>; description?: string } | null> {
   const auth = await getYahooCrumb();
   if (!auth) return null;
-  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=assetProfile,topHoldings&crumb=${encodeURIComponent(auth.crumb)}`;
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=assetProfile,topHoldings,summaryProfile&crumb=${encodeURIComponent(auth.crumb)}`;
   try {
     const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 (StrategicMarkets)", cookie: auth.cookie } });
     if (!r.ok) {
@@ -773,11 +782,13 @@ async function fetchYahooProfile(symbol: string): Promise<{ sector?: string; ind
     const result = j.quoteSummary?.result?.[0];
     if (!result) return null;
 
-    const out: { sector?: string; industry?: string; sectorWeights?: Record<string, number>; holdingWeights?: Record<string, number> } = {};
+    const out: { sector?: string; industry?: string; sectorWeights?: Record<string, number>; holdingWeights?: Record<string, number>; description?: string } = {};
     if (result.assetProfile?.sector) {
       out.sector = result.assetProfile.sector;
       out.industry = result.assetProfile.industry || result.assetProfile.sector;
     }
+    const description = result.assetProfile?.longBusinessSummary || result.summaryProfile?.longBusinessSummary;
+    if (description) out.description = description;
     const weightings = result.topHoldings?.sectorWeightings;
     if (weightings?.length) {
       const weights: Record<string, number> = {};
@@ -801,7 +812,7 @@ async function fetchYahooProfile(symbol: string): Promise<{ sector?: string; ind
       }
       if (Object.keys(holdingWeights).length) out.holdingWeights = holdingWeights;
     }
-    return (out.sector || out.sectorWeights || out.holdingWeights) ? out : null;
+    return (out.sector || out.sectorWeights || out.holdingWeights || out.description) ? out : null;
   } catch (e) {
     console.warn("[Yahoo profile]", symbol, (e as Error).message);
     return null;
@@ -828,6 +839,7 @@ async function applyYahooProfile(q: Quote, symbol: string): Promise<void> {
     q.holdingWeights = profile.holdingWeights;
     if (!q.category) q.category = "ETF";
   }
+  if (profile.description) q.description = profile.description;
 }
 /** Convert 'YYYY-MM-DD' → unix seconds at 00:00 UTC. */
 function ymdToUnix(ymd: string): number {
