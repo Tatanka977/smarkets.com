@@ -44,7 +44,7 @@ function TerminalWithOnboarding() {
 
   return (
     <>
-      <PortfolioTerminal />
+      <PortfolioTerminal onRetakeProfile={() => setShowOnboarding(true)} />
       {checked && showOnboarding && (
         <OnboardingQuestionnaire onDone={() => setShowOnboarding(false)} />
       )}

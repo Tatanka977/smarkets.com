@@ -405,7 +405,7 @@ const SIDEBAR_GROUPS = [
   ],
 ];
 
-function SidebarNav({page,setPage,badge}:any) {
+function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
   const { user } = useUser();
   const itemStyle:any = {
     display:"flex",alignItems:"center",gap:10,padding:"9px 12px",
@@ -457,6 +457,18 @@ function SidebarNav({page,setPage,badge}:any) {
             })}
           </div>
         ))}
+        {onRetakeProfile && user && (
+          <div style={{borderTop:`1px solid ${B.border}`,marginTop:8,paddingTop:8}}>
+            <button onClick={onRetakeProfile} style={{
+              display:"flex",alignItems:"center",gap:8,padding:"9px 12px",
+              background:"transparent",border:`1px solid ${B.border}`,borderRadius:4,
+              color:B.gray2,cursor:"pointer",textAlign:"left",width:"100%",boxSizing:"border-box",
+              fontFamily:"'Courier New',monospace",fontSize:12,fontWeight:700,letterSpacing:"0.03em",
+            }}>
+              ↻ Retake Investor Profile
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2012,7 +2024,7 @@ async function buildSysPrompt(): Promise<string> {
   try {
     const p = await getInvestorProfile();
     if (p && (p.age_range || p.investment_goal)) {
-      profileText = `\nInvestor context (self-reported): age ${p.age_range||"N/A"}, goal ${p.investment_goal||"N/A"}, horizon ${p.time_horizon||"N/A"}, risk tolerance ${p.risk_tolerance||"N/A"}, experience ${p.experience_level||"N/A"}. When explaining risk or proposing hypothetical alternatives/scenarios, ACTIVELY shape which examples you illustrate around this context (e.g. a conservative or short-horizon profile should see risk-reduction-leaning educational examples; an aggressive or long-horizon profile should see growth-tilted ones; a beginner should get simpler explanations than an advanced one) — this changes WHICH educational scenarios are most relevant to show, never a reason to give a personalized recommendation.`;
+      profileText = `\nInvestor context (self-reported, use ONLY to tailor which educational concepts, examples, and depth of explanation are most relevant — NEVER as a basis for a specific recommendation): age ${p.age_range||"N/A"}, goal ${p.investment_goal||"N/A"}, horizon ${p.time_horizon||"N/A"}, risk tolerance ${p.risk_tolerance||"N/A"}, experience ${p.experience_level||"N/A"}, already investing ${p.has_started_investing||"N/A"}, current allocation mix ${p.current_allocation_mix||"N/A"}, interests ${p.interests||"N/A"}, management style ${p.management_style||"N/A"}, emergency fund separate from investments ${p.has_emergency_fund||"N/A"}, familiar with terms like volatility/Sharpe ratio ${p.familiar_with_metrics||"N/A"}. When explaining risk or proposing hypothetical alternatives/scenarios, ACTIVELY shape which examples you illustrate around this context (e.g. a conservative or short-horizon profile should see risk-reduction-leaning educational examples; an aggressive or long-horizon profile should see growth-tilted ones; a beginner should get simpler explanations than an advanced one) — this changes WHICH educational scenarios are most relevant to show, never a reason to give a personalized recommendation.`;
     }
   } catch {}
   return `You are STRATEGIC MARKETS AI, an EDUCATIONAL financial-markets terminal assistant.
@@ -2026,6 +2038,7 @@ async function buildSysPrompt(): Promise<string> {
   • "buy X" → "historically, allocations to X have shown..."
   • "you should reduce Y" → "from a quantitative diversification perspective, lowering exposure to Y would reduce HHI by..."
   • "this is a good ETF" → "this ETF exhibits characteristics such as..."
+- Never phrase things as "given your situation, you should..." — instead phrase as "for someone in a similar situation, this is often considered because...". Always keep clear that this is general education, not advice tailored to this person's full financial picture.
 - ALWAYS end every response with:
   "BOTTOM LINE: [educational summary]
    DISCLAIMER: For educational and informational purposes only. Not investment advice."
@@ -2852,7 +2865,7 @@ function highlightKeyword(text:string, tokens:string[]) {
   );
 }
 
-export default function PortfolioTerminal() {
+export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile?: () => void } = {}) {
   const [page,setPage]     = useState("home");
   const [holdings,setHoldings] = useState<any[]>([]);
   const [transactions,setTransactions] = useState<any[]>([]);
@@ -3232,7 +3245,7 @@ export default function PortfolioTerminal() {
         <>
           <TopBar time={time} setPage={setPage}/>
           <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"row"}}>
-            {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length}/>}
+            {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length} onRetakeProfile={onRetakeProfile}/>}
             <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column",minWidth:0}}>
               <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column"}}>
                 {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing}/>}

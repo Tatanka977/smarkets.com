@@ -727,7 +727,7 @@ function ProfilePage() {
                 </div>
               )}
               <div style={{ ...cardStyle, gap: 12 }}>
-                {INVESTOR_PROFILE_FIELDS.map((f) => (
+                {INVESTOR_PROFILE_FIELDS.filter((f) => !f.showIf || f.showIf(investor)).map((f) => (
                   <div key={f.key}>
                     <div style={{ ...labelStyle, marginBottom: 4 }}>{f.label}</div>
                     <select

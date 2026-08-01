@@ -205,6 +205,12 @@ export interface InvestorProfile {
   time_horizon?: string;
   risk_tolerance?: string;
   experience_level?: string;
+  has_started_investing?: string;
+  current_allocation_mix?: string;
+  interests?: string;
+  management_style?: string;
+  has_emergency_fund?: string;
+  familiar_with_metrics?: string;
   onboarding_skipped?: boolean;
 }
 
