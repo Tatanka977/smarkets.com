@@ -41,6 +41,112 @@ export type Database = {
         }
         Relationships: []
       }
+      lesson_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_published: boolean
+          order_index: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          order_index: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_published?: boolean
+          order_index?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      lesson_steps: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          order_index: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          order_index: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          order_index?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_steps_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lessons: {
+        Row: {
+          body: string
+          correct_option_index: number
+          created_at: string
+          id: string
+          is_published: boolean
+          options: Json
+          order_index: number
+          question: string
+          step_id: string
+          title: string
+        }
+        Insert: {
+          body: string
+          correct_option_index: number
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          options: Json
+          order_index: number
+          question: string
+          step_id: string
+          title: string
+        }
+        Update: {
+          body?: string
+          correct_option_index?: number
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          options?: Json
+          order_index?: number
+          question?: string
+          step_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portfolios: {
         Row: {
           created_at: string
@@ -91,6 +197,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      user_learn_streaks: {
+        Row: {
+          current_streak: number
+          last_activity_date: string | null
+          longest_streak: number
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number
+          last_activity_date?: string | null
+          longest_streak?: number
+          user_id: string
+        }
+        Update: {
+          current_streak?: number
+          last_activity_date?: string | null
+          longest_streak?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_lesson_progress: {
+        Row: {
+          completed_at: string
+          correct_on_first_try: boolean
+          lesson_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          correct_on_first_try: boolean
+          lesson_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          correct_on_first_try?: boolean
+          lesson_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       watchlist: {
         Row: {
