@@ -4,7 +4,13 @@ import { useTheme } from "@/hooks/useTheme";
 import { B } from "@/lib/uiShared";
 
 export const Route = createFileRoute("/disclaimer")({
-  head: () => ({ meta: [{ title: "Strategic Markets — Regulatory Notice" }] }),
+  head: () => ({
+    meta: [
+      { title: "Strategic Markets — Regulatory Notice" },
+      { name: "description", content: "Strategic Markets is an educational analytics platform, not a licensed financial advisor. Read our full regulatory notice on investment risk, MiFID II, and AI-generated content." },
+    ],
+    links: [{ rel: "canonical", href: "https://s-markets.com/disclaimer" }],
+  }),
   component: DisclaimerPage,
 });
 

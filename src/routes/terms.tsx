@@ -4,7 +4,13 @@ import { useTheme } from "@/hooks/useTheme";
 import { B } from "@/lib/uiShared";
 
 export const Route = createFileRoute("/terms")({
-  head: () => ({ meta: [{ title: "Strategic Markets — Terms of Service" }] }),
+  head: () => ({
+    meta: [
+      { title: "Strategic Markets — Terms of Service" },
+      { name: "description", content: "The terms governing your use of Strategic Markets — account rules, acceptable use, and how the platform's educational content and AI assistant may be used." },
+    ],
+    links: [{ rel: "canonical", href: "https://s-markets.com/terms" }],
+  }),
   component: TermsPage,
 });
 

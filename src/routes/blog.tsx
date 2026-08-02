@@ -13,6 +13,7 @@ export const Route = createFileRoute("/blog")({
       { title: "Strategic Markets — Blog" },
       { name: "description", content: "News, market commentary, and updates from Strategic Markets." },
     ],
+    links: [{ rel: "canonical", href: "https://s-markets.com/blog" }],
   }),
   component: BlogIndexPage,
 });

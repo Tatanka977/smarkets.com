@@ -4,7 +4,13 @@ import { useTheme } from "@/hooks/useTheme";
 import { B } from "@/lib/uiShared";
 
 export const Route = createFileRoute("/privacy")({
-  head: () => ({ meta: [{ title: "Strategic Markets — Privacy Policy" }] }),
+  head: () => ({
+    meta: [
+      { title: "Strategic Markets — Privacy Policy" },
+      { name: "description", content: "How Strategic Markets collects, uses, and protects your personal data — what we store, which services we share it with, and your rights under GDPR." },
+    ],
+    links: [{ rel: "canonical", href: "https://s-markets.com/privacy" }],
+  }),
   component: PrivacyPage,
 });
 

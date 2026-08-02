@@ -5,7 +5,7 @@ export function LogoIcon({ size = 28 }: { size?: number }) {
       background: "#05070d", display: "flex", alignItems: "center", justifyContent: "center",
       flexShrink: 0, padding: size * 0.12,
     }}>
-      <img src="/sm-icon.png" alt="" style={{ width: "100%", height: "auto" }} />
+      <img src="/sm-icon.png" alt="Strategic Markets logo" style={{ width: "100%", height: "auto" }} />
     </div>
   );
 }

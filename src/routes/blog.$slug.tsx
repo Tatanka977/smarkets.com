@@ -10,11 +10,12 @@ export const Route = createFileRoute("/blog/$slug")({
     if (!post) throw notFound();
     return post;
   },
-  head: ({ loaderData }) => ({
+  head: ({ loaderData, params }) => ({
     meta: [
       { title: `Strategic Markets — ${loaderData?.title ?? "Blog"}` },
       { name: "description", content: loaderData?.excerpt ?? "" },
     ],
+    links: [{ rel: "canonical", href: `https://s-markets.com/blog/${params.slug}` }],
   }),
   component: BlogPostPage,
 });
