@@ -5,6 +5,7 @@ import { LogoIcon } from "@/components/Logo";
 import AnalysisPage from "./AnalysisPage";
 import HomePage from "./HomePage";
 import CommunityPage from "./CommunityPage";
+import LearnPage from "./LearnPage";
 import NotificationBell from "./NotificationBell";
 import ShareToCommunityModal from "./ShareToCommunityModal";
 import { listChannels as srvListChannels } from "@/lib/community.functions";
@@ -316,6 +317,13 @@ const NAV_ICONS: Record<string, JSX.Element> = {
       <path d="M12 8a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4Z" />
     </svg>
   ),
+  learn: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 10 12 5 2 10l10 5 10-5Z" />
+      <path d="M6 12v5c0 1.5 2.5 3 6 3s6-1.5 6-3v-5" />
+      <path d="M22 10v6" />
+    </svg>
+  ),
   news: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -349,6 +357,7 @@ function BottomNav({page,setPage,badge}:any) {
     {id:"ai",       label:"AI"},
     {id:"news",     label:"NEWS"},
     {id:"community",label:"COMMUNITY"},
+    {id:"learn",    label:"LEARN"},
   ];
   // App-style tab bar: icon on top, label below (was icon+label side by
   // side, which needs ~90px per tab — with 7 tabs that never fits a phone
@@ -399,6 +408,7 @@ const SIDEBAR_GROUPS = [
   [
     {id:"news",     label:"NEWS"},
     {id:"community",label:"COMMUNITY"},
+    {id:"learn",    label:"LEARN"},
   ],
   [
     {id:"profile",  label:"PROFILE", href:true},
@@ -3272,6 +3282,7 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
                 {page==="ai"         && <AIAdvisorPage holdings={displayHoldings} setPage={setPage}/>}
                 {page==="news"       && <NewsPage holdings={holdings} setPage={setPage}/>}
                 {page==="community"  && <CommunityPage holdings={displayHoldings}/>}
+                {page==="learn"      && <LearnPage/>}
               </div>
               <DisclaimerBar/>
               {isMobile && <BottomNav page={page} setPage={setPage} badge={holdings.length}/>}
