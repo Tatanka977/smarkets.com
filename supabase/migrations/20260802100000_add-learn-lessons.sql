@@ -18,10 +18,8 @@ GRANT SELECT ON public.lesson_groups TO anon;
 GRANT SELECT ON public.lesson_groups TO authenticated;
 GRANT ALL ON public.lesson_groups TO service_role;
 ALTER TABLE public.lesson_groups ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  CREATE POLICY "lesson groups public read" ON public.lesson_groups FOR SELECT USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+DROP POLICY IF EXISTS "lesson groups public read" ON public.lesson_groups;
+CREATE POLICY "lesson groups public read" ON public.lesson_groups FOR SELECT USING (true);
 
 CREATE TABLE IF NOT EXISTS public.lesson_steps (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -35,10 +33,8 @@ GRANT SELECT ON public.lesson_steps TO anon;
 GRANT SELECT ON public.lesson_steps TO authenticated;
 GRANT ALL ON public.lesson_steps TO service_role;
 ALTER TABLE public.lesson_steps ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  CREATE POLICY "lesson steps public read" ON public.lesson_steps FOR SELECT USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+DROP POLICY IF EXISTS "lesson steps public read" ON public.lesson_steps;
+CREATE POLICY "lesson steps public read" ON public.lesson_steps FOR SELECT USING (true);
 
 CREATE TABLE IF NOT EXISTS public.lessons (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -57,10 +53,8 @@ GRANT SELECT ON public.lessons TO anon;
 GRANT SELECT ON public.lessons TO authenticated;
 GRANT ALL ON public.lessons TO service_role;
 ALTER TABLE public.lessons ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  CREATE POLICY "lessons public read" ON public.lessons FOR SELECT USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+DROP POLICY IF EXISTS "lessons public read" ON public.lessons;
+CREATE POLICY "lessons public read" ON public.lessons FOR SELECT USING (true);
 
 CREATE TABLE IF NOT EXISTS public.user_lesson_progress (
   user_id UUID NOT NULL REFERENCES auth.users ON DELETE CASCADE,
@@ -72,18 +66,12 @@ CREATE TABLE IF NOT EXISTS public.user_lesson_progress (
 GRANT SELECT, INSERT, UPDATE ON public.user_lesson_progress TO authenticated;
 GRANT ALL ON public.user_lesson_progress TO service_role;
 ALTER TABLE public.user_lesson_progress ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  CREATE POLICY "own lesson progress select" ON public.user_lesson_progress FOR SELECT USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-DO $$ BEGIN
-  CREATE POLICY "own lesson progress insert" ON public.user_lesson_progress FOR INSERT WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-DO $$ BEGIN
-  CREATE POLICY "own lesson progress update" ON public.user_lesson_progress FOR UPDATE USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+DROP POLICY IF EXISTS "own lesson progress select" ON public.user_lesson_progress;
+CREATE POLICY "own lesson progress select" ON public.user_lesson_progress FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "own lesson progress insert" ON public.user_lesson_progress;
+CREATE POLICY "own lesson progress insert" ON public.user_lesson_progress FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "own lesson progress update" ON public.user_lesson_progress;
+CREATE POLICY "own lesson progress update" ON public.user_lesson_progress FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS public.user_learn_streaks (
   user_id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
@@ -94,18 +82,12 @@ CREATE TABLE IF NOT EXISTS public.user_learn_streaks (
 GRANT SELECT, INSERT, UPDATE ON public.user_learn_streaks TO authenticated;
 GRANT ALL ON public.user_learn_streaks TO service_role;
 ALTER TABLE public.user_learn_streaks ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  CREATE POLICY "own learn streak select" ON public.user_learn_streaks FOR SELECT USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-DO $$ BEGIN
-  CREATE POLICY "own learn streak insert" ON public.user_learn_streaks FOR INSERT WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-DO $$ BEGIN
-  CREATE POLICY "own learn streak update" ON public.user_learn_streaks FOR UPDATE USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+DROP POLICY IF EXISTS "own learn streak select" ON public.user_learn_streaks;
+CREATE POLICY "own learn streak select" ON public.user_learn_streaks FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "own learn streak insert" ON public.user_learn_streaks;
+CREATE POLICY "own learn streak insert" ON public.user_learn_streaks FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "own learn streak update" ON public.user_learn_streaks;
+CREATE POLICY "own learn streak update" ON public.user_learn_streaks FOR UPDATE USING (auth.uid() = user_id);
 
 -- ── Initial seed ────────────────────────────────────────────────────────
 -- Group 1 ("Money & Saving Fundamentals") is fully populated and
@@ -132,17 +114,17 @@ BEGIN
 
     INSERT INTO public.lessons (step_id, title, order_index, body, question, options, correct_option_index, is_published) VALUES
       (s1_id, 'The emergency fund', 1,
-       'Before investing a single euro, most financial educators suggest building an emergency fund first: money set aside in an easily accessible account, separate from your investments. It''s typically meant to cover unexpected expenses — a medical bill, a job loss, an urgent repair — without having to sell investments at a bad time. The exact amount varies by person, but the core idea is the same: investing works best with money you won''t need to touch on short notice. Without this cushion, a market downturn combined with an emergency expense can force you to sell investments exactly when prices are low — locking in a loss you didn''t have to take.',
+       'Before investing, most educators suggest building an emergency fund: money in an easily accessible account, separate from your investments. Its job is covering surprises — a medical bill, a job loss — without forcing you to sell investments at a bad time.',
        'What is the main purpose of an emergency fund?',
        '["To earn the highest possible return", "To cover unexpected expenses without selling investments at a bad time", "To pay for daily groceries", "To avoid ever using a bank account"]'::jsonb,
        1, true),
       (s1_id, 'Saving vs investing', 2,
-       'Saving and investing are often used interchangeably, but they serve different purposes. Saving typically means putting money somewhere safe and easily accessible — a bank account — prioritizing stability over growth. Investing means putting money into assets like stocks or bonds that can grow in value over time, but can also lose value, especially in the short term. A common way to think about it: saving is for money you''ll need soon or can''t afford to lose; investing is for money with a longer time horizon, where you can tolerate ups and downs along the way.',
+       'Saving means keeping money safe and accessible — priority is stability. Investing means buying assets that can grow over time but can also lose value short-term. Save what you need soon; invest what you can leave untouched for years.',
        'Which statement best describes the difference between saving and investing?',
        '["They are the same thing", "Saving prioritizes safety and accessibility; investing accepts more short-term risk for potential long-term growth", "Investing is only for wealthy people", "Saving always earns more than investing"]'::jsonb,
        1, true),
       (s1_id, 'The cost of waiting', 3,
-       'Time is one of the few advantages available to every investor, regardless of how much money they start with. When money is invested, any growth it earns can itself start growing — a snowball effect often called compounding. The earlier this process starts, the more time it has to work. This doesn''t mean waiting a few months to invest ruins everything, but it illustrates why ''I''ll start investing once I have more money'' is a common trap: starting with a small amount early is often more powerful than waiting to start with a larger amount later.',
+       'Time is one of an investor''s biggest advantages. Once invested, growth can itself start growing — compounding. The earlier you start, the more time that snowball has to work, which is why ''I''ll invest once I have more'' is such a common trap.',
        'Why does starting to invest earlier matter, according to this lesson?',
        '["Earlier investors get better customer service", "It gives compounding more time to work", "Markets are less risky for early investors", "It guarantees higher returns"]'::jsonb,
        1, true);
