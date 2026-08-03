@@ -1,198 +1,36 @@
-import { useRef } from "react";
-import { motion, useScroll, useTransform, useReducedMotion } from "motion/react";
+import { useState, useEffect } from "react";
 import "./LandingPage.css";
 import { LogoWithText } from "@/components/Logo";
 import { useTheme } from "@/hooks/useTheme";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
 
-// A single ascending, zigzagging line — same silhouette as a real stock
-// chart, not a smooth curve — drawn across a 500x320 viewBox. Waypoint
-// anchors below reuse these exact coordinates so each callout badge sits
-// right on the line at the point it "arrives" at, rather than at an
-// arbitrary position that happens to drift out of sync if the path ever
-// changes.
-const CHART_VIEWBOX = "0 0 500 320";
-const CHART_PATH = "M20,290 L60,260 L140,210 L190,240 L270,150 L310,180 L390,95 L420,120 L480,40";
-
-// Real, shipped features only — no mention of backtesting, which was
-// removed from the app earlier and isn't a current feature. Each
-// scroll-progress range is where that waypoint fades/slides in; ranges
-// are spaced with gaps between them so callouts don't fight for the same
-// slice of scroll, and stay spread across the whole scrollable height.
-const WAYPOINTS = [
-  { label: "Live Market Data", x: 140, y: 210, start: 0.15, end: 0.25 },
-  { label: "AI Portfolio Advisor", x: 270, y: 150, start: 0.35, end: 0.45 },
-  { label: "Community & Sharing", x: 390, y: 95, start: 0.55, end: 0.65 },
-  { label: "Risk & Performance Analysis", x: 480, y: 40, start: 0.72, end: 0.82 },
-] as const;
-
-function HeroChart({ pathLength, dotOpacity, waypointMotion }: {
-  pathLength: any;
-  dotOpacity: any;
-  waypointMotion: { opacity: any; y: any }[];
-}) {
-  const last = WAYPOINTS[WAYPOINTS.length - 1];
-  return (
-    <div className="hero-chart-wrap">
-      <svg className="hero-chart-svg" viewBox={CHART_VIEWBOX} fill="none">
-        <motion.path
-          d={CHART_PATH}
-          stroke="var(--sm-green)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ pathLength }}
-        />
-        <motion.circle cx={last.x} cy={last.y} r="5" fill="var(--sm-green)" style={{ opacity: dotOpacity }} />
-      </svg>
-      {WAYPOINTS.map((w, i) => (
-        <motion.div
-          key={w.label}
-          className="hero-waypoint"
-          style={{
-            left: `${(w.x / 500) * 100}%`,
-            top: `${(w.y / 320) * 100}%`,
-            opacity: waypointMotion[i].opacity,
-            y: waypointMotion[i].y,
-          }}
-        >
-          <span className="hero-waypoint-dot" />
-          {w.label}
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-function HeroCopy() {
-  return (
-    <div>
-      <span className="eyebrow">Portfolio Analytics Terminal</span>
-
-      <h1>
-        Track markets. Test strategy.
-        <br />
-        <span className="accent">Learn what drives risk.</span>
-      </h1>
-
-      <p>
-        Strategic Markets is an educational portfolio terminal — live quotes
-        across stocks, ETFs, bonds, crypto and FX, real risk analytics, and an
-        AI assistant for scenario analysis. Built to help you understand
-        markets, not to give financial advice.
-      </p>
-
-      <div className="stats">
-        <div>
-          <div className="stat-label">Asset classes</div>
-          <div className="stat-value">7+</div>
-        </div>
-        <div>
-          <div className="stat-label">Market data</div>
-          <div className="stat-value">Real-time</div>
-        </div>
-        <div>
-          <div className="stat-label">Analysis</div>
-          <div className="stat-value">AI-assisted</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const scrollToFeatures = (e: React.MouseEvent) => {
-  e.preventDefault();
-  document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
-};
-
-// Reduced-motion / no-scroll-tracking fallback: the exact same content
-// (copy, chart, waypoints, buttons) laid out normally and all visible at
-// once — no tall scroll container, no scroll-linked animation at all,
-// per prefers-reduced-motion rather than just disabling the drawing
-// effect but still forcing the extra scroll distance on the user.
-function StaticHero() {
-  const doneMotion = { opacity: 1, y: 0 };
-  return (
-    <section className="hero hero-static" id="home">
-      <div className="container hero-grid">
-        <HeroCopy />
-        <HeroChart pathLength={1} dotOpacity={1} waypointMotion={[doneMotion, doneMotion, doneMotion, doneMotion]} />
-      </div>
-      <div className="container hero-final-buttons">
-        <a href="/terminal" className="btn btn-primary">
-          Open Terminal <span className="btn-arrow">→</span>
-        </a>
-        <a href="#features" className="btn btn-secondary" onClick={scrollToFeatures}>
-          Learn more
-        </a>
-      </div>
-    </section>
-  );
-}
-
-function ScrollHero() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
-
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
-
-  // Drawing finishes a bit before the scroll itself does (85%), leaving
-  // room for the final buttons to reveal after the line is fully drawn
-  // rather than competing with it.
-  const pathLength = useTransform(scrollYProgress, [0.05, 0.85], [0, 1]);
-  const dotOpacity = useTransform(scrollYProgress, [0.78, 0.86], [0, 1]);
-
-  // One useTransform pair per waypoint — a fixed, static-length array
-  // (WAYPOINTS never changes shape), so this doesn't call hooks
-  // conditionally or in a variable-length loop.
-  const wp0Opacity = useTransform(scrollYProgress, [WAYPOINTS[0].start, WAYPOINTS[0].end], [0, 1]);
-  const wp0Y = useTransform(scrollYProgress, [WAYPOINTS[0].start, WAYPOINTS[0].end], [16, 0]);
-  const wp1Opacity = useTransform(scrollYProgress, [WAYPOINTS[1].start, WAYPOINTS[1].end], [0, 1]);
-  const wp1Y = useTransform(scrollYProgress, [WAYPOINTS[1].start, WAYPOINTS[1].end], [16, 0]);
-  const wp2Opacity = useTransform(scrollYProgress, [WAYPOINTS[2].start, WAYPOINTS[2].end], [0, 1]);
-  const wp2Y = useTransform(scrollYProgress, [WAYPOINTS[2].start, WAYPOINTS[2].end], [16, 0]);
-  const wp3Opacity = useTransform(scrollYProgress, [WAYPOINTS[3].start, WAYPOINTS[3].end], [0, 1]);
-  const wp3Y = useTransform(scrollYProgress, [WAYPOINTS[3].start, WAYPOINTS[3].end], [16, 0]);
-  const waypointMotion = [
-    { opacity: wp0Opacity, y: wp0Y },
-    { opacity: wp1Opacity, y: wp1Y },
-    { opacity: wp2Opacity, y: wp2Y },
-    { opacity: wp3Opacity, y: wp3Y },
-  ];
-
-  const buttonsOpacity = useTransform(scrollYProgress, [0.88, 0.97], [0, 1]);
-  const buttonsY = useTransform(scrollYProgress, [0.88, 0.97], [20, 0]);
-
-  return (
-    <section ref={containerRef} className="hero-scroll" id="home" style={{ height: isMobile ? "180vh" : "280vh" }}>
-      <div className="hero-sticky hero">
-        <div className="container hero-grid">
-          <HeroCopy />
-          <HeroChart pathLength={pathLength} dotOpacity={dotOpacity} waypointMotion={waypointMotion} />
-        </div>
-
-        <motion.div className="container hero-final-buttons" style={{ opacity: buttonsOpacity, y: buttonsY }}>
-          <a href="/terminal" className="btn btn-primary">
-            Open Terminal <span className="btn-arrow">→</span>
-          </a>
-          <a href="#features" className="btn btn-secondary" onClick={scrollToFeatures}>
-            Learn more
-          </a>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
+// All STOCK/ETF category tickers, which always resolve to a real Finnhub-
+// or-Yahoo quote (never the fake ticker-derived mock price) — see
+// fetchQuote/batchRefresh in finance.functions.ts. Display names are kept
+// short/local rather than using the API's shortName (often the full legal
+// name), only the price/change shown are the live-fetched numbers.
+const LANDING_TICKERS = [
+  { ticker: "AAPL", name: "Apple Inc." },
+  { ticker: "MSFT", name: "Microsoft Corp." },
+  { ticker: "NVDA", name: "NVIDIA Corp." },
+  { ticker: "SPY", name: "S&P 500 ETF" },
+];
 
 export default function LandingPage() {
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
-  // Called unconditionally at the top level (rules of hooks) — the actual
-  // branch on its value lives one level down, inside the return below.
-  const prefersReducedMotion = useReducedMotion();
+  const [quotes, setQuotes] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    let alive = true;
+    srvBatchRefresh({ data: { symbols: LANDING_TICKERS.map((t) => t.ticker) } })
+      .then((list: any) => {
+        if (!alive) return;
+        setQuotes(Object.fromEntries((list || []).map((q: any) => [q.symbol, q])));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   return (
     <div className="landing">
@@ -244,9 +82,91 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* HERO — scrollytelling on the line chart when motion is welcome,
-          a fully static equivalent when prefers-reduced-motion is on. */}
-      {prefersReducedMotion ? <StaticHero /> : <ScrollHero />}
+      {/* HERO */}
+      <section className="hero" id="home">
+        <div className="container hero-grid">
+
+          <div>
+            <span className="eyebrow">Portfolio Analytics Terminal</span>
+
+            <h1>
+              Track markets. Test strategy.
+              <br />
+              <span className="accent">Learn what drives risk.</span>
+            </h1>
+
+            <p>
+              Strategic Markets is an educational portfolio terminal — live quotes
+              across stocks, ETFs, bonds, crypto and FX, real risk analytics, and an
+              AI assistant for scenario analysis. Built to help you understand
+              markets, not to give financial advice.
+            </p>
+
+            <div className="hero-buttons">
+              <a href="/terminal" className="btn btn-primary">
+                Open Terminal <span className="btn-arrow">→</span>
+              </a>
+              <a
+                href="#features"
+                className="btn btn-secondary"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                Learn more
+              </a>
+            </div>
+
+            <div className="stats">
+              <div>
+                <div className="stat-label">Asset classes</div>
+                <div className="stat-value">7+</div>
+              </div>
+              <div>
+                <div className="stat-label">Market data</div>
+                <div className="stat-value">Real-time</div>
+              </div>
+              <div>
+                <div className="stat-label">Analysis</div>
+                <div className="stat-value">AI-assisted</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mock-terminal">
+            <div className="mock-topbar">
+              <span>Strategic Markets — Portfolio</span>
+              <span className="mock-live">
+                <span className="mock-live-dot" /> LIVE
+              </span>
+            </div>
+            {LANDING_TICKERS.map((t) => {
+              const q = quotes[t.ticker];
+              const price = q?.price;
+              const chg = q?.dayChangePct;
+              const up = chg == null || chg >= 0;
+              return (
+                <div className="mock-row" key={t.ticker}>
+                  <div>
+                    <span className="mock-ticker">{t.ticker}</span>
+                    <span className="mock-name">{t.name}</span>
+                  </div>
+                  <span className="mock-price">{price != null ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "···"}</span>
+                  <span className={`mock-delta ${up ? "mock-up" : "mock-down"}`}>
+                    {chg != null ? `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%` : "···"}
+                  </span>
+                </div>
+              );
+            })}
+            <div className="mock-footer">
+              <span>Educational simulation</span>
+              <span>Not investment advice</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
 
       {/* FEATURES */}
       <section className="features" id="features">

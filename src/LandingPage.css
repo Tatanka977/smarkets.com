@@ -107,32 +107,11 @@
   transform: translateX(3px);
 }
 
-/* HERO — scrollytelling: .hero-scroll is a tall (view-height-multiple)
-   container purely to generate scroll distance; .hero-sticky pins the
-   actual visible content to the viewport (position: sticky) while the
-   user scrolls through that extra height, which is what makes the SVG
-   line-chart draw and the waypoint callouts reveal feel scroll-driven
-   rather than timer-driven. See ScrollHero in LandingPage.tsx. */
+/* HERO */
 
-.hero-scroll {
-  position: relative;
-  border-bottom: 1px solid var(--sm-border);
-}
-
-.hero-sticky {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  overflow: hidden;
-}
-
-/* Reduced-motion / no-JS-scroll-tracking fallback: a normal, non-sticky
-   hero with everything already visible — same content, no scroll-jacking. */
-.hero-static {
+.hero {
   padding: 90px 0 80px;
+  border-bottom: 1px solid var(--sm-border);
 }
 
 .hero-grid {
@@ -191,59 +170,6 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-/* SCROLLYTELLING CHART — the SVG line + its waypoint callouts. The chart
-   wrapper is the positioning context (percentage-based) for the
-   absolutely-placed waypoint badges, whose left/top match the same
-   viewBox coordinates the SVG path itself is drawn in. */
-
-.hero-chart-wrap {
-  position: relative;
-  aspect-ratio: 5 / 3.2;
-  width: 100%;
-}
-
-.hero-chart-svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.hero-waypoint {
-  position: absolute;
-  transform: translate(-50%, -140%);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--sm-panel);
-  border: 1px solid var(--sm-border);
-  color: var(--sm-gray1);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  padding: 7px 12px;
-  border-radius: var(--sm-radius);
-  box-shadow: var(--sm-shadow);
-  white-space: nowrap;
-  will-change: transform, opacity;
-}
-
-.hero-waypoint-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--sm-green);
-  flex-shrink: 0;
-}
-
-.hero-final-buttons {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-  margin-top: 32px;
-  will-change: transform, opacity;
 }
 
 /* STATS ROW */
@@ -528,36 +454,6 @@ footer {
   .btn {
     padding: 9px 16px;
     font-size: 12.5px;
-  }
-
-  /* .hero-grid already stacks to one column above, so the chart/waypoints
-     land in their own block below the text — they can't overlap it. What
-     the sticky pin needs on a narrow screen is for that stacked content
-     to actually fit inside 100vh: the stats row is the one piece that
-     isn't essential mid-scroll (it's still shown in the reduced-motion
-     static hero, just not inside this height-constrained pin), and the
-     chart gets shorter too, so text + chart + final buttons comfortably
-     fit without .hero-sticky's overflow:hidden ever clipping anything. */
-  .hero-sticky {
-    padding: 20px 0;
-  }
-
-  .hero-sticky .stats {
-    display: none;
-  }
-
-  .hero-chart-wrap {
-    aspect-ratio: 5 / 2.2;
-    margin-top: 20px;
-  }
-
-  .hero-waypoint {
-    font-size: 10.5px;
-    padding: 5px 9px;
-  }
-
-  .hero-final-buttons {
-    margin-top: 20px;
   }
 }
 
