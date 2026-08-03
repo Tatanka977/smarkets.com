@@ -1,101 +1,35 @@
-import { useRef } from "react";
-import { motion, useScroll, useTransform, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "motion/react";
 import "./LandingPage.css";
 import { LogoWithText } from "@/components/Logo";
 import { useTheme } from "@/hooks/useTheme";
 import { useIsMobile } from "@/hooks/use-mobile";
+import HeroSEOContent from "@/components/landing/HeroSEOContent";
+import Hero3DScene from "@/components/landing/Hero3DScene";
 
-// A single ascending, zigzagging line — same silhouette as a real stock
-// chart, not a smooth curve — drawn across a 500x320 viewBox. Waypoint
-// anchors below reuse these exact coordinates so each callout badge sits
-// right on the line at the point it "arrives" at, rather than at an
-// arbitrary position that happens to drift out of sync if the path ever
-// changes.
+// A flat, fully-drawn version of the same ascending line used as the
+// hero's visual motif — the static fallback image for anyone who can't
+// or shouldn't get the 3D scene (no WebGL, prefers-reduced-motion,
+// mobile). Same silhouette/coordinates regardless, just rendered once as
+// plain SVG instead of a WebGL tube.
 const CHART_VIEWBOX = "0 0 500 320";
 const CHART_PATH = "M20,290 L60,260 L140,210 L190,240 L270,150 L310,180 L390,95 L420,120 L480,40";
+const CHART_DOTS = [
+  { x: 140, y: 210 },
+  { x: 270, y: 150 },
+  { x: 390, y: 95 },
+  { x: 480, y: 40 },
+];
 
-// Real, shipped features only — no mention of backtesting, which was
-// removed from the app earlier and isn't a current feature. Each
-// scroll-progress range is where that waypoint fades/slides in; ranges
-// are spaced with gaps between them so callouts don't fight for the same
-// slice of scroll, and stay spread across the whole scrollable height.
-const WAYPOINTS = [
-  { label: "Live Market Data", x: 140, y: 210, start: 0.15, end: 0.25 },
-  { label: "AI Portfolio Advisor", x: 270, y: 150, start: 0.35, end: 0.45 },
-  { label: "Community & Sharing", x: 390, y: 95, start: 0.55, end: 0.65 },
-  { label: "Risk & Performance Analysis", x: 480, y: 40, start: 0.72, end: 0.82 },
-] as const;
-
-function HeroChart({ pathLength, dotOpacity, waypointMotion }: {
-  pathLength: any;
-  dotOpacity: any;
-  waypointMotion: { opacity: any; y: any }[];
-}) {
-  const last = WAYPOINTS[WAYPOINTS.length - 1];
+function StaticChart() {
   return (
     <div className="hero-chart-wrap">
       <svg className="hero-chart-svg" viewBox={CHART_VIEWBOX} fill="none">
-        <motion.path
-          d={CHART_PATH}
-          stroke="var(--sm-green)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ pathLength }}
-        />
-        <motion.circle cx={last.x} cy={last.y} r="5" fill="var(--sm-green)" style={{ opacity: dotOpacity }} />
+        <path d={CHART_PATH} stroke="var(--sm-green)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {CHART_DOTS.map((d) => (
+          <circle key={`${d.x}-${d.y}`} cx={d.x} cy={d.y} r="4" fill="var(--sm-green)" />
+        ))}
       </svg>
-      {WAYPOINTS.map((w, i) => (
-        <motion.div
-          key={w.label}
-          className="hero-waypoint"
-          style={{
-            left: `${(w.x / 500) * 100}%`,
-            top: `${(w.y / 320) * 100}%`,
-            opacity: waypointMotion[i].opacity,
-            y: waypointMotion[i].y,
-          }}
-        >
-          <span className="hero-waypoint-dot" />
-          {w.label}
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-function HeroCopy() {
-  return (
-    <div>
-      <span className="eyebrow">Portfolio Analytics Terminal</span>
-
-      <h1>
-        Track markets. Test strategy.
-        <br />
-        <span className="accent">Learn what drives risk.</span>
-      </h1>
-
-      <p>
-        Strategic Markets is an educational portfolio terminal — live quotes
-        across stocks, ETFs, bonds, crypto and FX, real risk analytics, and an
-        AI assistant for scenario analysis. Built to help you understand
-        markets, not to give financial advice.
-      </p>
-
-      <div className="stats">
-        <div>
-          <div className="stat-label">Asset classes</div>
-          <div className="stat-value">7+</div>
-        </div>
-        <div>
-          <div className="stat-label">Market data</div>
-          <div className="stat-value">Real-time</div>
-        </div>
-        <div>
-          <div className="stat-label">Analysis</div>
-          <div className="stat-value">AI-assisted</div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -105,18 +39,19 @@ const scrollToFeatures = (e: React.MouseEvent) => {
   document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
 };
 
-// Reduced-motion / no-scroll-tracking fallback: the exact same content
-// (copy, chart, waypoints, buttons) laid out normally and all visible at
-// once — no tall scroll container, no scroll-linked animation at all,
-// per prefers-reduced-motion rather than just disabling the drawing
-// effect but still forcing the extra scroll distance on the user.
-function StaticHero() {
-  const doneMotion = { opacity: 1, y: 0 };
+// Shown whenever the 3D scene shouldn't run: no WebGL, prefers-reduced-
+// motion, or mobile (see Hero below) — real, fully visible content, not
+// hidden behind anything, so nobody who can't get the 3D experience is
+// ever left looking at a blank page.
+function HeroFallback() {
   return (
     <section className="hero hero-static" id="home">
       <div className="container hero-grid">
-        <HeroCopy />
-        <HeroChart pathLength={1} dotOpacity={1} waypointMotion={[doneMotion, doneMotion, doneMotion, doneMotion]} />
+        <div>
+          <span className="eyebrow">Portfolio Analytics Terminal</span>
+          <HeroSEOContent visuallyHidden={false} />
+        </div>
+        <StaticChart />
       </div>
       <div className="container hero-final-buttons">
         <a href="/terminal" className="btn btn-primary">
@@ -130,69 +65,66 @@ function StaticHero() {
   );
 }
 
-function ScrollHero() {
+function detectWebGL(): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
+// The real 3D scrollytelling experience: a tall scroll container with a
+// sticky, full-viewport <Canvas> pinned behind it. The camera travels
+// along (and gently orbits) an ascending 3D curve as the user scrolls
+// through this section's height; feature hotspots and the final Open
+// Terminal/Blog buttons are drei <Html> overlays anchored to points along
+// that same curve (see Hero3DScene). The real page copy still lives in
+// the DOM via HeroSEOContent — just visually hidden (.sr-only), since the
+// 3D scene is what's actually on screen here.
+function Hero3D() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
-
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
-
-  // Drawing finishes a bit before the scroll itself does (85%), leaving
-  // room for the final buttons to reveal after the line is fully drawn
-  // rather than competing with it.
-  const pathLength = useTransform(scrollYProgress, [0.05, 0.85], [0, 1]);
-  const dotOpacity = useTransform(scrollYProgress, [0.78, 0.86], [0, 1]);
-
-  // One useTransform pair per waypoint — a fixed, static-length array
-  // (WAYPOINTS never changes shape), so this doesn't call hooks
-  // conditionally or in a variable-length loop.
-  const wp0Opacity = useTransform(scrollYProgress, [WAYPOINTS[0].start, WAYPOINTS[0].end], [0, 1]);
-  const wp0Y = useTransform(scrollYProgress, [WAYPOINTS[0].start, WAYPOINTS[0].end], [16, 0]);
-  const wp1Opacity = useTransform(scrollYProgress, [WAYPOINTS[1].start, WAYPOINTS[1].end], [0, 1]);
-  const wp1Y = useTransform(scrollYProgress, [WAYPOINTS[1].start, WAYPOINTS[1].end], [16, 0]);
-  const wp2Opacity = useTransform(scrollYProgress, [WAYPOINTS[2].start, WAYPOINTS[2].end], [0, 1]);
-  const wp2Y = useTransform(scrollYProgress, [WAYPOINTS[2].start, WAYPOINTS[2].end], [16, 0]);
-  const wp3Opacity = useTransform(scrollYProgress, [WAYPOINTS[3].start, WAYPOINTS[3].end], [0, 1]);
-  const wp3Y = useTransform(scrollYProgress, [WAYPOINTS[3].start, WAYPOINTS[3].end], [16, 0]);
-  const waypointMotion = [
-    { opacity: wp0Opacity, y: wp0Y },
-    { opacity: wp1Opacity, y: wp1Y },
-    { opacity: wp2Opacity, y: wp2Y },
-    { opacity: wp3Opacity, y: wp3Y },
-  ];
-
-  const buttonsOpacity = useTransform(scrollYProgress, [0.88, 0.97], [0, 1]);
-  const buttonsY = useTransform(scrollYProgress, [0.88, 0.97], [20, 0]);
-
   return (
-    <section ref={containerRef} className="hero-scroll" id="home" style={{ height: isMobile ? "180vh" : "280vh" }}>
-      <div className="hero-sticky hero">
-        <div className="container hero-grid">
-          <HeroCopy />
-          <HeroChart pathLength={pathLength} dotOpacity={dotOpacity} waypointMotion={waypointMotion} />
-        </div>
-
-        <motion.div className="container hero-final-buttons" style={{ opacity: buttonsOpacity, y: buttonsY }}>
-          <a href="/terminal" className="btn btn-primary">
-            Open Terminal <span className="btn-arrow">→</span>
-          </a>
-          <a href="#features" className="btn btn-secondary" onClick={scrollToFeatures}>
-            Learn more
-          </a>
-        </motion.div>
+    <section ref={containerRef} className="hero3d-scroll" id="home">
+      <div className="hero3d-sticky">
+        <Hero3DScene containerRef={containerRef} />
       </div>
+      <div className="sr-only">
+        <span>Portfolio Analytics Terminal</span>
+      </div>
+      <HeroSEOContent visuallyHidden />
     </section>
   );
+}
+
+// Defaults to the safe, always-visible fallback (both during SSR and the
+// very first client render) and only "upgrades" to the 3D scene once
+// we've positively confirmed, on the client, that: it's not a mobile
+// device (3D scroll-jacking + WebGL on varied mobile GPUs is exactly the
+// kind of thing that's prone to poor framerate, and the brief explicitly
+// sanctions using the static fallback there instead), the user hasn't
+// asked for reduced motion, and WebGL actually works in this browser.
+// This "capable until proven otherwise" order — rather than the reverse —
+// is what guarantees nobody ever sees a blank page if 3D can't run.
+function Hero() {
+  const isMobile = useIsMobile();
+  const prefersReducedMotion = useReducedMotion();
+  const [use3D, setUse3D] = useState(false);
+
+  useEffect(() => {
+    if (isMobile || prefersReducedMotion) {
+      setUse3D(false);
+      return;
+    }
+    setUse3D(detectWebGL());
+  }, [isMobile, prefersReducedMotion]);
+
+  return use3D ? <Hero3D /> : <HeroFallback />;
 }
 
 export default function LandingPage() {
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
-  // Called unconditionally at the top level (rules of hooks) — the actual
-  // branch on its value lives one level down, inside the return below.
-  const prefersReducedMotion = useReducedMotion();
 
   return (
     <div className="landing">
@@ -244,9 +176,9 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* HERO — scrollytelling on the line chart when motion is welcome,
-          a fully static equivalent when prefers-reduced-motion is on. */}
-      {prefersReducedMotion ? <StaticHero /> : <ScrollHero />}
+      {/* HERO — 3D scrollytelling scene when the browser/device can
+          handle it, a fully static/visible fallback otherwise. */}
+      <Hero />
 
       {/* FEATURES */}
       <section className="features" id="features">
