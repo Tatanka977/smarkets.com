@@ -147,39 +147,70 @@
  * Strategic Markets — Theme System
  *
  * Two themes, applied via data-theme on <html>:
- *   [data-theme="terminal"] (default) — Bloomberg-style, dark, monospace
- *   [data-theme="aurora"] — modern fintech-minimal, light, system font, soft radius
+ *   [data-theme="terminal"] (default) — dark
+ *   [data-theme="aurora"] — light
+ *
+ * By design the two are the SAME design language (font, radius, text-
+ * transform, letter-spacing, shadows-as-a-concept, and every structural
+ * override rule below) — the only thing that differs between them is the
+ * --sm-* color values themselves, tuned for contrast against a light vs a
+ * dark background. Neutrals (bg/panel/border/gray1-4) are a straight
+ * lightness-mirror of each other around the shared gray3 pivot; accent
+ * hues (blue/blueL/blueD) stay IDENTICAL across both themes (the brand
+ * blue is bright enough to read on both), while yellow/green/red/cyan get
+ * a brightened dark-mode variant, matching the exact same logic aurora
+ * already used to deepen its amber for light-bg legibility, just inverted.
+ *
+ * The override rules further below used to be gated to [data-theme="aurora"]
+ * only, which is what made terminal visually a different design language
+ * (monospace/uppercase/sharp-cornered) rather than just a different color
+ * scheme. They're now unscoped (apply to both themes) wherever they're
+ * token-based, so both themes render identically apart from color.
  *
  * The inline styles in PortfolioTerminal.tsx reference var(--sm-*)
  * so switching data-theme retints the entire UI without touching any JSX.
  * ========================================================================== */
 
-/* Default = Terminal (Bloomberg look). Add [data-theme="aurora"] to opt into the modern light theme. */
+/* Default = Terminal (dark). Add [data-theme="aurora"] to opt into the light theme. */
 :root,
 [data-theme="terminal"] {
-  --sm-bg:      #000000;
-  --sm-panel:   #0A0A0A;
-  --sm-panel2:  #111111;
-  --sm-border:  #2A2A2A;
-  --sm-borderB: #333333;
-  --sm-blue:    #0066FF;
-  --sm-blueL:   #3388FF;
-  --sm-blueD:   #0044CC;
+  --sm-bg:      #020617;
+  --sm-panel:   #0F172A;
+  --sm-panel2:  #0B1220;
+  --sm-border:  #1E293B;
+  --sm-borderB: #334155;
+  --sm-blue:    #2C5FEB;
+  --sm-blueL:   #4A7CFF;
+  --sm-blueD:   #1E4BC4;
   --sm-white:   #FFFFFF;
-  --sm-yellow:  #FFFF00;
-  --sm-green:   #00FF00;
-  --sm-red:     #FF3333;
-  --sm-cyan:    #00FFFF;
-  --sm-gray1:   #FFFFFF;
-  --sm-gray2:   #FFFFFF;
-  --sm-gray3:   #FFFFFF;
-  --sm-gray4:   #333333;
-  --sm-font:    'Courier New', Courier, monospace;
-  --sm-radius:  0px;
-  --sm-radius-lg: 0px;
-  --sm-shadow:  none;
-  --sm-text-transform: uppercase;
-  --sm-letter-spacing: 0.05em;
+  /* Brightened vs aurora's amber — dark backgrounds need lighter/more
+   * saturated accents for the same contrast a light bg gets from darker
+   * ones (aurora deepened its amber for legibility on white; same logic,
+   * inverted, for legibility on near-black). */
+  --sm-yellow:  #FBBF24;
+  --sm-green:   #22C55E;
+  --sm-red:     #F87171;
+  --sm-cyan:    #22D3EE;
+  /* Mirrors aurora's gray scale around the shared gray3 pivot:
+   * gray1<->gray1, gray2<->gray2, gray4<->gray4, gray3 stays put. */
+  --sm-gray1:   #F1F5F9;
+  --sm-gray2:   #94A3B8;
+  --sm-gray3:   #64748B;
+  --sm-gray4:   #334155;
+  /* Dark-tinted equivalents of aurora's soft alert/tint backgrounds
+   * (chat bubbles, alert boxes, highlighted marks) — same semantic slot,
+   * same token, just a dark tint instead of a light one. */
+  --sm-blue-tint:   #132038;
+  --sm-cyan-tint:   #0A1F23;
+  --sm-green-tint:  #0C2318;
+  --sm-red-tint:    #2A1215;
+  --sm-yellow-tint: #2A1F0A;
+  --sm-font:    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --sm-radius:  16px;
+  --sm-radius-lg: 24px;
+  --sm-shadow:  0 1px 3px rgba(0,0,0,0.3), 0 10px 24px rgba(0,0,0,0.4);
+  --sm-text-transform: none;
+  --sm-letter-spacing: -0.01em;
 }
 
 [data-theme="aurora"] {
@@ -202,6 +233,11 @@
   --sm-gray2:   #475569;
   --sm-gray3:   #64748B;
   --sm-gray4:   #CBD5E1;
+  --sm-blue-tint:   #EEF2FF;
+  --sm-cyan-tint:   #ECFEFF;
+  --sm-green-tint:  #DCFCE7;
+  --sm-red-tint:    #FEE2E2;
+  --sm-yellow-tint: #FEF3C7;
   --sm-font:    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Segoe UI', system-ui, sans-serif;
   --sm-radius:  16px;
   --sm-radius-lg: 24px;
@@ -210,184 +246,179 @@
   --sm-letter-spacing: -0.01em;
 }
 
-/* Apply the chosen font family to every element in the terminal.
- * We scope to descendants of [data-theme] so it applies once <html data-theme="aurora"> is set. */
-[data-theme="aurora"] body,
-[data-theme="aurora"] input,
-[data-theme="aurora"] button,
-[data-theme="aurora"] textarea,
-[data-theme="aurora"] select,
-[data-theme="aurora"] div,
-[data-theme="aurora"] span,
-[data-theme="aurora"] a,
-[data-theme="aurora"] p,
-[data-theme="aurora"] h1,
-[data-theme="aurora"] h2,
-[data-theme="aurora"] h3,
-[data-theme="aurora"] h4,
-[data-theme="aurora"] h5,
-[data-theme="aurora"] h6 {
+/* Apply the shared font family everywhere, in both themes. */
+body, input, button, textarea, select, div, span, a, p, h1, h2, h3, h4, h5, h6 {
   font-family: var(--sm-font) !important;
   letter-spacing: var(--sm-letter-spacing) !important;
 }
 
-/* Soften the aggressive uppercase / letter-spacing typical of the terminal look */
-[data-theme="aurora"] [style*="text-transform:uppercase"],
-[data-theme="aurora"] [style*="text-transform: uppercase"] {
+/* Neutralize the uppercase text-transform hardcoded inline throughout the
+ * source in both themes (both now use --sm-text-transform: none). */
+[style*="text-transform:uppercase"],
+[style*="text-transform: uppercase"] {
   text-transform: none !important;
 }
 
-/* Give panels and buttons rounded corners when in Apple mode.
- * We target inline "border-radius:0" style attributes that dominate the terminal. */
-[data-theme="aurora"] [style*="border-radius:0"],
-[data-theme="aurora"] [style*="border-radius: 0"] {
+/* Rounded corners everywhere, in both themes — targets inline
+ * "border-radius:0" style attributes that dominate the source. */
+[style*="border-radius:0"],
+[style*="border-radius: 0"] {
   border-radius: var(--sm-radius) !important;
 }
 
-/* Soften scrollbars for Apple mode */
-[data-theme="aurora"] ::-webkit-scrollbar { width: 10px; height: 10px; }
-[data-theme="aurora"] ::-webkit-scrollbar-thumb { background: #D1D1D6; border-radius: 8px; }
-[data-theme="aurora"] ::-webkit-scrollbar-thumb:hover { background: #B0B0B5; }
-[data-theme="aurora"] ::-webkit-scrollbar-track { background: transparent; }
+/* Softer scrollbars in both themes. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--sm-gray4); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--sm-gray3); }
+::-webkit-scrollbar-track { background: transparent; }
 
-/* Subtle card elevation for Apple mode panels (uses attribute selector) */
-[data-theme="aurora"] [style*="background:#0A0A0A"],
-[data-theme="aurora"] [style*="background: #0A0A0A"],
-[data-theme="aurora"] [style*="background:var(--sm-panel)"],
-[data-theme="aurora"] [style*="background: var(--sm-panel)"] {
+/* Subtle card elevation, in both themes (uses attribute selector). */
+[style*="background:#0A0A0A"],
+[style*="background: #0A0A0A"],
+[style*="background:var(--sm-panel)"],
+[style*="background: var(--sm-panel)"] {
   box-shadow: var(--sm-shadow);
 }
 
-/* --- Deeper Apple styling: soften borders, bigger buttons, cleaner cards --- */
+/* --- Shared structural styling: borders, buttons, cards --- */
 
-/* Soften ALL borders in Apple mode: hairline instead of harsh 1px */
-[data-theme="aurora"] [style*="border:1px solid"],
-[data-theme="aurora"] [style*="border: 1px solid"] {
+/* Hairline borders in the theme's border color, in both themes. */
+[style*="border:1px solid"],
+[style*="border: 1px solid"] {
   border-width: 1px !important;
   border-color: var(--sm-border) !important;
 }
 
-/* Section headers (blue title bars) in Apple mode → subtle gray band, not full blue */
-[data-theme="aurora"] [style*="background:var(--sm-blue)"][style*="padding:3px 8px"],
-[data-theme="aurora"] [style*="background: var(--sm-blue)"][style*="padding:3px 8px"] {
+/* Section headers (blue title bars) → subtle gray band, not full blue, in both themes. */
+[style*="background:var(--sm-blue)"][style*="padding:3px 8px"],
+[style*="background: var(--sm-blue)"][style*="padding:3px 8px"] {
   background: var(--sm-panel2) !important;
   color: var(--sm-gray1) !important;
   border-bottom: 1px solid var(--sm-border);
 }
-[data-theme="aurora"] [style*="background:var(--sm-blue)"][style*="padding:3px 8px"] span,
-[data-theme="aurora"] [style*="background: var(--sm-blue)"][style*="padding:3px 8px"] span {
+[style*="background:var(--sm-blue)"][style*="padding:3px 8px"] span,
+[style*="background: var(--sm-blue)"][style*="padding:3px 8px"] span {
   color: var(--sm-gray1) !important;
 }
 
-/* Larger, pill-ish buttons */
-[data-theme="aurora"] button {
+/* Larger, pill-ish buttons, in both themes. */
+button {
   border-radius: 10px !important;
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease !important;
 }
-[data-theme="aurora"] button:hover:not(:disabled) {
+button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
-/* Primary CTA buttons (blue backgrounds) get bolder look */
-[data-theme="aurora"] button[style*="background:var(--sm-blue)"],
-[data-theme="aurora"] button[style*="background: var(--sm-blue)"] {
+/* Primary CTA buttons (blue backgrounds) get a bolder look — blue is
+ * identical in both themes, so this shadow tint stays valid for both. */
+button[style*="background:var(--sm-blue)"],
+button[style*="background: var(--sm-blue)"] {
   box-shadow: 0 4px 12px rgba(44,95,235,0.25);
   border-color: transparent !important;
 }
 
-/* Inputs — cleaner, rounded */
-[data-theme="aurora"] input,
-[data-theme="aurora"] textarea,
-[data-theme="aurora"] select {
+/* Inputs — cleaner, rounded, in both themes. */
+input,
+textarea,
+select {
   border-radius: 10px !important;
   border: 1px solid var(--sm-border) !important;
   background: var(--sm-panel) !important;
 }
-[data-theme="aurora"] input:focus,
-[data-theme="aurora"] textarea:focus,
-[data-theme="aurora"] select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: 2px solid rgba(44,95,235,0.25);
   outline-offset: 1px;
   border-color: var(--sm-blue) !important;
 }
 
-/* Bottom nav — cleaner tabs */
-[data-theme="aurora"] .sm-bottomnav {
+/* Bottom nav — cleaner tabs, in both themes. */
+.sm-bottomnav {
   background: var(--sm-panel) !important;
   border-top: 1px solid var(--sm-border) !important;
-  box-shadow: 0 -2px 12px rgba(15,23,42,0.04);
+  box-shadow: var(--sm-shadow);
 }
 
-/* Sidebar nav (desktop) — same cleaner treatment as the bottom nav */
-[data-theme="aurora"] .sm-sidebarnav {
+/* Sidebar nav (desktop) — same cleaner treatment as the bottom nav. */
+.sm-sidebarnav {
   background: var(--sm-panel) !important;
   border-right: 1px solid var(--sm-border) !important;
-  box-shadow: 2px 0 12px rgba(15,23,42,0.04);
+  box-shadow: var(--sm-shadow);
 }
 
-/* Top bar stays blue but gets a subtle shadow for depth */
-[data-theme="aurora"] .sm-topbar {
+/* Top bar stays blue but gets a subtle shadow for depth — blue-tinted,
+ * valid in both themes since blue itself doesn't change. */
+.sm-topbar {
   box-shadow: 0 2px 12px rgba(44,95,235,0.15);
 }
 
-/* LIVE badge (amber on top-bar blue) — force white for legibility on blue */
-[data-theme="aurora"] .sm-topbar [style*="var(--sm-yellow)"] {
+/* LIVE badge (amber on top-bar blue) — force white for legibility on blue, in both themes. */
+.sm-topbar [style*="var(--sm-yellow)"] {
   color: #FFFFFF !important;
   opacity: 0.95;
 }
 
-/* ---- Contrast fixes for hardcoded dark backgrounds in the source ---- */
-/* AI quick-command buttons (source uses background:"#000" + color:B.gray2). */
-[data-theme="aurora"] [style*="background:#000"]:not(.sm-topbar):not([style*="background:#000822"]),
-[data-theme="aurora"] [style*="background: #000"]:not(.sm-topbar):not([style*="background: #000822"]) {
+/* ---- Contrast fixes for hardcoded dark literal backgrounds in the source ----
+ * These target the SAME hardcoded hex values regardless of theme, but
+ * resolve to each theme's own tokens — so an AI quick-command button (say)
+ * gets aurora's white panel in light mode and terminal's dark panel in
+ * dark mode, instead of the literal near-black the source hardcodes. */
+[style*="background:#000"]:not(.sm-topbar):not([style*="background:#000822"]),
+[style*="background: #000"]:not(.sm-topbar):not([style*="background: #000822"]) {
   background: var(--sm-panel) !important;
   color: var(--sm-gray1) !important;
   border-color: var(--sm-border) !important;
 }
-[data-theme="aurora"] [style*="background:#000"] span,
-[data-theme="aurora"] [style*="background: #000"] span {
+[style*="background:#000"] span,
+[style*="background: #000"] span {
   color: inherit !important;
 }
 
-/* Chat user message bubble (source: background:"#000822") — soft blue tint */
-[data-theme="aurora"] [style*="background:#000822"],
-[data-theme="aurora"] [style*="background: #000822"] {
-  background: #EEF2FF !important;
+/* Chat user message bubble (source: background:"#000822") — soft blue tint, per theme. */
+[style*="background:#000822"],
+[style*="background: #000822"] {
+  background: var(--sm-blue-tint) !important;
   color: var(--sm-gray1) !important;
 }
 
-/* Tooltip / dark cyan / dark green backgrounds → light tinted panels */
-[data-theme="aurora"] [style*="background:#111"] { background: var(--sm-panel2) !important; color: var(--sm-gray1) !important; }
-[data-theme="aurora"] [style*="background:#001a1a"] { background: #ECFEFF !important; }
-[data-theme="aurora"] [style*="background:#003300"] { background: #DCFCE7 !important; color: var(--sm-gray1) !important; }
-[data-theme="aurora"] [style*="background:#1a0000"] { background: #FEE2E2 !important; color: var(--sm-gray1) !important; }
-[data-theme="aurora"] [style*="background:#1a0f00"] { background: #FEF3C7 !important; color: var(--sm-gray1) !important; }
+/* Tooltip / dark cyan / dark green / dark red / dark amber backgrounds →
+ * theme-appropriate tinted panels instead of the hardcoded literal. */
+[style*="background:#111"] { background: var(--sm-panel2) !important; color: var(--sm-gray1) !important; }
+[style*="background:#001a1a"] { background: var(--sm-cyan-tint) !important; color: var(--sm-gray1) !important; }
+[style*="background:#003300"] { background: var(--sm-green-tint) !important; color: var(--sm-gray1) !important; }
+[style*="background:#1a0000"] { background: var(--sm-red-tint) !important; color: var(--sm-gray1) !important; }
+[style*="background:#1a0f00"] { background: var(--sm-yellow-tint) !important; color: var(--sm-gray1) !important; }
 
-/* Yellow-marker <mark> highlight — softer peach */
-[data-theme="aurora"] mark[style*="background:#FFFF0033"] {
-  background: #FEF3C7 !important;
+/* Yellow-marker <mark> highlight, per theme. */
+mark[style*="background:#FFFF0033"] {
+  background: var(--sm-yellow-tint) !important;
   color: var(--sm-gray1) !important;
 }
 
-/* Regulatory notice: yellow header on modal — deep amber bg + dark text stay OK */
+/* Regulatory notice: yellow header on modal. Aurora deepens its amber for
+ * light-bg legibility, which then needs white text over it; terminal's
+ * amber stays bright, so the source's own hardcoded black text already
+ * reads fine there without this override — kept aurora-only. */
 [data-theme="aurora"] [style*="background:var(--sm-yellow)"] {
   color: #FFFFFF !important;
 }
 
-/* Placeholders — softer neutral, not amber */
-[data-theme="aurora"] input::placeholder,
-[data-theme="aurora"] textarea::placeholder {
+/* Placeholders — softer neutral, not amber, in both themes. */
+input::placeholder,
+textarea::placeholder {
   color: var(--sm-gray3) !important;
   opacity: 0.9;
 }
 
-/* Boost bottom nav & fkey labels for legibility on light bg */
-[data-theme="aurora"] .sm-bottomnav button span,
-[data-theme="aurora"] .sm-fkeys span {
+/* Boost bottom nav & fkey labels for legibility, in both themes. */
+.sm-bottomnav button span,
+.sm-fkeys span {
   color: var(--sm-gray1) !important;
   opacity: 0.75;
 }
-[data-theme="aurora"] .sm-bottomnav button[style*="var(--sm-blue)"] span {
+.sm-bottomnav button[style*="var(--sm-blue)"] span {
   opacity: 1;
 }
 
