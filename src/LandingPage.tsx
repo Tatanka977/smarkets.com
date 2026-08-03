@@ -179,11 +179,11 @@ export default function LandingPage() {
           <div className="cards">
             <div className="card">
               <div className="card-label">Analytics</div>
-              <h2>Risk &amp; correlation, not just returns</h2>
+              <h2>Risk, not just returns</h2>
               <p>
-                Sharpe, Sortino, drawdown, sector/geo concentration and a
-                correlation matrix across holdings — see what's actually
-                driving your risk.
+                Sharpe, Sortino, drawdown, sector/geo concentration, and
+                single-name risk with ETF look-through — see what's
+                actually driving your risk.
               </p>
             </div>
 
@@ -191,8 +191,8 @@ export default function LandingPage() {
               <div className="card-label">Coverage</div>
               <h2>Stocks, ETFs, bonds, crypto &amp; FX</h2>
               <p>
-                Search and track multi-asset positions with live quotes,
-                historical backtests, and multi-currency valuation.
+                Search and track multi-asset positions with live quotes
+                and multi-currency valuation.
               </p>
             </div>
 
@@ -228,6 +228,9 @@ export default function LandingPage() {
           <div className="footer-copy">© 2026 Strategic Markets. All rights reserved.</div>
 
           <div className="footer-links">
+            <a href="/about">About</a>
+            <a href="/faq">FAQ</a>
+            <a href="/pricing">Pricing</a>
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>
             <a href="/disclaimer">Disclaimer</a>

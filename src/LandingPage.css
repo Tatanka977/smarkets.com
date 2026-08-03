@@ -357,6 +357,36 @@
   margin: 0 0 26px;
 }
 
+/* FAQ ACCORDION — plain <details>/<summary> for built-in keyboard/
+   accessibility support, styled to hide the native disclosure triangle
+   in favor of a theme-colored +/- that rotates on open. */
+
+.landing details summary {
+  list-style: none;
+}
+.landing details summary::-webkit-details-marker {
+  display: none;
+}
+.landing details summary {
+  position: relative;
+  padding-right: 48px !important;
+}
+.landing details summary::after {
+  content: "+";
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--sm-blue);
+  font-size: 20px;
+  font-weight: 700;
+  transition: transform 0.15s ease;
+}
+.landing details[open] summary::after {
+  content: "+";
+  transform: translateY(-50%) rotate(45deg);
+}
+
 /* FOOTER */
 
 footer {

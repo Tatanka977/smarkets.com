@@ -224,8 +224,12 @@ function BlogIndexPage() {
           </div>
           <div className="footer-copy">© 2026 Strategic Markets. All rights reserved.</div>
           <div className="footer-links">
-            <a href="/disclaimer">Privacy</a>
-            <a href="/disclaimer">Terms</a>
+            <a href="/about">About</a>
+            <a href="/faq">FAQ</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/disclaimer">Disclaimer</a>
             <a href="mailto:info@s-markets.com">Contact</a>
             <a href="mailto:support@s-markets.com">Support</a>
           </div>
