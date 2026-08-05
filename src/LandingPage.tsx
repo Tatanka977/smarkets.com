@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./LandingPage.css";
 import { LogoWithText } from "@/components/Logo";
 import { useTheme } from "@/hooks/useTheme";
@@ -13,6 +13,126 @@ const LANDING_TICKERS: { ticker: string; label?: string }[] = [
   { ticker: "AAPL" }, { ticker: "MSFT" }, { ticker: "NVDA" }, { ticker: "TSLA" },
   { ticker: "SPY" }, { ticker: "QQQ" }, { ticker: "JPM" }, { ticker: "BTC-USD", label: "BTC" },
 ];
+
+// Same 24x24 stroke icons as NAV_ICONS in PortfolioTerminal.tsx (copied
+// rather than imported, so the marketing bundle doesn't pull in that whole
+// component's module graph — Supabase clients, chart libs, etc. — just for
+// 7 SVGs). Keep these in sync by hand if NAV_ICONS' paths ever change.
+const TOUR_ICONS: Record<string, JSX.Element> = {
+  home: (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9.5 12 3l9 6.5" /><path d="M5 9.5V21h14V9.5" /><path d="M9 21v-6h6v6" />
+    </svg>
+  ),
+  search: (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  ),
+  portfolio: (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  ),
+  analysis: (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-4 4" />
+    </svg>
+  ),
+  community: (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+  news: (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="16" rx="2" /><line x1="7" y1="9" x2="17" y2="9" />
+      <line x1="7" y1="13" x2="17" y2="13" /><line x1="7" y1="17" x2="13" y2="17" />
+    </svg>
+  ),
+  learn: (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c0 1.5 2.5 3 6 3s6-1.5 6-3v-5" /><path d="M22 10v6" />
+    </svg>
+  ),
+};
+
+// Verbatim against what each page actually does (checked against
+// HomePage.tsx, SearchPage/PortfolioPage/AIAdvisorPage/NewsPage in
+// PortfolioTerminal.tsx, AnalysisPage.tsx, CommunityPage.tsx, LearnPage.tsx)
+// — no feature described here is invented.
+const TOUR_STOPS = [
+  { id: "home", title: "Home", desc: "See everything at a glance. Live indices, your portfolio overview, and market status in one place." },
+  { id: "search", title: "Search", desc: "Search any stock, ETF, crypto, bond, or commodity — with real-time quotes and company data." },
+  { id: "portfolio", title: "Portfolio", desc: "Build your portfolio, track real positions, and see your true risk exposure." },
+  { id: "analysis", title: "Analysis", desc: "Go deep: allocation breakdown, risk scoring, performance history, and What-If scenarios." },
+  { id: "community", title: "Community", desc: "Share your portfolio, get feedback, and see how others are investing." },
+  { id: "news", title: "News", desc: "Stay informed with real-time market news, filtered to what matters to your holdings." },
+  { id: "learn", title: "Learn", desc: "Build real financial literacy with bite-sized lessons and daily streaks." },
+];
+
+// Fires once, the first time the wrapped element enters the viewport —
+// native IntersectionObserver, no animation library.
+function useReveal<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") { setVisible(true); return; }
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.unobserve(el);
+        }
+      },
+      { threshold: 0.2, rootMargin: "0px 0px -10% 0px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, visible };
+}
+
+function MiniBars() {
+  const bars = [18, 30, 24, 42, 36];
+  return (
+    <svg viewBox="0 0 80 50" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+      {bars.map((h, i) => (
+        <rect key={i} x={i * 16 + 4} y={46 - h} width="10" height={h} rx="2" fill="var(--sm-blueL)" opacity={0.55 + i * 0.09} />
+      ))}
+    </svg>
+  );
+}
+
+function MiniDonut() {
+  return (
+    <svg viewBox="0 0 100 100" width="100%" height="100%">
+      <circle cx="50" cy="50" r="36" fill="none" stroke={PIE_COLS[1]} strokeWidth="14" strokeDasharray="110 226" strokeDashoffset="0" transform="rotate(-90 50 50)" />
+      <circle cx="50" cy="50" r="36" fill="none" stroke={PIE_COLS[8]} strokeWidth="14" strokeDasharray="70 226" strokeDashoffset="-110" transform="rotate(-90 50 50)" />
+      <circle cx="50" cy="50" r="36" fill="none" stroke={PIE_COLS[6]} strokeWidth="14" strokeDasharray="46 226" strokeDashoffset="-180" transform="rotate(-90 50 50)" />
+    </svg>
+  );
+}
+
+function TourStop({ index, id, title, desc }: { index: number; id: string; title: string; desc: string }) {
+  const { ref, visible } = useReveal<HTMLDivElement>();
+  return (
+    <div ref={ref} className={`tour-stop${index % 2 === 1 ? " tour-stop--reverse" : ""}${visible ? " tour-visible" : ""}`}>
+      <div className="tour-visual">
+        <div className="tour-icon-badge">{TOUR_ICONS[id]}</div>
+        {id === "portfolio" && <div className="tour-chart"><MiniDonut /></div>}
+        {id === "analysis" && <div className="tour-chart"><MiniBars /></div>}
+      </div>
+      <div className="tour-text">
+        <span className="card-label">{String(index + 1).padStart(2, "0")}</span>
+        <h3>{title}</h3>
+        <p>{desc}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const [theme, , toggleTheme] = useTheme();
@@ -228,12 +348,41 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* PRODUCT TOUR — see TOUR_STOPS/TourStop above. Content gated behind
+          a scroll reveal is progressive enhancement only: if JS never runs
+          (or IntersectionObserver is unsupported), useReveal defaults to
+          visible, and this <noscript> override is a second, CSS-only
+          safety net so the real copy is never actually hidden. */}
+      <noscript>
+        <style>{".tour-stop{opacity:1 !important;transform:none !important;}"}</style>
+      </noscript>
+      <section className="tour">
+        <div className="container">
+          <div className="section-title">
+            <span className="eyebrow">Product tour</span>
+            <h2>One terminal, seven ways to understand your portfolio.</h2>
+          </div>
+
+          <div className="tour-list">
+            {TOUR_STOPS.map((stop, i) => (
+              <TourStop key={stop.id} index={i} id={stop.id} title={stop.title} desc={stop.desc} />
+            ))}
+          </div>
+
+          <div className="tour-cta">
+            <a href="/terminal" className="btn glow-btn-primary">
+              Start your journey — Open Terminal <span className="btn-arrow">→</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="cta">
         <div className="container">
           <h2>Ready to explore your portfolio?</h2>
           <p>Free to start — no brokerage connection required, just live market data and analytics.</p>
-          <a href="/terminal" className="btn btn-primary">
+          <a href="/terminal" className="btn glow-btn-primary">
             Open Terminal <span className="btn-arrow">→</span>
           </a>
         </div>
