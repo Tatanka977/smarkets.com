@@ -7,7 +7,10 @@
    site reads as deliberately art-directed rather than a generic templated
    SaaS layout. The in-app terminal is untouched by any of this. */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&family=Playfair+Display:ital,wght@1,500;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Inter Tight / Playfair Display / JetBrains Mono are loaded via a <link>
+   in src/routes/__root.tsx's head(), not a CSS @import here — lightningcss
+   (Tailwind v4's CSS pipeline) resolves @import url(...) as a local file
+   path and fails the Vercel build on a remote URL. */
 
 * {
   box-sizing: border-box;

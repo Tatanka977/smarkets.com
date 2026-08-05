@@ -92,6 +92,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        // Marketing-site display fonts (see LandingPage.css) — loaded as a
+        // real <link> rather than a CSS @import: lightningcss (Tailwind v4's
+        // CSS pipeline) resolves @import url(...) as a local file path and
+        // fails the build (ENOENT) on remote URLs.
+        href: "https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&family=Playfair+Display:ital,wght@1,500;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
