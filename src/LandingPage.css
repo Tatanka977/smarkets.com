@@ -1,29 +1,27 @@
 /* Landing + blog shared chrome. Uses the same --sm-* design tokens as the
    terminal app (defined in src/styles.css) so both themes stay in sync
    automatically instead of duplicating a separate light/dark palette here.
-   On top of that shared base, the marketing shell (.landing) layers its
-   own bold editorial type system — big statement headlines, a mono/serif
-   accent pairing, a live ticker tape, sharper geometry — so the public
-   site reads as deliberately art-directed rather than a generic templated
-   SaaS layout. The in-app terminal is untouched by any of this. */
+   On top of that shared base, the marketing shell (.landing) layers a
+   single-font, data-terminal identity — one monospace family for every
+   piece of text (headline down to footer), a live ticker tape, sharp
+   geometry — closer to a trading terminal than an editorial/blog layout.
+   The in-app terminal itself is untouched by any of this. */
 
-/* Inter Tight / Playfair Display / JetBrains Mono are loaded via a <link>
-   in src/routes/__root.tsx's head(), not a CSS @import here — lightningcss
-   (Tailwind v4's CSS pipeline) resolves @import url(...) as a local file
-   path and fails the Vercel build on a remote URL. */
+/* JetBrains Mono is loaded via a <link> in src/routes/__root.tsx's head(),
+   not a CSS @import here — lightningcss (Tailwind v4's CSS pipeline)
+   resolves @import url(...) as a local file path and fails the Vercel
+   build on a remote URL. */
 
 * {
   box-sizing: border-box;
 }
 
 .landing {
-  --land-display: 'Inter Tight', var(--sm-font);
-  --land-serif: 'Playfair Display', Georgia, serif;
-  --land-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --land-font: 'JetBrains Mono', 'Courier New', monospace;
   --land-radius: 3px;
   --land-rule: 2px;
 
-  font-family: var(--sm-font);
+  font-family: var(--land-font);
   background: var(--sm-bg);
   color: var(--sm-gray1);
   position: relative;
@@ -31,6 +29,15 @@
      visible viewport by the scrollbar's width in some browsers — clip it
      here rather than let it introduce a page-level horizontal scrollbar. */
   overflow-x: hidden;
+}
+
+/* One font for the entire marketing site, no exceptions — beats the global
+   font-family !important rule in src/styles.css (which normally forces
+   --sm-font everywhere) purely on selector specificity, since both sides
+   carry !important. */
+.landing,
+.landing * {
+  font-family: var(--land-font) !important;
 }
 
 .container {
@@ -71,7 +78,6 @@
   font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.01em !important;
-  font-family: var(--land-display) !important;
 }
 
 .nav-link {
@@ -79,7 +85,6 @@
   color: var(--sm-gray2);
   font-size: 12px;
   font-weight: 700;
-  font-family: var(--land-mono) !important;
   text-transform: uppercase;
   letter-spacing: 0.08em !important;
   transition: color 0.15s ease;
@@ -96,7 +101,6 @@
   text-decoration: none;
   font-weight: 700;
   font-size: 13.5px;
-  font-family: var(--land-display) !important;
   letter-spacing: -0.01em !important;
   display: inline-flex;
   align-items: center;
@@ -144,7 +148,6 @@
   text-decoration: none;
   font-weight: 700;
   font-size: 13.5px;
-  font-family: var(--land-display) !important;
   background-image: linear-gradient(var(--sm-gray1), var(--sm-gray1));
   background-repeat: no-repeat;
   background-position: 0 100%;
@@ -177,7 +180,6 @@
   color: var(--sm-blue);
   font-size: 11px;
   font-weight: 700;
-  font-family: var(--land-mono) !important;
   letter-spacing: 0.12em !important;
   text-transform: uppercase;
   margin-bottom: 22px;
@@ -191,7 +193,6 @@
   border: 1px solid var(--sm-border);
   font-size: 11px;
   font-weight: 700;
-  font-family: var(--land-mono) !important;
   letter-spacing: 0.1em !important;
   text-transform: uppercase;
   padding: 6px 14px;
@@ -200,28 +201,23 @@
 }
 
 .hero-headline {
-  font-family: var(--land-display) !important;
-  font-size: clamp(2.75rem, 7vw, 6rem);
-  line-height: 0.98;
-  letter-spacing: -0.03em !important;
+  font-size: clamp(2.75rem, 7vw, 5.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em !important;
   font-weight: 800;
   margin: 0 0 28px;
 }
 
 .hero-headline .accent {
-  font-family: var(--land-serif) !important;
-  font-style: italic;
-  font-weight: 600;
   color: var(--sm-blue);
-  letter-spacing: -0.01em !important;
 }
 
 .hero-sub {
   font-size: 17px;
   color: var(--sm-gray2);
   margin: 0 0 32px;
-  max-width: 46ch;
-  line-height: 1.65;
+  max-width: 42ch;
+  line-height: 1.75;
 }
 
 .hero-cta-row {
@@ -259,7 +255,6 @@
   align-items: baseline;
   gap: 10px;
   padding: 14px 28px;
-  font-family: var(--land-mono) !important;
   font-size: 13px;
   border-right: 1px solid var(--sm-border);
   flex-shrink: 0;
@@ -301,10 +296,9 @@
 }
 
 .section-title h2 {
-  font-family: var(--land-display) !important;
   font-size: clamp(1.75rem, 3.4vw, 2.75rem);
   font-weight: 800;
-  letter-spacing: -0.02em !important;
+  letter-spacing: -0.01em !important;
   line-height: 1.08;
   margin: 0;
 }
@@ -327,7 +321,6 @@
 }
 
 .feature-num {
-  font-family: var(--land-mono) !important;
   font-size: 15px;
   font-weight: 600;
   color: var(--sm-gray3);
@@ -335,7 +328,6 @@
 }
 
 .feature-row h3 {
-  font-family: var(--land-display) !important;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.01em !important;
@@ -345,16 +337,15 @@
 .feature-row p {
   color: var(--sm-gray2);
   font-size: 15px;
-  line-height: 1.65;
+  line-height: 1.75;
   margin: 0;
-  max-width: 60ch;
+  max-width: 54ch;
 }
 
 .card-label {
   font-size: 11px;
   color: var(--sm-blue);
   font-weight: 700;
-  font-family: var(--land-mono) !important;
   letter-spacing: 0.1em !important;
   text-transform: uppercase;
 }
@@ -377,7 +368,6 @@
 }
 
 .card h2 {
-  font-family: var(--land-display) !important;
   font-size: 18px;
   margin: 10px 0 10px;
 }
@@ -385,7 +375,7 @@
 .card p {
   color: var(--sm-gray2);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
   margin: 0;
 }
 
@@ -401,10 +391,9 @@
 }
 
 .cta h2 {
-  font-family: var(--land-display) !important;
   font-size: clamp(2rem, 4.5vw, 3.25rem);
   font-weight: 800;
-  letter-spacing: -0.02em !important;
+  letter-spacing: -0.01em !important;
   line-height: 1.05;
   margin: 0 0 16px;
 }
@@ -413,7 +402,7 @@
   color: var(--sm-gray2);
   font-size: 15px;
   margin: 0 0 30px;
-  max-width: 48ch;
+  max-width: 44ch;
 }
 
 /* FAQ ACCORDION — plain <details>/<summary> for built-in keyboard/
@@ -422,7 +411,6 @@
 
 .landing details summary {
   list-style: none;
-  font-family: var(--land-display) !important;
   font-weight: 700;
 }
 .landing details summary::-webkit-details-marker {
@@ -472,7 +460,6 @@ footer {
 .footer-copy {
   font-size: 12px;
   color: var(--sm-gray3);
-  font-family: var(--land-mono) !important;
 }
 
 .footer-links {
@@ -483,7 +470,6 @@ footer {
   color: var(--sm-gray3);
   text-decoration: none;
   font-size: 11px;
-  font-family: var(--land-mono) !important;
   text-transform: uppercase;
   letter-spacing: 0.06em !important;
   transition: color 0.15s ease;
