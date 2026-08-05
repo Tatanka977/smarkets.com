@@ -1,16 +1,33 @@
 /* Landing + blog shared chrome. Uses the same --sm-* design tokens as the
    terminal app (defined in src/styles.css) so both themes stay in sync
-   automatically instead of duplicating a separate light/dark palette here. */
+   automatically instead of duplicating a separate light/dark palette here.
+   On top of that shared base, the marketing shell (.landing) layers its
+   own bold editorial type system — big statement headlines, a mono/serif
+   accent pairing, a live ticker tape, sharper geometry — so the public
+   site reads as deliberately art-directed rather than a generic templated
+   SaaS layout. The in-app terminal is untouched by any of this. */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&family=Playfair+Display:ital,wght@1,500;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 * {
   box-sizing: border-box;
 }
 
 .landing {
+  --land-display: 'Inter Tight', var(--sm-font);
+  --land-serif: 'Playfair Display', Georgia, serif;
+  --land-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --land-radius: 3px;
+  --land-rule: 2px;
+
   font-family: var(--sm-font);
   background: var(--sm-bg);
   color: var(--sm-gray1);
   position: relative;
+  /* The ticker tape's full-bleed 100vw trick (.bleed) can overhang the
+     visible viewport by the scrollbar's width in some browsers — clip it
+     here rather than let it introduce a page-level horizontal scrollbar. */
+  overflow-x: hidden;
 }
 
 .container {
@@ -19,6 +36,14 @@
   margin: auto;
   position: relative;
   z-index: 1;
+}
+
+/* Full-bleed helper — breaks an element out of .container to the viewport
+   edge, used by the ticker tape so it reads as a real strip of tape rather
+   than another boxed section. */
+.bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
 }
 
 /* NAV */
@@ -42,13 +67,18 @@
 .logo {
   font-size: 18px;
   font-weight: 800;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.01em !important;
+  font-family: var(--land-display) !important;
 }
 
 .nav-link {
   text-decoration: none;
   color: var(--sm-gray2);
-  font-size: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--land-mono) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em !important;
   transition: color 0.15s ease;
 }
 .nav-link:hover {
@@ -58,17 +88,17 @@
 /* BUTTONS */
 
 .btn {
-  padding: 11px 22px;
-  border-radius: var(--sm-radius);
+  padding: 12px 22px;
+  border-radius: var(--land-radius);
   text-decoration: none;
   font-weight: 700;
   font-size: 13.5px;
-  letter-spacing: var(--sm-letter-spacing);
-  text-transform: var(--sm-text-transform);
+  font-family: var(--land-display) !important;
+  letter-spacing: -0.01em !important;
   display: inline-flex;
   align-items: center;
   border: 1px solid transparent;
-  transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 
 .btn-primary {
@@ -77,6 +107,7 @@
 }
 .btn-primary:hover {
   opacity: 0.88;
+  transform: translateY(-1px);
 }
 
 .btn-secondary {
@@ -98,37 +129,55 @@
   border-color: var(--sm-blueL);
 }
 
+/* Text-only CTA — an underline that draws in on hover instead of a second
+   boxed button, so the hero reads as one confident action + one quiet
+   invitation rather than a row of competing buttons. */
+.btn-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0;
+  color: var(--sm-gray1);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 13.5px;
+  font-family: var(--land-display) !important;
+  background-image: linear-gradient(var(--sm-gray1), var(--sm-gray1));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 2px;
+  transition: background-size 0.25s ease, color 0.15s ease;
+}
+.btn-text:hover {
+  background-size: 100% 2px;
+}
+
 .btn-arrow {
   display: inline-block;
   margin-left: 5px;
   transition: transform 0.15s;
 }
-.btn:hover .btn-arrow {
+.btn:hover .btn-arrow,
+.btn-text:hover .btn-arrow {
   transform: translateX(3px);
 }
 
 /* HERO */
 
 .hero {
-  padding: 90px 0 80px;
+  padding: 64px 0 0;
   border-bottom: 1px solid var(--sm-border);
-}
-
-.hero-grid {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 56px;
-  align-items: center;
 }
 
 .eyebrow {
   display: inline-block;
   color: var(--sm-blue);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: var(--sm-text-transform);
-  margin-bottom: 18px;
+  font-family: var(--land-mono) !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase;
+  margin-bottom: 22px;
 }
 
 /* Used by both the landing hero and the blog index header. */
@@ -139,169 +188,177 @@
   border: 1px solid var(--sm-border);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: var(--sm-text-transform);
+  font-family: var(--land-mono) !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase;
   padding: 6px 14px;
-  border-radius: var(--sm-radius);
+  border-radius: var(--land-radius);
   margin-bottom: 18px;
 }
 
-.hero h1 {
-  font-size: 46px;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+.hero-headline {
+  font-family: var(--land-display) !important;
+  font-size: clamp(2.75rem, 7vw, 6rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em !important;
   font-weight: 800;
-  margin: 0;
+  margin: 0 0 28px;
 }
 
-.hero h1 .accent {
+.hero-headline .accent {
+  font-family: var(--land-serif) !important;
+  font-style: italic;
+  font-weight: 600;
   color: var(--sm-blue);
+  letter-spacing: -0.01em !important;
 }
 
-.hero p {
-  font-size: 16px;
+.hero-sub {
+  font-size: 17px;
   color: var(--sm-gray2);
-  margin: 20px 0 28px;
-  max-width: 460px;
+  margin: 0 0 32px;
+  max-width: 46ch;
   line-height: 1.65;
 }
 
-.hero-buttons {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-/* STATS ROW */
-
-.stats {
-  display: flex;
-  gap: 36px;
-  margin-top: 44px;
-  flex-wrap: wrap;
-}
-
-.stat-label {
-  font-size: 10px;
-  color: var(--sm-gray3);
-  letter-spacing: 0.08em;
-  text-transform: var(--sm-text-transform);
-  margin-bottom: 4px;
-}
-
-.stat-value {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--sm-gray1);
-}
-
-/* HERO MOCKUP — a simplified, real preview of the terminal UI rather than
-   a generic illustration, so the hero shows what the product actually is. */
-
-.mock-terminal {
-  background: var(--sm-bg);
-  border: 1px solid var(--sm-border);
-  border-radius: var(--sm-radius-lg);
-  overflow: hidden;
-  box-shadow: var(--sm-shadow);
-}
-
-.mock-topbar {
-  background: var(--sm-blue);
-  color: var(--sm-white);
-  padding: 10px 16px;
+.hero-cta-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: var(--sm-text-transform);
+  gap: 28px;
+  flex-wrap: wrap;
+  margin-bottom: 48px;
 }
 
-.mock-live {
+/* TICKER TAPE — a real, edge-to-edge strip of live prices that replaces
+   the old generic "mockup card + stat row" hero furniture. Two back-to-back
+   copies of the same track, animated -50%, for a seamless marquee loop;
+   the second copy is aria-hidden so screen readers only hit the data once. */
+.ticker {
+  border-top: 1px solid var(--sm-border);
+  background: var(--sm-panel);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ticker-track {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.9;
-}
-.mock-live-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  animation: mock-pulse 1.8s ease-in-out infinite;
-}
-@keyframes mock-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  animation: ticker-scroll 34s linear infinite;
 }
 
-.mock-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 14px;
-  align-items: center;
-  padding: 12px 16px;
-  border-top: 1px solid var(--sm-border);
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 14px 28px;
+  font-family: var(--land-mono) !important;
   font-size: 13px;
+  border-right: 1px solid var(--sm-border);
+  flex-shrink: 0;
 }
-.mock-row:first-of-type {
-  border-top: none;
-}
-.mock-ticker {
-  color: var(--sm-blue);
-  font-weight: 700;
-}
-.mock-name {
-  color: var(--sm-gray3);
-  font-size: 11px;
-  display: block;
-  margin-top: 1px;
-}
-.mock-price {
+.ticker-sym {
   color: var(--sm-gray1);
   font-weight: 700;
-  text-align: right;
+  letter-spacing: 0.02em !important;
 }
-.mock-delta {
-  font-weight: 700;
-  text-align: right;
-  min-width: 56px;
+.ticker-price {
+  color: var(--sm-gray2);
 }
-.mock-up { color: var(--sm-green); }
-.mock-down { color: var(--sm-red); }
+.ticker-up { color: var(--sm-green); font-weight: 600; }
+.ticker-down { color: var(--sm-red); font-weight: 600; }
 
-.mock-footer {
-  padding: 10px 16px;
-  border-top: 1px solid var(--sm-border);
-  font-size: 11px;
-  color: var(--sm-gray3);
-  display: flex;
-  justify-content: space-between;
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+  .ticker {
+    overflow-x: auto;
+  }
 }
 
-/* FEATURES */
+/* FEATURES — a numbered editorial list instead of a 3-card icon grid, so
+   it reads as a considered argument (01/02/03) rather than a templated
+   feature-card row. .card/.cards below stay boxed on purpose — they're
+   used for pricing plans, FAQ items and blog posts, where a real card
+   boundary is the right call. */
 
 .features {
-  padding: 88px 0;
+  padding: 96px 0;
   border-bottom: 1px solid var(--sm-border);
 }
 
 .section-title {
-  text-align: center;
-  margin-bottom: 48px;
+  margin-bottom: 56px;
+  max-width: 640px;
 }
 
 .section-title h2 {
-  font-size: 28px;
+  font-family: var(--land-display) !important;
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
   font-weight: 800;
-  letter-spacing: -0.01em;
-  max-width: 600px;
-  margin: 0 auto;
+  letter-spacing: -0.02em !important;
+  line-height: 1.08;
+  margin: 0;
 }
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 24px;
+  padding: 36px 0;
+  border-top: var(--land-rule) solid var(--sm-border);
+  align-items: start;
+}
+.feature-row:last-child {
+  border-bottom: var(--land-rule) solid var(--sm-border);
+}
+
+.feature-num {
+  font-family: var(--land-mono) !important;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--sm-gray3);
+  padding-top: 4px;
+}
+
+.feature-row h3 {
+  font-family: var(--land-display) !important;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em !important;
+  margin: 6px 0 10px;
+}
+
+.feature-row p {
+  color: var(--sm-gray2);
+  font-size: 15px;
+  line-height: 1.65;
+  margin: 0;
+  max-width: 60ch;
+}
+
+.card-label {
+  font-size: 11px;
+  color: var(--sm-blue);
+  font-weight: 700;
+  font-family: var(--land-mono) !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase;
+}
+
+/* .cards / .card — still used for pricing plans, blog post grid, FAQ
+   items. Sharpened to match the rest of the site instead of the old
+   soft-rounded default. */
 
 .cards {
   display: grid;
@@ -313,21 +370,13 @@
   background: var(--sm-panel);
   border: 1px solid var(--sm-border);
   padding: 28px;
-  border-radius: var(--sm-radius);
-}
-
-.card-label {
-  font-size: 11px;
-  color: var(--sm-blue);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: var(--sm-text-transform);
-  margin-bottom: 10px;
+  border-radius: var(--land-radius);
 }
 
 .card h2 {
+  font-family: var(--land-display) !important;
   font-size: 18px;
-  margin: 0 0 10px;
+  margin: 10px 0 10px;
 }
 
 .card p {
@@ -340,21 +389,28 @@
 /* CTA */
 
 .cta {
-  text-align: center;
-  padding: 80px 0;
+  padding: 100px 0;
+  border-bottom: 1px solid var(--sm-border);
+}
+
+.cta .container {
+  max-width: 720px;
 }
 
 .cta h2 {
-  font-size: 30px;
+  font-family: var(--land-display) !important;
+  font-size: clamp(2rem, 4.5vw, 3.25rem);
   font-weight: 800;
-  letter-spacing: -0.01em;
-  margin: 0 0 12px;
+  letter-spacing: -0.02em !important;
+  line-height: 1.05;
+  margin: 0 0 16px;
 }
 
 .cta p {
   color: var(--sm-gray2);
   font-size: 15px;
-  margin: 0 0 26px;
+  margin: 0 0 30px;
+  max-width: 48ch;
 }
 
 /* FAQ ACCORDION — plain <details>/<summary> for built-in keyboard/
@@ -363,6 +419,8 @@
 
 .landing details summary {
   list-style: none;
+  font-family: var(--land-display) !important;
+  font-weight: 700;
 }
 .landing details summary::-webkit-details-marker {
   display: none;
@@ -411,6 +469,7 @@ footer {
 .footer-copy {
   font-size: 12px;
   color: var(--sm-gray3);
+  font-family: var(--land-mono) !important;
 }
 
 .footer-links {
@@ -420,7 +479,10 @@ footer {
 .footer-links a {
   color: var(--sm-gray3);
   text-decoration: none;
-  font-size: 12px;
+  font-size: 11px;
+  font-family: var(--land-mono) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em !important;
   transition: color 0.15s ease;
 }
 .footer-links a:hover {
@@ -430,21 +492,22 @@ footer {
 /* MOBILE */
 
 @media (max-width: 900px) {
-  .hero-grid,
   .cards {
     grid-template-columns: 1fr;
   }
 
   .hero {
-    padding: 60px 0 50px;
+    padding: 44px 0 0;
   }
 
-  .hero h1 {
-    font-size: 34px;
+  .hero-headline {
+    font-size: clamp(2.25rem, 10vw, 3.25rem);
+    max-width: none;
   }
 
-  .stats {
-    gap: 24px;
+  .feature-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .nav-link {
@@ -452,7 +515,7 @@ footer {
   }
 
   .btn {
-    padding: 9px 16px;
+    padding: 10px 16px;
     font-size: 12.5px;
   }
 }
@@ -471,15 +534,9 @@ footer {
     justify-content: space-between;
   }
 
-  .hero { padding: 44px 0 36px; }
-  .hero h1 { font-size: 27px; }
-  .hero p { font-size: 14px; margin: 16px 0 22px; }
-
-  .stats {
-    flex-direction: column;
-    gap: 16px;
-  }
+  .hero-sub { font-size: 15px; }
+  .hero-cta-row { gap: 18px; margin-bottom: 36px; }
 
   .features, .cta { padding: 56px 0; }
-  .cta h2 { font-size: 24px; }
+  .ticker-item { padding: 12px 18px; font-size: 12px; }
 }

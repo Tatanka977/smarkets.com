@@ -6,14 +6,11 @@ import { batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
 
 // All STOCK/ETF category tickers, which always resolve to a real Finnhub-
 // or-Yahoo quote (never the fake ticker-derived mock price) — see
-// fetchQuote/batchRefresh in finance.functions.ts. Display names are kept
-// short/local rather than using the API's shortName (often the full legal
-// name), only the price/change shown are the live-fetched numbers.
-const LANDING_TICKERS = [
-  { ticker: "AAPL", name: "Apple Inc." },
-  { ticker: "MSFT", name: "Microsoft Corp." },
-  { ticker: "NVDA", name: "NVIDIA Corp." },
-  { ticker: "SPY", name: "S&P 500 ETF" },
+// fetchQuote/batchRefresh in finance.functions.ts. Feeds the hero ticker
+// tape; kept short since it's rendered twice back-to-back for the marquee loop.
+const LANDING_TICKERS: { ticker: string; label?: string }[] = [
+  { ticker: "AAPL" }, { ticker: "MSFT" }, { ticker: "NVDA" }, { ticker: "TSLA" },
+  { ticker: "SPY" }, { ticker: "QQQ" }, { ticker: "JPM" }, { ticker: "BTC-USD", label: "BTC" },
 ];
 
 export default function LandingPage() {
@@ -84,87 +81,62 @@ export default function LandingPage() {
 
       {/* HERO */}
       <section className="hero" id="home">
-        <div className="container hero-grid">
+        <div className="container">
+          <span className="eyebrow">Portfolio Analytics Terminal</span>
 
-          <div>
-            <span className="eyebrow">Portfolio Analytics Terminal</span>
+          <h1 className="hero-headline">
+            Track markets.
+            <br />
+            Test strategy.
+            <br />
+            Learn what <span className="accent">actually</span> drives risk.
+          </h1>
 
-            <h1>
-              Track markets. Test strategy.
-              <br />
-              <span className="accent">Learn what drives risk.</span>
-            </h1>
+          <p className="hero-sub">
+            Strategic Markets is an educational portfolio terminal — live quotes
+            across stocks, ETFs, bonds, crypto and FX, real risk analytics, and an
+            AI assistant for scenario analysis. Built to help you understand
+            markets, not to give financial advice.
+          </p>
 
-            <p>
-              Strategic Markets is an educational portfolio terminal — live quotes
-              across stocks, ETFs, bonds, crypto and FX, real risk analytics, and an
-              AI assistant for scenario analysis. Built to help you understand
-              markets, not to give financial advice.
-            </p>
-
-            <div className="hero-buttons">
-              <a href="/terminal" className="btn btn-primary">
-                Open Terminal <span className="btn-arrow">→</span>
-              </a>
-              <a
-                href="#features"
-                className="btn btn-secondary"
-                onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
-                }}
-              >
-                Learn more
-              </a>
-            </div>
-
-            <div className="stats">
-              <div>
-                <div className="stat-label">Asset classes</div>
-                <div className="stat-value">7+</div>
-              </div>
-              <div>
-                <div className="stat-label">Market data</div>
-                <div className="stat-value">Real-time</div>
-              </div>
-              <div>
-                <div className="stat-label">Analysis</div>
-                <div className="stat-value">AI-assisted</div>
-              </div>
-            </div>
+          <div className="hero-cta-row">
+            <a href="/terminal" className="btn btn-primary">
+              Open Terminal <span className="btn-arrow">→</span>
+            </a>
+            <a
+              href="#features"
+              className="btn-text"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              See how it works <span className="btn-arrow">→</span>
+            </a>
           </div>
+        </div>
 
-          <div className="mock-terminal">
-            <div className="mock-topbar">
-              <span>Strategic Markets — Portfolio</span>
-              <span className="mock-live">
-                <span className="mock-live-dot" /> LIVE
-              </span>
-            </div>
-            {LANDING_TICKERS.map((t) => {
+        {/* Live ticker tape — real quotes, not a mockup screenshot. Rendered
+            twice back-to-back so the CSS marquee loops seamlessly; the second
+            pass is aria-hidden so screen readers only hit each price once. */}
+        <div className="ticker bleed" aria-label="Live market ticker">
+          <div className="ticker-track">
+            {[...LANDING_TICKERS, ...LANDING_TICKERS].map((t, i) => {
               const q = quotes[t.ticker];
               const price = q?.price;
               const chg = q?.dayChangePct;
               const up = chg == null || chg >= 0;
               return (
-                <div className="mock-row" key={t.ticker}>
-                  <div>
-                    <span className="mock-ticker">{t.ticker}</span>
-                    <span className="mock-name">{t.name}</span>
-                  </div>
-                  <span className="mock-price">{price != null ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "···"}</span>
-                  <span className={`mock-delta ${up ? "mock-up" : "mock-down"}`}>
+                <span className="ticker-item" key={t.ticker + i} aria-hidden={i >= LANDING_TICKERS.length}>
+                  <span className="ticker-sym">{t.label || t.ticker}</span>
+                  <span className="ticker-price">{price != null ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "···"}</span>
+                  <span className={up ? "ticker-up" : "ticker-down"}>
                     {chg != null ? `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%` : "···"}
                   </span>
-                </div>
+                </span>
               );
             })}
-            <div className="mock-footer">
-              <span>Educational simulation</span>
-              <span>Not investment advice</span>
-            </div>
           </div>
-
         </div>
       </section>
 
@@ -176,33 +148,42 @@ export default function LandingPage() {
             <h2>Built for understanding a portfolio, not just watching it.</h2>
           </div>
 
-          <div className="cards">
-            <div className="card">
-              <div className="card-label">Analytics</div>
-              <h2>Risk, not just returns</h2>
-              <p>
-                Sharpe, Sortino, drawdown, sector/geo concentration, and
-                single-name risk with ETF look-through — see what's
-                actually driving your risk.
-              </p>
+          <div className="feature-list">
+            <div className="feature-row">
+              <span className="feature-num">01</span>
+              <div>
+                <div className="card-label">Analytics</div>
+                <h3>Risk, not just returns</h3>
+                <p>
+                  Sharpe, Sortino, drawdown, sector/geo concentration, and
+                  single-name risk with ETF look-through — see what's
+                  actually driving your risk.
+                </p>
+              </div>
             </div>
 
-            <div className="card">
-              <div className="card-label">Coverage</div>
-              <h2>Stocks, ETFs, bonds, crypto &amp; FX</h2>
-              <p>
-                Search and track multi-asset positions with live quotes
-                and multi-currency valuation.
-              </p>
+            <div className="feature-row">
+              <span className="feature-num">02</span>
+              <div>
+                <div className="card-label">Coverage</div>
+                <h3>Stocks, ETFs, bonds, crypto &amp; FX</h3>
+                <p>
+                  Search and track multi-asset positions with live quotes
+                  and multi-currency valuation.
+                </p>
+              </div>
             </div>
 
-            <div className="card">
-              <div className="card-label">AI assistant</div>
-              <h2>Ask questions, get educational context</h2>
-              <p>
-                A portfolio-aware assistant that explains what the numbers
-                mean — framed as education, never as personalized advice.
-              </p>
+            <div className="feature-row">
+              <span className="feature-num">03</span>
+              <div>
+                <div className="card-label">AI assistant</div>
+                <h3>Ask questions, get educational context</h3>
+                <p>
+                  A portfolio-aware assistant that explains what the numbers
+                  mean — framed as education, never as personalized advice.
+                </p>
+              </div>
             </div>
           </div>
         </div>
