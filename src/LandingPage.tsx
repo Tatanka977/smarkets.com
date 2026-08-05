@@ -20,39 +20,39 @@ const LANDING_TICKERS: { ticker: string; label?: string }[] = [
 // 7 SVGs). Keep these in sync by hand if NAV_ICONS' paths ever change.
 const TOUR_ICONS: Record<string, JSX.Element> = {
   home: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9.5 12 3l9 6.5" /><path d="M5 9.5V21h14V9.5" /><path d="M9 21v-6h6v6" />
     </svg>
   ),
   search: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
   ),
   portfolio: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
     </svg>
   ),
   analysis: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-4 4" />
     </svg>
   ),
   community: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   ),
   news: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="16" rx="2" /><line x1="7" y1="9" x2="17" y2="9" />
       <line x1="7" y1="13" x2="17" y2="13" /><line x1="7" y1="17" x2="13" y2="17" />
     </svg>
   ),
   learn: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c0 1.5 2.5 3 6 3s6-1.5 6-3v-5" /><path d="M22 10v6" />
     </svg>
   ),
@@ -72,27 +72,32 @@ const TOUR_STOPS = [
   { id: "learn", title: "Learn", desc: "Build real financial literacy with bite-sized lessons and daily streaks." },
 ];
 
-// Fires once, the first time the wrapped element enters the viewport —
-// native IntersectionObserver, no animation library.
-function useReveal<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null);
-  const [visible, setVisible] = useState(false);
+// Scrollytelling driver: a sticky icon panel stays pinned while the user
+// scrolls past 7 tall text blocks on the other side; whichever block sits
+// in a thin band near the vertical center of the viewport becomes "active"
+// (native IntersectionObserver, no animation library). Desktop-only — see
+// the .tour-block-icon mobile fallback in LandingPage.css for narrow
+// screens, where sticky-tracking doesn't make sense.
+function useScrollyActive(count: number) {
+  const [active, setActive] = useState(0);
+  const blockRefs = useRef<(HTMLDivElement | null)[]>([]);
   useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") { setVisible(true); return; }
+    if (typeof IntersectionObserver === "undefined") return;
     const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          obs.unobserve(el);
-        }
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const idx = blockRefs.current.indexOf(entry.target as HTMLDivElement);
+          if (idx !== -1) setActive(idx);
+        });
       },
-      { threshold: 0.2, rootMargin: "0px 0px -10% 0px" }
+      { rootMargin: "-45% 0px -45% 0px", threshold: 0 }
     );
-    obs.observe(el);
+    blockRefs.current.forEach((el) => el && obs.observe(el));
     return () => obs.disconnect();
-  }, []);
-  return { ref, visible };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count]);
+  return { active, blockRefs };
 }
 
 function MiniBars() {
@@ -116,28 +121,11 @@ function MiniDonut() {
   );
 }
 
-function TourStop({ index, id, title, desc }: { index: number; id: string; title: string; desc: string }) {
-  const { ref, visible } = useReveal<HTMLDivElement>();
-  return (
-    <div ref={ref} className={`tour-stop${index % 2 === 1 ? " tour-stop--reverse" : ""}${visible ? " tour-visible" : ""}`}>
-      <div className="tour-visual">
-        <div className="tour-icon-badge">{TOUR_ICONS[id]}</div>
-        {id === "portfolio" && <div className="tour-chart"><MiniDonut /></div>}
-        {id === "analysis" && <div className="tour-chart"><MiniBars /></div>}
-      </div>
-      <div className="tour-text">
-        <span className="card-label">{String(index + 1).padStart(2, "0")}</span>
-        <h3>{title}</h3>
-        <p>{desc}</p>
-      </div>
-    </div>
-  );
-}
-
 export default function LandingPage() {
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
   const [quotes, setQuotes] = useState<Record<string, any>>({});
+  const { active, blockRefs } = useScrollyActive(TOUR_STOPS.length);
 
   useEffect(() => {
     let alive = true;
@@ -200,10 +188,16 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* HERO */}
+      {/* HERO — headline up top, then the product tour scrollytelling
+          flows directly underneath in the same section: a sticky icon
+          panel on the right stays pinned while 7 tall text blocks scroll
+          past on the left. This replaces what used to be 4 static floating
+          decorative icons with something that actually means something —
+          the icon on the right updates to match whichever real feature
+          you're currently reading about. */}
       <section className="home-hero" id="home">
-        <div className="container home-hero-grid">
-          <div>
+        <div className="hero-intro">
+          <div className="container">
             <span className="eyebrow">Portfolio Analytics Terminal</span>
 
             <h1 className="home-hero-headline">
@@ -226,11 +220,11 @@ export default function LandingPage() {
                 Open Terminal <span className="btn-arrow">→</span>
               </a>
               <a
-                href="#features"
+                href="#tour"
                 className="btn-text"
                 onClick={(e) => {
                   e.preventDefault();
-                  document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+                  document.getElementById("tour")?.scrollIntoView({ behavior: "smooth" });
                 }}
               >
                 See how it works <span className="btn-arrow">→</span>
@@ -238,72 +232,73 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Decorative floating glass composition — illustrative only, no
-              numbers asserted as real data (the live ticker tape below
-              carries the actual figures). */}
-          <div className="floating-composition" aria-hidden="true">
-            <div className="glass-card glass-card--candles">
-              <svg viewBox="0 0 120 80" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
-                {[
-                  { x: 6, top: 20, h: 22, up: true }, { x: 24, top: 32, h: 14, up: false },
-                  { x: 42, top: 14, h: 30, up: true }, { x: 60, top: 26, h: 18, up: false },
-                  { x: 78, top: 8, h: 36, up: true }, { x: 96, top: 18, h: 24, up: true },
-                ].map((c, i) => (
-                  <g key={i}>
-                    <line x1={c.x + 6} y1={c.top - 6} x2={c.x + 6} y2={c.top + c.h + 6}
-                      stroke={c.up ? "var(--glow-green)" : "var(--glow-red)"} strokeWidth="1.5" opacity="0.7" />
-                    <rect x={c.x} y={c.top} width="12" height={c.h} rx="1.5"
-                      fill={c.up ? "var(--glow-green)" : "var(--glow-red)"} opacity="0.9" />
-                  </g>
-                ))}
-              </svg>
-            </div>
-
-            <div className="glass-card glass-card--trend">
-              <svg viewBox="0 0 120 60" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
-                <polyline points="4,50 24,40 44,44 64,26 84,30 116,8"
-                  fill="none" stroke="var(--glow-green)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="116" cy="8" r="4" fill="var(--glow-green)" />
-              </svg>
-            </div>
-
-            <div className="glass-card glass-card--donut">
-              <svg viewBox="0 0 100 100" width="100%" height="100%">
-                <circle cx="50" cy="50" r="36" fill="none" stroke={PIE_COLS[0]} strokeWidth="14"
-                  strokeDasharray="140 226" strokeDashoffset="0" transform="rotate(-90 50 50)" />
-                <circle cx="50" cy="50" r="36" fill="none" stroke={PIE_COLS[2]} strokeWidth="14"
-                  strokeDasharray="60 226" strokeDashoffset="-140" transform="rotate(-90 50 50)" />
-                <circle cx="50" cy="50" r="36" fill="none" stroke={PIE_COLS[4]} strokeWidth="14"
-                  strokeDasharray="26 226" strokeDashoffset="-200" transform="rotate(-90 50 50)" />
-              </svg>
-            </div>
-
-            <div className="glass-card glass-card--mark">
-              <span>$</span>
+          {/* Live ticker tape — real quotes, not a mockup screenshot. Rendered
+              twice back-to-back so the CSS marquee loops seamlessly; the second
+              pass is aria-hidden so screen readers only hit each price once. */}
+          <div className="ticker bleed" aria-label="Live market ticker">
+            <div className="ticker-track">
+              {[...LANDING_TICKERS, ...LANDING_TICKERS].map((t, i) => {
+                const q = quotes[t.ticker];
+                const price = q?.price;
+                const chg = q?.dayChangePct;
+                const up = chg == null || chg >= 0;
+                return (
+                  <span className="ticker-item" key={t.ticker + i} aria-hidden={i >= LANDING_TICKERS.length}>
+                    <span className="ticker-sym">{t.label || t.ticker}</span>
+                    <span className="ticker-price">{price != null ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "···"}</span>
+                    <span className={up ? "ticker-up" : "ticker-down"}>
+                      {chg != null ? `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%` : "···"}
+                    </span>
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Live ticker tape — real quotes, not a mockup screenshot. Rendered
-            twice back-to-back so the CSS marquee loops seamlessly; the second
-            pass is aria-hidden so screen readers only hit each price once. */}
-        <div className="ticker bleed" aria-label="Live market ticker">
-          <div className="ticker-track">
-            {[...LANDING_TICKERS, ...LANDING_TICKERS].map((t, i) => {
-              const q = quotes[t.ticker];
-              const price = q?.price;
-              const chg = q?.dayChangePct;
-              const up = chg == null || chg >= 0;
-              return (
-                <span className="ticker-item" key={t.ticker + i} aria-hidden={i >= LANDING_TICKERS.length}>
-                  <span className="ticker-sym">{t.label || t.ticker}</span>
-                  <span className="ticker-price">{price != null ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "···"}</span>
-                  <span className={up ? "ticker-up" : "ticker-down"}>
-                    {chg != null ? `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%` : "···"}
-                  </span>
-                </span>
-              );
-            })}
+        {/* PRODUCT TOUR — see TOUR_STOPS/useScrollyActive above. */}
+        <div className="container tour" id="tour">
+          <div className="section-title">
+            <span className="eyebrow">Product tour</span>
+            <h2>One terminal, seven ways to understand your portfolio.</h2>
+          </div>
+
+          <div className="tour-scrolly">
+            <div className="tour-scroll-col">
+              {TOUR_STOPS.map((stop, i) => (
+                <div
+                  key={stop.id}
+                  ref={(el) => { blockRefs.current[i] = el; }}
+                  className={`tour-block${i === active ? " active" : ""}`}
+                >
+                  <div className="tour-block-icon">{TOUR_ICONS[stop.id]}</div>
+                  <span className="card-label">{String(i + 1).padStart(2, "0")}</span>
+                  <h3>{stop.title}</h3>
+                  <p>{stop.desc}</p>
+                </div>
+              ))}
+
+              <div className="tour-cta">
+                <a href="/terminal" className="btn glow-btn-primary">
+                  Start your journey — Open Terminal <span className="btn-arrow">→</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="tour-sticky-col">
+              <div className="tour-sticky-panel">
+                <div className="tour-sticky-icon">{TOUR_ICONS[TOUR_STOPS[active].id]}</div>
+                {TOUR_STOPS[active].id === "portfolio" && <div className="tour-chart"><MiniDonut /></div>}
+                {TOUR_STOPS[active].id === "analysis" && <div className="tour-chart"><MiniBars /></div>}
+                <div className="tour-sticky-index">{String(active + 1).padStart(2, "0")} / {String(TOUR_STOPS.length).padStart(2, "0")}</div>
+                <div className="tour-sticky-title">{TOUR_STOPS[active].title}</div>
+                <div className="tour-progress-rail">
+                  {TOUR_STOPS.map((s, i) => (
+                    <span key={s.id} className={`tour-dot${i === active ? " active" : ""}`} />
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -344,35 +339,6 @@ export default function LandingPage() {
                 mean — framed as education, never as personalized advice.
               </p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PRODUCT TOUR — see TOUR_STOPS/TourStop above. Content gated behind
-          a scroll reveal is progressive enhancement only: if JS never runs
-          (or IntersectionObserver is unsupported), useReveal defaults to
-          visible, and this <noscript> override is a second, CSS-only
-          safety net so the real copy is never actually hidden. */}
-      <noscript>
-        <style>{".tour-stop{opacity:1 !important;transform:none !important;}"}</style>
-      </noscript>
-      <section className="tour">
-        <div className="container">
-          <div className="section-title">
-            <span className="eyebrow">Product tour</span>
-            <h2>One terminal, seven ways to understand your portfolio.</h2>
-          </div>
-
-          <div className="tour-list">
-            {TOUR_STOPS.map((stop, i) => (
-              <TourStop key={stop.id} index={i} id={stop.id} title={stop.title} desc={stop.desc} />
-            ))}
-          </div>
-
-          <div className="tour-cta">
-            <a href="/terminal" className="btn glow-btn-primary">
-              Start your journey — Open Terminal <span className="btn-arrow">→</span>
-            </a>
           </div>
         </div>
       </section>

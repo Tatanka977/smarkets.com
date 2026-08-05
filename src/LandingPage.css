@@ -593,38 +593,42 @@ footer {
   background: linear-gradient(160deg, var(--glow-bg-from) 0%, var(--glow-bg-to) 100%);
   color: var(--glow-fg);
   padding: 56px 0 0;
-  overflow: hidden;
   border-bottom: none;
+  /* No overflow:hidden here (unlike before) — .tour-scrolly's sticky panel
+     needs an ancestor chain with visible overflow to actually stick as you
+     scroll through the whole (now much taller) hero. The glow blur below
+     is clipped locally by .hero-intro instead. */
 }
 
-/* Diffuse diagonal light glow — a large blurred, rotated radial gradient
-   sitting behind the hero content. Pure CSS, no image asset. */
-.home-hero::before {
+.home-hero .ticker {
+  position: relative;
+  z-index: 1;
+}
+
+/* Intro block — headline/sub/CTA, sized to roughly one viewport. The
+   diagonal light glow is scoped to just this wrapper (own overflow:hidden)
+   rather than the whole hero, which is now much taller. */
+.hero-intro {
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 48px;
+}
+.hero-intro::before {
   content: "";
   position: absolute;
-  top: -20%;
+  top: -30%;
   left: -10%;
   width: 90%;
-  height: 140%;
+  height: 180%;
   background: radial-gradient(ellipse at center, rgba(74,124,255,0.35) 0%, rgba(74,124,255,0.12) 35%, transparent 70%);
   transform: rotate(-18deg);
   filter: blur(50px);
   pointer-events: none;
   z-index: 0;
 }
-
-.home-hero .container,
-.home-hero .ticker {
+.hero-intro > * {
   position: relative;
   z-index: 1;
-}
-
-.home-hero-grid {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 40px;
-  align-items: center;
-  padding-bottom: 64px;
 }
 
 .home-landing .eyebrow,
@@ -642,6 +646,7 @@ footer {
   font-weight: 800;
   margin: 0 0 24px;
   color: var(--glow-fg);
+  max-width: 16ch;
 }
 .home-hero-headline .accent {
   color: var(--sm-blueL);
@@ -653,77 +658,6 @@ footer {
   margin: 0 0 30px;
   max-width: 44ch;
   line-height: 1.7;
-}
-
-/* FLOATING GLASS COMPOSITION — 4 small decorative "glass" cards (mini
-   candlestick, trend line, allocation donut, $ mark), absolutely
-   positioned in a stack and gently floating via CSS keyframes. Purely
-   illustrative — no numbers are asserted as real data. */
-.floating-composition {
-  position: relative;
-  height: 380px;
-  width: 100%;
-}
-
-.glass-card {
-  position: absolute;
-  background: var(--glow-panel);
-  border: 1px solid var(--glow-border);
-  border-radius: 20px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
-  padding: 16px;
-  animation: glow-float 6s ease-in-out infinite;
-}
-
-.glass-card--candles {
-  top: 6%;
-  left: 4%;
-  width: 200px;
-  height: 130px;
-  animation-delay: 0s;
-}
-.glass-card--trend {
-  top: 0;
-  right: 0;
-  width: 190px;
-  height: 110px;
-  animation-delay: 0.8s;
-  animation-duration: 7s;
-}
-.glass-card--donut {
-  bottom: 4%;
-  left: 14%;
-  width: 150px;
-  height: 150px;
-  animation-delay: 1.6s;
-  animation-duration: 6.5s;
-}
-.glass-card--mark {
-  bottom: 0;
-  right: 8%;
-  width: 110px;
-  height: 110px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation-delay: 0.4s;
-  animation-duration: 5.5s;
-}
-.glass-card--mark span {
-  font-size: 44px;
-  font-weight: 800;
-  color: var(--sm-blueL);
-}
-
-@keyframes glow-float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-14px); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .glass-card { animation: none; }
 }
 
 /* FEATURES — dark glass card grid (Home only). */
@@ -779,17 +713,6 @@ footer {
 }
 
 @media (max-width: 900px) {
-  .home-hero-grid {
-    grid-template-columns: 1fr;
-    padding-bottom: 40px;
-  }
-  .floating-composition {
-    order: -1;
-    height: 260px;
-    transform: scale(0.82);
-    transform-origin: top center;
-    margin-bottom: -20px;
-  }
   .home-hero-headline {
     font-size: clamp(2.1rem, 8vw, 3rem);
   }
@@ -799,10 +722,6 @@ footer {
 }
 
 @media (max-width: 480px) {
-  .floating-composition {
-    height: 220px;
-    transform: scale(0.68);
-  }
   .home-hero { padding-top: 40px; }
 }
 
@@ -859,16 +778,23 @@ footer {
 }
 
 /* ==========================================================================
- * PRODUCT TOUR — 7 real app screens, revealed one at a time via the native
- * IntersectionObserver as the user scrolls (see useReveal()/TourStop in
- * LandingPage.tsx). Continues the same dark-glass language as the hero/
- * features above it.
+ * PRODUCT TOUR — sticky-panel scrollytelling. Sits right after the hero
+ * (bridges the hero's dark-navy-to-black gradient into a solid black that
+ * Features then picks back up from). A sticky icon panel stays pinned in
+ * the left column while 7 tall text blocks scroll past on the right;
+ * useScrollyActive (LandingPage.tsx) tracks whichever block sits in a thin
+ * band near the vertical center of the viewport and drives which icon/
+ * title the panel shows. Falls back to a plain stacked list with an inline
+ * icon per stop below 900px, where a pinned column doesn't read well on a
+ * short/narrow viewport.
  * ========================================================================== */
 
 .tour {
   position: relative;
-  background: var(--glow-bg-from);
-  padding: 96px 0;
+  /* No own background — this now lives inside .home-hero's single
+     continuous gradient (see hero-intro above) instead of being its own
+     section, so it just needs padding, not another color layer. */
+  padding: 0 0 56px;
 }
 
 .home-landing .tour .section-title {
@@ -884,110 +810,172 @@ footer {
   backdrop-filter: none;
 }
 
-.tour-list {
-  display: flex;
-  flex-direction: column;
-  gap: 64px;
-}
-
-.tour-stop {
+.tour-scrolly {
   display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 40px;
-  align-items: center;
-  opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-.tour-stop.tour-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-.tour-stop--reverse {
-  grid-template-columns: 1fr 220px;
-}
-.tour-stop--reverse .tour-visual {
-  order: 2;
+  grid-template-columns: 1fr 300px;
+  gap: 64px;
+  align-items: start;
 }
 
-.tour-visual {
+.tour-sticky-col {
+  position: relative;
+}
+
+.tour-sticky-panel {
+  position: sticky;
+  top: 110px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-}
-
-.tour-icon-badge {
-  width: 76px;
-  height: 76px;
-  border-radius: 20px;
+  text-align: center;
+  gap: 12px;
   background: var(--glow-panel);
   border: 1px solid var(--glow-border);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  border-radius: 24px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+  padding: 32px 22px;
+}
+
+.tour-sticky-icon {
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--sm-blueL);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+  animation: tour-icon-in 0.35s ease;
+}
+@keyframes tour-icon-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.tour-chart {
-  width: 160px;
-  height: 92px;
-  background: var(--glow-panel);
-  border: 1px solid var(--glow-border);
-  border-radius: 16px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  padding: 10px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+.tour-sticky-panel .tour-chart {
+  width: 130px;
+  height: 130px;
 }
 
-.tour-text .card-label {
+.tour-sticky-index {
+  font-size: 11px;
+  color: var(--glow-fg-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tour-sticky-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--glow-fg);
+}
+
+.tour-progress-rail {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.tour-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--glow-border);
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+.tour-dot.active {
+  background: var(--sm-blueL);
+  transform: scale(1.35);
+}
+
+.tour-scroll-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.tour-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 60vh;
+  opacity: 0.35;
+  transition: opacity 0.4s ease;
+}
+.tour-block.active {
+  opacity: 1;
+}
+.tour-block-icon {
+  display: none;
+}
+
+.tour-block .card-label {
   color: var(--sm-blueL);
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
-.tour-text h3 {
+.tour-block h3 {
   color: var(--glow-fg);
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 700;
-  margin: 0 0 8px;
+  margin: 0 0 14px;
 }
-.tour-text p {
+.tour-block p {
   color: var(--glow-fg-dim);
-  font-size: 15px;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.75;
   margin: 0;
-  max-width: 52ch;
-}
-.tour-stop--reverse .tour-text p {
-  margin-left: auto;
+  max-width: 46ch;
 }
 
 .tour-cta {
   text-align: center;
-  margin-top: 80px;
+  margin-top: 32px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tour-stop {
+  .tour-block {
     transition: none;
+    opacity: 1;
+  }
+  .tour-sticky-icon {
+    animation: none;
   }
 }
 
-@media (max-width: 720px) {
-  .tour-stop,
-  .tour-stop--reverse {
+@media (max-width: 900px) {
+  .tour-scrolly {
     grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .tour-sticky-col {
+    display: none;
+  }
+  .tour-block {
+    min-height: auto;
+    opacity: 1;
+    align-items: center;
     text-align: center;
+    padding: 28px 0;
+    border-top: 1px solid var(--glow-border);
   }
-  .tour-stop--reverse .tour-visual {
-    order: initial;
+  .tour-scroll-col > .tour-block:first-child {
+    border-top: none;
   }
-  .tour-text p {
-    max-width: none;
+  .tour-block-icon {
+    display: flex;
+    width: 60px;
+    height: 60px;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 14px;
+    border-radius: 18px;
+    background: var(--glow-panel);
+    border: 1px solid var(--glow-border);
+    color: var(--sm-blueL);
+  }
+  .tour-block h3 {
+    font-size: 21px;
+  }
+  .tour-block p {
     margin-left: auto;
     margin-right: auto;
   }
