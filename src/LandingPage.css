@@ -681,13 +681,14 @@ footer {
   backdrop-filter: none;
 }
 
-.glow-cards {
+.feature-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
 
-.glow-card {
+.feature-grid-card {
+  display: block;
   background: var(--glow-panel);
   border: 1px solid var(--glow-border);
   border-radius: 20px;
@@ -695,20 +696,243 @@ footer {
   -webkit-backdrop-filter: blur(20px);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
   padding: 28px;
+  text-decoration: none;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
-.glow-card .card-label {
+.feature-grid-card:hover {
+  border-color: var(--sm-blueL);
+  transform: translateY(-2px);
+}
+
+.feature-grid-icon {
   color: var(--sm-blueL);
+  margin-bottom: 14px;
 }
-.glow-card h3 {
+.feature-grid-card h3 {
   color: var(--glow-fg);
   font-size: 19px;
   font-weight: 700;
-  margin: 10px 0 10px;
+  margin: 0 0 8px;
 }
-.glow-card p {
+.feature-grid-card p {
   color: var(--glow-fg-dim);
   font-size: 14px;
   line-height: 1.7;
+  margin: 0;
+}
+.feature-grid-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--sm-blueL);
+}
+
+/* ==========================================================================
+ * HIGHLIGHTS — 4 alternating text/mockup sections. Flat navy, hairline
+ * dividers between them (rather than another gradient per section) to
+ * keep the long run of sections from Features down to Contact simple and
+ * consistent — the gradient treatment is reserved for the hero/features
+ * and CTA/footer transitions at the top and bottom of the page.
+ * ========================================================================== */
+
+.highlight {
+  background: var(--glow-bg-from);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 88px 0;
+}
+
+.highlight-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+.highlight--reverse .highlight-row {
+  grid-template-columns: 1fr 1fr;
+}
+.highlight--reverse .highlight-text {
+  order: 2;
+}
+
+.highlight-text .card-label {
+  color: var(--sm-blueL);
+  display: block;
+  margin-bottom: 10px;
+}
+.highlight-text h3 {
+  color: var(--glow-fg);
+  font-size: clamp(1.6rem, 2.8vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: -0.01em !important;
+  margin: 0 0 16px;
+}
+.highlight-text p {
+  color: var(--glow-fg-dim);
+  font-size: 15px;
+  line-height: 1.75;
+  margin: 0 0 20px;
+  max-width: 46ch;
+}
+
+/* MOCKUP FRAME — browser-window chrome around a placeholder; never fake
+   UI content standing in for a real screenshot. */
+.mockup-frame {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--glow-border);
+  background: var(--glow-panel);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.mockup-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--glow-border);
+}
+.mockup-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--glow-border);
+}
+.mockup-body {
+  aspect-ratio: 16 / 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+}
+.mockup-icon {
+  color: var(--glow-border);
+}
+.mockup-caption {
+  font-size: 11px;
+  color: var(--glow-fg-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* TRUST — verifiable facts only, flat row, no card boxes. */
+
+.trust {
+  background: var(--glow-bg-from);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 64px 0;
+}
+.trust-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+}
+.trust-stat {
+  text-align: center;
+}
+.trust-value {
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--glow-fg);
+  margin-bottom: 8px;
+}
+.trust-label {
+  font-size: 12.5px;
+  color: var(--glow-fg-dim);
+  line-height: 1.5;
+}
+
+/* BLOG GRID — real posts. */
+
+.home-insights {
+  background: var(--glow-bg-from);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 88px 0;
+}
+.home-landing .home-insights .section-title {
+  text-align: center;
+  margin: 0 auto 48px;
+}
+.home-landing .home-insights .section-title h2 {
+  color: var(--glow-fg);
+}
+.home-landing .home-insights .eyebrow {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+.insight-card {
+  display: block;
+  background: var(--glow-panel);
+  border: 1px solid var(--glow-border);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 22px;
+  text-decoration: none;
+  transition: border-color 0.2s ease;
+}
+.insight-card:hover {
+  border-color: var(--sm-blueL);
+}
+.insight-date {
+  font-size: 11px;
+  color: var(--sm-blueL);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.insight-card h3 {
+  color: var(--glow-fg);
+  font-size: 16px;
+  font-weight: 700;
+  margin: 10px 0 8px;
+  line-height: 1.35;
+}
+.insight-card p {
+  color: var(--glow-fg-dim);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* CONTACT — a single mailto link, not a lead-capture form. */
+
+.contact {
+  background: var(--glow-bg-from);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 72px 0;
+}
+.contact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.contact-row h2 {
+  color: var(--glow-fg);
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  font-weight: 800;
+  margin: 0 0 6px;
+}
+.contact-row p {
+  color: var(--glow-fg-dim);
+  font-size: 15px;
   margin: 0;
 }
 
@@ -716,13 +940,36 @@ footer {
   .home-hero-headline {
     font-size: clamp(2.1rem, 8vw, 3rem);
   }
-  .glow-cards {
+  .feature-grid {
     grid-template-columns: 1fr;
+  }
+  .highlight-row,
+  .highlight--reverse .highlight-row {
+    grid-template-columns: 1fr;
+  }
+  .highlight--reverse .highlight-text {
+    order: 0;
+  }
+  .trust-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .insights-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (max-width: 480px) {
   .home-hero { padding-top: 40px; }
+  .trust-row {
+    grid-template-columns: 1fr;
+  }
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+  .contact-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* ==========================================================================
