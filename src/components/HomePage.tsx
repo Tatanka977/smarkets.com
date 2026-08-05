@@ -1,15 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from "recharts";
 import {
-  B, fmt, fmtM, pCol, pSign, pMet, buildPortfolioContext,
+  B, fmt, fmtM, pCol, pSign, pMet,
 } from "@/lib/uiShared";
-import { upsertSnapshot, getSnapshots } from "@/lib/profile.functions";
 import { fetchPriceHistory as srvPriceHistory } from "@/lib/finance.functions";
 import { fetchMarketStatus as srvMarketStatus, batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
-import { fetchMarketNews as srvMarketNews } from "@/lib/news.functions";
-import { aiChatAsUser } from "@/lib/ai.functions";
 import { listFollowedPosts, listAllCommunityPosts } from "@/lib/community.functions";
-import { usePersistentState } from "@/hooks/usePersistentState";
 
 const FONT = "'Courier New', Courier, monospace";
 const CARD = { background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12 };
@@ -427,83 +423,6 @@ function CommunityCallout({ setPage }: any) {
   );
 }
 
-function MarketNewsCard() {
-  const [news, setNews] = useState<any[]>([]);
-  useEffect(() => {
-    let alive = true;
-    srvMarketNews({ data: { category: "general" } }).then((d: any) => { if (alive) setNews(d || []); }).catch(() => {});
-    return () => { alive = false; };
-  }, []);
-
-  return (
-    <div style={{ ...CARD, padding: "16px 18px" }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 10 }}>
-        MARKET NEWS
-      </div>
-      {news.slice(0, 4).map((n: any) => (
-        <div key={n.id} style={{ padding: "8px 0", borderTop: `1px solid ${B.border}` }}>
-          <div style={{ fontSize: 13, color: B.gray1, fontFamily: FONT, lineHeight: 1.4, marginBottom: 3 }}>{n.headline}</div>
-          <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>
-            {n.source} · {new Date(n.datetime * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DailySummaryCard({ holdings }: any) {
-  const todayYmd = new Date().toISOString().slice(0,10);
-  const portfolioHash = useMemo(() => holdings.map((h:any) => `${h.asset.ticker}:${h.qty}`).sort().join("|"), [holdings]);
-  const [cache, setCache] = usePersistentState<{date:string; hash:string; summary:string} | null>("daily_ai_summary", null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  const isFresh = cache && cache.date === todayYmd && cache.hash === portfolioHash;
-
-  const generate = async () => {
-    if (!holdings.length) return;
-    setBusy(true); setError("");
-    try {
-      const sys = `You are STRATEGIC MARKETS AI, an EDUCATIONAL analytics assistant. Write a short (max 120 words) daily portfolio summary: 1-2 notable observations about today's positioning, framed as quantitative/educational, no personalized advice. End with: "DISCLAIMER: For educational and informational purposes only. Not investment advice."`;
-      const prompt = `Today's portfolio snapshot:\n${buildPortfolioContext(holdings)}\n\nWrite today's summary.`;
-      const { reply } = await aiChatAsUser({ messages: [{ role: "user", content: prompt }], system: sys });
-      setCache({ date: todayYmd, hash: portfolioHash, summary: reply });
-    } catch (e: any) {
-      setError("AI error: " + e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (!holdings.length) return null;
-
-  return (
-    <div style={{ ...CARD, padding: "16px 18px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>TODAY'S AI SUMMARY</span>
-        <button onClick={generate} disabled={busy} style={{
-          background: "transparent", border: `1px solid ${B.cyan}`, color: B.cyan, padding: "4px 10px", borderRadius: 6,
-          cursor: busy ? "wait" : "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700,
-        }}>{busy ? "GENERATING…" : isFresh ? "↻ REFRESH" : "GENERATE"}</button>
-      </div>
-      {error && <div style={{ fontSize: 11, color: B.red, fontFamily: FONT }}>{error}</div>}
-      {isFresh ? (
-        <div style={{ fontSize: 12, color: B.gray1, fontFamily: FONT, lineHeight: 1.6 }}>
-          {cache!.summary.split("\n").map((line, i) => {
-            const parts = line.split(/(\*\*[^*]+\*\*)/g);
-            return <div key={i} style={{ marginBottom: 4 }}>{parts.map((p, j) => p.startsWith("**") && p.endsWith("**") ? <b key={j} style={{ color: B.blue }}>{p.slice(2,-2)}</b> : p)}</div>;
-          })}
-        </div>
-      ) : (
-        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, lineHeight: 1.6 }}>
-          Tap Generate for a short AI recap of today's portfolio positioning — educational only, cached for the day.
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function HomePage({ holdings, transactions, setPage, onRefresh, refreshing }: any) {
   const m = useMemo(() => pMet(holdings), [holdings]);
 
@@ -512,27 +431,12 @@ export default function HomePage({ holdings, transactions, setPage, onRefresh, r
       <GlobalMarketStatus />
       <KeyIndices />
 
-      {!holdings.length && (
-        <div style={{ ...CARD, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <span style={{ fontSize: 13, color: B.gray2, fontFamily: FONT }}>No securities in your portfolio yet.</span>
-          <button onClick={() => setPage("search")} style={{
-            background: B.blue, border: "none", color: B.white, padding: "8px 20px", cursor: "pointer",
-            fontFamily: FONT, fontSize: 14, fontWeight: 700, borderRadius: 8,
-          }}>SEARCH SECURITIES</button>
-        </div>
-      )}
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 14 }}>
         <PortfolioOverview holdings={holdings} transactions={transactions} m={m} />
         <CommunityCallout setPage={setPage} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
-        <PerformancePanel holdings={holdings}/>
-        <MarketNewsCard />
-      </div>
-
-      <DailySummaryCard holdings={holdings} />
+      <PerformancePanel holdings={holdings}/>
 
       <div style={{ textAlign: "right" }}>
         <button onClick={onRefresh} disabled={refreshing || !holdings.length} style={{

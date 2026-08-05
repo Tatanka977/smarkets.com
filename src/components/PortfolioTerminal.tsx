@@ -949,17 +949,12 @@ useEffect(()=>{
           </div>
           {[
             {l:"Market Cap", v: detail.marketCap!=null ? `$${fmtM(detail.marketCap)}` : "—"},
-            {l:"Enterprise Value", v:"—"},
             {l:"P/E (TTM)", v: detail.pe!=null ? `${fmt(detail.pe,1)}x` : "—"},
-            {l:"Forward P/E", v:"—"},
             {l:"Dividend Yield", v: detail.dividendYield!=null ? `${fmt(detail.dividendYield,2)}%` : "—"},
             {l:"Beta", v: detail.beta!=null ? fmt(detail.beta,2) : "—"},
-            {l:"52W High", v:"—"},
-            {l:"52W Low", v:"—"},
-            {l:"Avg. Volume", v:"—"},
-          ].map((k,i)=>(
+          ].map((k,i,arr)=>(
             <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",
-              borderBottom: i<8?`1px solid ${B.border}`:"none"}}>
+              borderBottom: i<arr.length-1?`1px solid ${B.border}`:"none"}}>
               <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{k.l}</span>
               <span style={{fontSize:13,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{k.v}</span>
             </div>

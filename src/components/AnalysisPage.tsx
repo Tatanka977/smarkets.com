@@ -731,9 +731,9 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
               <AllocationPanel title="ASSET ALLOCATION" data={tD} />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10 }}>
-              <BPanel title="TOP HOLDINGS">
-                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 12 }}>
+            <BPanel title="TOP HOLDINGS">
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, flexWrap: "wrap" }}>
+                <table style={{ flex: 1, minWidth: 220, borderCollapse: "collapse", fontFamily: FONT, fontSize: 12 }}>
                   <thead>
                     <tr style={{ color: B.gray3 }}>
                       <th style={{ textAlign: "left", padding: "6px 10px", fontWeight: 400 }}>SYMBOL</th>
@@ -751,36 +751,15 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                     ))}
                   </tbody>
                 </table>
-              </BPanel>
-
-              <BPanel title="RISK CONCENTRATION VIEW">
-                <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, flexWrap: "wrap" }}>
-                  <table style={{ flex: 1, minWidth: 200, borderCollapse: "collapse", fontFamily: FONT, fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ color: B.gray3, fontSize: 10 }}>
-                        <th style={{ textAlign: "left", paddingBottom: 6 }}>HOLDING</th>
-                        <th style={{ textAlign: "right", paddingBottom: 6 }}>WEIGHT</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {topHoldings.map((h: any) => (
-                        <tr key={h.asset.ticker} style={{ borderTop: `1px solid ${B.border}` }}>
-                          <td style={{ padding: "5px 0", color: B.gray1 }}>{h.asset.ticker}</td>
-                          <td style={{ padding: "5px 0", textAlign: "right", color: B.gray1, fontWeight: 700 }}>{((h.value/m.total)*100).toFixed(1)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <ResponsiveContainer width={110} height={110}>
-                    <PieChart>
-                      <Pie data={topHoldings.map((h: any) => ({ name: h.asset.ticker, value: h.value }))} cx="50%" cy="50%" innerRadius={30} outerRadius={48} paddingAngle={1} dataKey="value" strokeWidth={0}>
-                        {topHoldings.map((_: any, i: number) => <Cell key={i} fill={PIE_COLS[i % PIE_COLS.length]} />)}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </BPanel>
-            </div>
+                <ResponsiveContainer width={110} height={110}>
+                  <PieChart>
+                    <Pie data={topHoldings.map((h: any) => ({ name: h.asset.ticker, value: h.value }))} cx="50%" cy="50%" innerRadius={30} outerRadius={48} paddingAngle={1} dataKey="value" strokeWidth={0}>
+                      {topHoldings.map((_: any, i: number) => <Cell key={i} fill={PIE_COLS[i % PIE_COLS.length]} />)}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </BPanel>
           </>
         )}
 
