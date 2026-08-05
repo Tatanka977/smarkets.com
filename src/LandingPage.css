@@ -594,10 +594,10 @@ footer {
   color: var(--glow-fg);
   padding: 56px 0 0;
   border-bottom: none;
-  /* No overflow:hidden here (unlike before) — .tour-scrolly's sticky panel
-     needs an ancestor chain with visible overflow to actually stick as you
-     scroll through the whole (now much taller) hero. The glow blur below
-     is clipped locally by .hero-intro instead. */
+  /* No overflow:hidden here (unlike before) — .tour-sticky-viewport's
+     position:sticky needs an ancestor chain with visible overflow to
+     actually pin as you scroll through the whole (now much taller) hero.
+     The glow blur below is clipped locally by .hero-intro instead. */
 }
 
 .home-hero .ticker {
@@ -778,102 +778,96 @@ footer {
 }
 
 /* ==========================================================================
- * PRODUCT TOUR — sticky-panel scrollytelling. Sits right after the hero
- * (bridges the hero's dark-navy-to-black gradient into a solid black that
- * Features then picks back up from). A sticky icon panel stays pinned in
- * the left column while 7 tall text blocks scroll past on the right;
- * useScrollyActive (LandingPage.tsx) tracks whichever block sits in a thin
- * band near the vertical center of the viewport and drives which icon/
- * title the panel shows. Falls back to a plain stacked list with an inline
- * icon per stop below 900px, where a pinned column doesn't read well on a
- * short/narrow viewport.
+ * PRODUCT TOUR — true pinned scrollytelling (desktop). .tour-track is a
+ * tall (steps * 100vh), invisible-except-for-scroll-distance wrapper;
+ * .tour-sticky-viewport is position:sticky + full-height, so it visually
+ * stays put in the viewport the whole time the user scrolls through the
+ * track — nothing about the PAGE appears to move, only the text/icon
+ * inside the pinned viewport swap (useScrollTrack in LandingPage.tsx
+ * computes which step is "active" from scroll position, no scroll-
+ * jacking/preventDefault — native scroll keeps working normally). Mobile
+ * (<900px) gets a plain stacked list instead — pinning a 100vh block per
+ * step doesn't work well on a short viewport with a resizing address bar.
  * ========================================================================== */
 
-.tour {
+.tour-track {
   position: relative;
-  /* No own background — this now lives inside .home-hero's single
-     continuous gradient (see hero-intro above) instead of being its own
-     section, so it just needs padding, not another color layer. */
-  padding: 0 0 56px;
 }
 
-.home-landing .tour .section-title {
-  text-align: center;
-  margin: 0 auto 64px;
-  max-width: 640px;
+.tour-sticky-viewport {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
 }
-.home-landing .tour .section-title h2 {
-  color: var(--glow-fg);
+
+.tour-pin-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 72px;
+  align-items: center;
 }
-.home-landing .tour .eyebrow {
+
+.tour-pin-text {
+  animation: tour-pin-in 0.4s ease;
+}
+.tour-pin-text .eyebrow {
   background: transparent;
   backdrop-filter: none;
+  border-color: transparent;
+  padding-left: 0;
+}
+.tour-pin-text h3 {
+  color: var(--glow-fg);
+  font-size: clamp(1.75rem, 3.2vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.01em !important;
+  margin: 0 0 16px;
+}
+.tour-pin-text p {
+  color: var(--glow-fg-dim);
+  font-size: 16px;
+  line-height: 1.75;
+  margin: 0;
+  max-width: 48ch;
+}
+.tour-pin-cta {
+  margin-top: 24px;
 }
 
-.tour-scrolly {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 64px;
-  align-items: start;
-}
-
-.tour-sticky-col {
-  position: relative;
-}
-
-.tour-sticky-panel {
-  position: sticky;
-  top: 110px;
+.tour-pin-visual {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
-  gap: 12px;
-  background: var(--glow-panel);
-  border: 1px solid var(--glow-border);
-  border-radius: 24px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
-  padding: 32px 22px;
+  gap: 20px;
 }
 
-.tour-sticky-icon {
-  width: 60px;
-  height: 60px;
+.tour-visual-badge {
+  width: 160px;
+  height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 30px;
+  background: var(--glow-panel);
+  border: 1px solid var(--glow-border);
+  border-radius: 32px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
   color: var(--sm-blueL);
-  animation: tour-icon-in 0.35s ease;
+  animation: tour-pin-in 0.4s ease;
 }
-@keyframes tour-icon-in {
-  from { opacity: 0; transform: translateY(6px); }
+
+@keyframes tour-pin-in {
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-.tour-sticky-panel .tour-chart {
-  width: 130px;
-  height: 130px;
-}
-
-.tour-sticky-index {
-  font-size: 11px;
-  color: var(--glow-fg-dim);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.tour-sticky-title {
-  font-size: 19px;
-  font-weight: 700;
-  color: var(--glow-fg);
 }
 
 .tour-progress-rail {
   display: flex;
   gap: 8px;
-  margin-top: 4px;
 }
 .tour-dot {
   width: 7px;
@@ -887,7 +881,32 @@ footer {
   transform: scale(1.35);
 }
 
-.tour-scroll-col {
+@media (prefers-reduced-motion: reduce) {
+  .tour-pin-text,
+  .tour-visual-badge {
+    animation: none;
+  }
+}
+
+/* MOBILE FALLBACK — plain stacked list, no pinning. */
+
+.tour {
+  padding: 96px 0 56px;
+}
+.home-landing .tour .section-title {
+  text-align: center;
+  margin: 0 auto 48px;
+  max-width: 640px;
+}
+.home-landing .tour .section-title h2 {
+  color: var(--glow-fg);
+}
+.home-landing .tour .eyebrow {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.tour-mobile-list {
   display: flex;
   flex-direction: column;
 }
@@ -895,16 +914,26 @@ footer {
 .tour-block {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  min-height: 60vh;
-  opacity: 0.35;
-  transition: opacity 0.4s ease;
+  align-items: center;
+  text-align: center;
+  padding: 28px 0;
+  border-top: 1px solid var(--glow-border);
 }
-.tour-block.active {
-  opacity: 1;
+.tour-mobile-list > .tour-block:first-child {
+  border-top: none;
 }
+
 .tour-block-icon {
-  display: none;
+  display: flex;
+  width: 60px;
+  height: 60px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  border-radius: 18px;
+  background: var(--glow-panel);
+  border: 1px solid var(--glow-border);
+  color: var(--sm-blueL);
 }
 
 .tour-block .card-label {
@@ -914,69 +943,19 @@ footer {
 }
 .tour-block h3 {
   color: var(--glow-fg);
-  font-size: 26px;
+  font-size: 21px;
   font-weight: 700;
-  margin: 0 0 14px;
+  margin: 0 0 10px;
 }
 .tour-block p {
   color: var(--glow-fg-dim);
-  font-size: 16px;
-  line-height: 1.75;
-  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0 auto;
   max-width: 46ch;
 }
 
 .tour-cta {
   text-align: center;
   margin-top: 32px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tour-block {
-    transition: none;
-    opacity: 1;
-  }
-  .tour-sticky-icon {
-    animation: none;
-  }
-}
-
-@media (max-width: 900px) {
-  .tour-scrolly {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
-  .tour-sticky-col {
-    display: none;
-  }
-  .tour-block {
-    min-height: auto;
-    opacity: 1;
-    align-items: center;
-    text-align: center;
-    padding: 28px 0;
-    border-top: 1px solid var(--glow-border);
-  }
-  .tour-scroll-col > .tour-block:first-child {
-    border-top: none;
-  }
-  .tour-block-icon {
-    display: flex;
-    width: 60px;
-    height: 60px;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 14px;
-    border-radius: 18px;
-    background: var(--glow-panel);
-    border: 1px solid var(--glow-border);
-    color: var(--sm-blueL);
-  }
-  .tour-block h3 {
-    font-size: 21px;
-  }
-  .tour-block p {
-    margin-left: auto;
-    margin-right: auto;
-  }
 }

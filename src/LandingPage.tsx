@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import "./LandingPage.css";
 import { LogoWithText } from "@/components/Logo";
 import { useTheme } from "@/hooks/useTheme";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
 import { PIE_COLS } from "@/lib/uiShared";
 
@@ -72,32 +73,37 @@ const TOUR_STOPS = [
   { id: "learn", title: "Learn", desc: "Build real financial literacy with bite-sized lessons and daily streaks." },
 ];
 
-// Scrollytelling driver: a sticky icon panel stays pinned while the user
-// scrolls past 7 tall text blocks on the other side; whichever block sits
-// in a thin band near the vertical center of the viewport becomes "active"
-// (native IntersectionObserver, no animation library). Desktop-only — see
-// the .tour-block-icon mobile fallback in LandingPage.css for narrow
-// screens, where sticky-tracking doesn't make sense.
-function useScrollyActive(count: number) {
+// True pinned scrollytelling: a tall (steps * 100vh) track holds a
+// position:sticky 100vh viewport, so the visible page appears to stay put
+// while the mouse wheel just advances which step's text/icon is shown —
+// no page-scroll-jacking (nothing calls preventDefault on the wheel/scroll
+// event, so native scrolling, keyboard nav, and scrollbar dragging all
+// keep working), just plain scroll-position math driving which step is
+// "active" via a passive scroll listener. Desktop-only — see the mobile
+// stacked-list fallback below, where pinning a 100vh block per step
+// doesn't work well on short/address-bar-resizing viewports.
+function useScrollTrack(steps: number) {
+  const trackRef = useRef<HTMLDivElement | null>(null);
   const [active, setActive] = useState(0);
-  const blockRefs = useRef<(HTMLDivElement | null)[]>([]);
   useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          const idx = blockRefs.current.indexOf(entry.target as HTMLDivElement);
-          if (idx !== -1) setActive(idx);
-        });
-      },
-      { rootMargin: "-45% 0px -45% 0px", threshold: 0 }
-    );
-    blockRefs.current.forEach((el) => el && obs.observe(el));
-    return () => obs.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count]);
-  return { active, blockRefs };
+    const onScroll = () => {
+      const el = trackRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const total = rect.height - vh;
+      const progress = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
+      setActive(Math.min(steps - 1, Math.floor(progress * steps)));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [steps]);
+  return { trackRef, active };
 }
 
 function MiniBars() {
@@ -124,8 +130,10 @@ function MiniDonut() {
 export default function LandingPage() {
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
+  const isMobile = useIsMobile();
   const [quotes, setQuotes] = useState<Record<string, any>>({});
-  const { active, blockRefs } = useScrollyActive(TOUR_STOPS.length);
+  const { trackRef, active } = useScrollTrack(TOUR_STOPS.length);
+  const activeStop = TOUR_STOPS[active];
 
   useEffect(() => {
     let alive = true;
@@ -256,51 +264,92 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* PRODUCT TOUR — see TOUR_STOPS/useScrollyActive above. */}
-        <div className="container tour" id="tour">
-          <div className="section-title">
-            <span className="eyebrow">Product tour</span>
-            <h2>One terminal, seven ways to understand your portfolio.</h2>
-          </div>
+        {/* PRODUCT TOUR — see TOUR_STOPS/useScrollTrack above. Desktop: a
+            true pinned scrollytelling — the visible page stays put (the
+            .tour-sticky-viewport is position:sticky, full-height) while
+            the mouse wheel just advances which step's text+icon is shown,
+            inside an otherwise-invisible tall .tour-track that supplies
+            the scroll distance. Mobile falls back to a plain stacked list
+            (pinning a 100vh block per step doesn't work well with a
+            resizing address bar / short viewport). */}
+        {!isMobile ? (
+          <>
+            {/* Without JS, useScrollTrack's `active` never advances past 0,
+                so only the first stop would ever be in the rendered output
+                — this <noscript> block is a plain-text, always-crawlable
+                copy of all 7 stops as a safety net (same content the
+                mobile branch already shows, just gated to the no-JS case
+                here since JS users get the pinned version above it). */}
+            <noscript>
+              <div className="container tour">
+                <div className="tour-mobile-list">
+                  {TOUR_STOPS.map((stop, i) => (
+                    <div key={stop.id} className="tour-block">
+                      <span className="card-label">{String(i + 1).padStart(2, "0")}</span>
+                      <h3>{stop.title}</h3>
+                      <p>{stop.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </noscript>
+            <div className="tour-track" id="tour" ref={trackRef} style={{ height: `${TOUR_STOPS.length * 100}vh` }}>
+              <div className="tour-sticky-viewport">
+                <div className="container">
+                  <div className="tour-pin-grid">
+                    <div className="tour-pin-text" key={`text-${active}`}>
+                      <span className="eyebrow">Product tour — {String(active + 1).padStart(2, "0")} / {String(TOUR_STOPS.length).padStart(2, "0")}</span>
+                      <h3>{activeStop.title}</h3>
+                      <p>{activeStop.desc}</p>
+                      {active === TOUR_STOPS.length - 1 && (
+                        <a href="/terminal" className="btn glow-btn-primary tour-pin-cta">
+                          Start your journey — Open Terminal <span className="btn-arrow">→</span>
+                        </a>
+                      )}
+                    </div>
 
-          <div className="tour-scrolly">
-            <div className="tour-scroll-col">
+                    <div className="tour-pin-visual">
+                      <div className="tour-visual-badge" key={`badge-${active}`}>
+                        {activeStop.id === "portfolio" ? <MiniDonut />
+                          : activeStop.id === "analysis" ? <MiniBars />
+                          : TOUR_ICONS[activeStop.id]}
+                      </div>
+                      <div className="tour-progress-rail">
+                        {TOUR_STOPS.map((s, i) => (
+                          <span key={s.id} className={`tour-dot${i === active ? " active" : ""}`} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="container tour" id="tour">
+            <div className="section-title">
+              <span className="eyebrow">Product tour</span>
+              <h2>One terminal, seven ways to understand your portfolio.</h2>
+            </div>
+
+            <div className="tour-mobile-list">
               {TOUR_STOPS.map((stop, i) => (
-                <div
-                  key={stop.id}
-                  ref={(el) => { blockRefs.current[i] = el; }}
-                  className={`tour-block${i === active ? " active" : ""}`}
-                >
+                <div key={stop.id} className="tour-block">
                   <div className="tour-block-icon">{TOUR_ICONS[stop.id]}</div>
                   <span className="card-label">{String(i + 1).padStart(2, "0")}</span>
                   <h3>{stop.title}</h3>
                   <p>{stop.desc}</p>
                 </div>
               ))}
-
-              <div className="tour-cta">
-                <a href="/terminal" className="btn glow-btn-primary">
-                  Start your journey — Open Terminal <span className="btn-arrow">→</span>
-                </a>
-              </div>
             </div>
 
-            <div className="tour-sticky-col">
-              <div className="tour-sticky-panel">
-                <div className="tour-sticky-icon">{TOUR_ICONS[TOUR_STOPS[active].id]}</div>
-                {TOUR_STOPS[active].id === "portfolio" && <div className="tour-chart"><MiniDonut /></div>}
-                {TOUR_STOPS[active].id === "analysis" && <div className="tour-chart"><MiniBars /></div>}
-                <div className="tour-sticky-index">{String(active + 1).padStart(2, "0")} / {String(TOUR_STOPS.length).padStart(2, "0")}</div>
-                <div className="tour-sticky-title">{TOUR_STOPS[active].title}</div>
-                <div className="tour-progress-rail">
-                  {TOUR_STOPS.map((s, i) => (
-                    <span key={s.id} className={`tour-dot${i === active ? " active" : ""}`} />
-                  ))}
-                </div>
-              </div>
+            <div className="tour-cta">
+              <a href="/terminal" className="btn glow-btn-primary">
+                Start your journey — Open Terminal <span className="btn-arrow">→</span>
+              </a>
             </div>
           </div>
-        </div>
+        )}
       </section>
 
       {/* FEATURES */}
