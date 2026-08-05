@@ -529,3 +529,279 @@ footer {
   .features, .cta { padding: 56px 0; }
   .ticker-item { padding: 12px 18px; font-size: 12px; }
 }
+
+/* ==========================================================================
+ * HOME — "fintech premium" glassmorphism treatment (Fase 1).
+ *
+ * Scoped entirely under .home-landing (added only to the root <div> in
+ * LandingPage.tsx) rather than touching .header/.hero/.badge/.btn directly
+ * — those shared classes are still used as-is by About/FAQ/Pricing/Blog,
+ * which keep the plain dark-mono look until Fase 2 explicitly asks to
+ * extend this everywhere. Deliberately theme-independent: the hero/features
+ * background here is a fixed dark gradient regardless of the Aurora/
+ * Terminal toggle (matches the reference "premium investing landing page"
+ * pattern — the toggle still governs the rest of the site/app).
+ * ========================================================================== */
+
+.home-landing {
+  --glow-bg-from: #0a1128;
+  --glow-bg-to: #000000;
+  --glow-fg: #F8FAFC;
+  --glow-fg-dim: #B6C0D6;
+  --glow-border: rgba(255,255,255,0.14);
+  --glow-panel: rgba(255,255,255,0.06);
+  --glow-green: #22C55E;
+  --glow-red: #F87171;
+  --glow-blue: var(--sm-blue);
+}
+
+/* Header — transparent, blends into the dark gradient below it. Only
+   applies while the header sits over the dark hero/features (i.e. on
+   Home); other pages keep the plain .header background. */
+.home-landing .header {
+  background: transparent;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.home-landing .logo,
+.home-landing .nav-link {
+  color: var(--glow-fg) !important;
+}
+.home-landing .nav-link {
+  color: var(--glow-fg-dim) !important;
+}
+.home-landing .nav-link:hover {
+  color: var(--glow-fg) !important;
+}
+
+/* Light-filled primary CTA for good contrast on a dark background — this
+   overrides just the Home hero's/CTA's primary button, not .btn-primary
+   sitewide (About/Pricing/etc. keep the blue-filled version). */
+.home-landing .glow-btn-primary {
+  background: var(--glow-fg);
+  color: #0a1128;
+}
+.home-landing .glow-btn-primary:hover {
+  opacity: 0.92;
+}
+.home-landing .btn-text {
+  color: var(--glow-fg);
+  background-image: linear-gradient(var(--glow-fg), var(--glow-fg));
+}
+
+.home-hero {
+  position: relative;
+  background: linear-gradient(160deg, var(--glow-bg-from) 0%, var(--glow-bg-to) 100%);
+  color: var(--glow-fg);
+  padding: 56px 0 0;
+  overflow: hidden;
+  border-bottom: none;
+}
+
+/* Diffuse diagonal light glow — a large blurred, rotated radial gradient
+   sitting behind the hero content. Pure CSS, no image asset. */
+.home-hero::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 90%;
+  height: 140%;
+  background: radial-gradient(ellipse at center, rgba(74,124,255,0.35) 0%, rgba(74,124,255,0.12) 35%, transparent 70%);
+  transform: rotate(-18deg);
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-hero .container,
+.home-hero .ticker {
+  position: relative;
+  z-index: 1;
+}
+
+.home-hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 40px;
+  align-items: center;
+  padding-bottom: 64px;
+}
+
+.home-landing .eyebrow,
+.home-landing .badge {
+  color: var(--glow-fg);
+  border-color: var(--glow-border);
+  background: var(--glow-panel);
+  backdrop-filter: blur(8px);
+}
+
+.home-hero-headline {
+  font-size: clamp(2.5rem, 5.6vw, 4.75rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em !important;
+  font-weight: 800;
+  margin: 0 0 24px;
+  color: var(--glow-fg);
+}
+.home-hero-headline .accent {
+  color: var(--sm-blueL);
+}
+
+.home-hero-sub {
+  font-size: 16px;
+  color: var(--glow-fg-dim);
+  margin: 0 0 30px;
+  max-width: 44ch;
+  line-height: 1.7;
+}
+
+/* FLOATING GLASS COMPOSITION — 4 small decorative "glass" cards (mini
+   candlestick, trend line, allocation donut, $ mark), absolutely
+   positioned in a stack and gently floating via CSS keyframes. Purely
+   illustrative — no numbers are asserted as real data. */
+.floating-composition {
+  position: relative;
+  height: 380px;
+  width: 100%;
+}
+
+.glass-card {
+  position: absolute;
+  background: var(--glow-panel);
+  border: 1px solid var(--glow-border);
+  border-radius: 20px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+  padding: 16px;
+  animation: glow-float 6s ease-in-out infinite;
+}
+
+.glass-card--candles {
+  top: 6%;
+  left: 4%;
+  width: 200px;
+  height: 130px;
+  animation-delay: 0s;
+}
+.glass-card--trend {
+  top: 0;
+  right: 0;
+  width: 190px;
+  height: 110px;
+  animation-delay: 0.8s;
+  animation-duration: 7s;
+}
+.glass-card--donut {
+  bottom: 4%;
+  left: 14%;
+  width: 150px;
+  height: 150px;
+  animation-delay: 1.6s;
+  animation-duration: 6.5s;
+}
+.glass-card--mark {
+  bottom: 0;
+  right: 8%;
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation-delay: 0.4s;
+  animation-duration: 5.5s;
+}
+.glass-card--mark span {
+  font-size: 44px;
+  font-weight: 800;
+  color: var(--sm-blueL);
+}
+
+@keyframes glow-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-14px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-card { animation: none; }
+}
+
+/* FEATURES — dark glass card grid (Home only). */
+
+.home-features {
+  position: relative;
+  background: linear-gradient(180deg, #000000 0%, var(--glow-bg-from) 100%);
+  padding: 88px 0;
+  border-bottom: none;
+}
+
+.home-landing .home-features .section-title {
+  text-align: center;
+  margin: 0 auto 48px;
+}
+.home-landing .home-features .section-title h2 {
+  color: var(--glow-fg);
+}
+.home-landing .home-features .eyebrow {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.glow-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.glow-card {
+  background: var(--glow-panel);
+  border: 1px solid var(--glow-border);
+  border-radius: 20px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+  padding: 28px;
+}
+.glow-card .card-label {
+  color: var(--sm-blueL);
+}
+.glow-card h3 {
+  color: var(--glow-fg);
+  font-size: 19px;
+  font-weight: 700;
+  margin: 10px 0 10px;
+}
+.glow-card p {
+  color: var(--glow-fg-dim);
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .home-hero-grid {
+    grid-template-columns: 1fr;
+    padding-bottom: 40px;
+  }
+  .floating-composition {
+    order: -1;
+    height: 260px;
+    transform: scale(0.82);
+    transform-origin: top center;
+    margin-bottom: -20px;
+  }
+  .home-hero-headline {
+    font-size: clamp(2.1rem, 8vw, 3rem);
+  }
+  .glow-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-composition {
+    height: 220px;
+    transform: scale(0.68);
+  }
+  .home-hero { padding-top: 40px; }
+}
