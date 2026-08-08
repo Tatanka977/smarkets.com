@@ -691,16 +691,20 @@ footer {
   padding: 34px 46px;
 }
 
+/* Thinner bezel + a floating (not edge-flush) Dynamic Island, to match
+ * the reference's real-iPhone proportions rather than a generic
+ * thick-bezel/notch mockup. */
 .phone-frame {
   position: relative;
   width: min(300px, 72vw);
   aspect-ratio: 9 / 14.4;
-  padding: 14px;
-  border-radius: 44px;
+  padding: 9px;
+  border-radius: 46px;
   background: linear-gradient(155deg, #3a3a40 0%, #121214 45%, #050506 100%);
   box-shadow:
     0 40px 90px rgba(0,0,0,0.55),
     0 0 0 1px rgba(255,255,255,0.06),
+    inset 2px 0 1px rgba(255,255,255,0.16),
     inset 0 1px 1px rgba(255,255,255,0.18),
     inset 0 -1px 2px rgba(0,0,0,0.6);
 }
@@ -709,14 +713,14 @@ footer {
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: 32px;
+  border-radius: 38px;
   overflow: hidden;
   background: #000;
 }
 
-/* The source image is already cropped to status-bar-through-IWM, and
-   .phone-frame's aspect-ratio (9/14.4) matches it closely, so cover only
-   ever trims a hairline, not real content. */
+/* The source image's own aspect ratio (1170x1878 = 0.623) already
+   matches .phone-frame's (9/14.4 = 0.625) almost exactly, so cover only
+   ever trims a hairline off the top/bottom — never the sides. */
 .phone-image {
   width: 100%;
   height: 100%;
@@ -725,15 +729,18 @@ footer {
   display: block;
 }
 
+/* Dynamic Island — floats inset from the screen's top edge with a
+   visible margin around it (per reference), rather than sitting flush
+   against the bezel like a notch. */
 .phone-notch {
   position: absolute;
-  top: 14px;
+  top: 22px;
   left: 50%;
   transform: translateX(-50%);
-  width: 30%;
+  width: 27%;
   height: 20px;
   background: #000;
-  border-radius: 12px;
+  border-radius: 999px;
   z-index: 2;
 }
 
