@@ -667,14 +667,17 @@ footer {
 }
 
 /* ==========================================================================
- * PHONE FRAME + 3D SCENE — CSS-only iPhone mockup for the hero's real
- * screenshot (public/home.jpg, cropped by the source image itself down to
- * status-bar-through-IWM — the frame's aspect-ratio matches that crop
- * almost exactly, so object-fit: cover needs to do very little work).
- * .hero-3d-scene supplies the perspective; the tilt itself is a transform
- * on .phone-frame. 2-3 light glassmorphism cards float absolutely
- * positioned over the frame's edges, independent of its 3D tilt (staying
- * flat/legible rather than tilting with the phone).
+ * PHONE FRAME + FLOATING-CARD SCENE — CSS-only iPhone mockup for the
+ * hero's real screenshot (public/home.jpg, cropped by the source image
+ * itself down to status-bar-through-IWM — the frame's aspect-ratio
+ * matches that crop almost exactly, so object-fit: cover needs to do
+ * very little work).
+ * The phone itself stays flat/frontal, no 3D tilt (per reference: the
+ * reference photo's own camera angle is on the whole scene, not the
+ * phone render, which is dead-on). .hero-3d-scene is just a positioning
+ * context now — the "3d" in the name is legacy, kept for a smaller diff.
+ * 2-3 light glassmorphism cards float absolutely positioned over the
+ * frame's edges, some spilling outside the frame's own box.
  * ========================================================================== */
 
 .hero-visual {
@@ -685,7 +688,6 @@ footer {
 .hero-3d-scene {
   position: relative;
   display: inline-block;
-  perspective: 1200px;
   padding: 34px 46px;
 }
 
@@ -701,8 +703,6 @@ footer {
     0 0 0 1px rgba(255,255,255,0.06),
     inset 0 1px 1px rgba(255,255,255,0.18),
     inset 0 -1px 2px rgba(0,0,0,0.6);
-  transform: rotateY(-14deg) rotateX(7deg) rotate(-2deg);
-  transform-style: preserve-3d;
 }
 
 .phone-screen {
@@ -1037,12 +1037,10 @@ footer {
     gap: 32px;
   }
   .hero-3d-scene {
-    perspective: none;
     padding: 20px;
   }
   .phone-frame {
     width: min(240px, 68vw);
-    transform: none;
   }
   /* Only the AI card survives on mobile — the phone/screenshot itself
      stays the priority, not a full floating-card composition. */
