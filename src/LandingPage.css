@@ -592,10 +592,13 @@ footer {
   position: relative;
   background: linear-gradient(160deg, var(--glow-bg-from) 0%, var(--glow-bg-to) 100%);
   color: var(--glow-fg);
-  padding: 56px 0 0;
   border-bottom: none;
   /* overflow:hidden lives on .hero-intro below, not here, so the glow
-     blur stays clipped to just the headline block. */
+     blur stays clipped to just the headline block. The top spacing that
+     used to live here (padding-top) moved onto .hero-intro instead —
+     it sat OUTSIDE .hero-intro's glow/overflow box, so that band showed
+     as a flat, un-glowed dark strip under the header before the glow
+     kicked in. */
 }
 
 .home-hero .ticker {
@@ -609,7 +612,7 @@ footer {
 .hero-intro {
   position: relative;
   overflow: hidden;
-  padding-bottom: 48px;
+  padding: 56px 0 48px;
 }
 .hero-intro::before {
   content: "";
@@ -1091,7 +1094,7 @@ footer {
 }
 
 @media (max-width: 480px) {
-  .home-hero { padding-top: 40px; }
+  .hero-intro { padding-top: 40px; }
   .trust-row {
     grid-template-columns: 1fr;
   }
