@@ -1,10 +1,8 @@
-import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import "./LandingPage.css";
 import { LogoWithText } from "@/components/Logo";
 import { useTheme } from "@/hooks/useTheme";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
-import { PIE_COLS } from "@/lib/uiShared";
 import { listBlogPosts, type BlogPost } from "@/lib/blog.functions";
 
 // All STOCK/ETF category tickers, which always resolve to a real Finnhub-
@@ -20,7 +18,7 @@ const LANDING_TICKERS: { ticker: string; label?: string }[] = [
 // rather than imported, so the marketing bundle doesn't pull in that whole
 // component's module graph — Supabase clients, chart libs, etc. — just for
 // 7 SVGs). Keep these in sync by hand if NAV_ICONS' paths ever change.
-const TOUR_ICONS: Record<string, JSX.Element> = {
+const FEATURE_ICONS: Record<string, JSX.Element> = {
   home: (
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9.5 12 3l9 6.5" /><path d="M5 9.5V21h14V9.5" /><path d="M9 21v-6h6v6" />
@@ -66,23 +64,6 @@ const TOUR_ICONS: Record<string, JSX.Element> = {
   ),
 };
 
-// The 7 real feature areas of the app (Home is covered by the hero/tour
-// above, not repeated here). 4 of these — the ones with the richest real
-// screens to eventually screenshot — get a full alternating highlight
-// section further down (`anchor` set); the rest link straight to the
-// terminal. Descriptions checked against the actual pages (SearchPage,
-// PortfolioPage, AnalysisPage, AIAdvisorPage, CommunityPage, NewsPage,
-// LearnPage in PortfolioTerminal.tsx / their own files) — nothing invented.
-const FEATURE_GRID_ITEMS: { id: string; title: string; desc: string; anchor: string | null }[] = [
-  { id: "search", title: "Search", desc: "Real-time quotes across stocks, ETFs, bonds, crypto, commodities and FX.", anchor: null },
-  { id: "portfolio", title: "Portfolio", desc: "Track real positions, cost basis, and multi-currency valuation.", anchor: "#highlight-portfolio" },
-  { id: "analysis", title: "Analysis", desc: "Allocation breakdown, risk scoring, performance history and What-If scenarios.", anchor: "#highlight-analysis" },
-  { id: "ai", title: "AI Advisor", desc: "A portfolio-aware assistant that explains the numbers — education, never personalized advice.", anchor: "#highlight-ai" },
-  { id: "community", title: "Community", desc: "Share your portfolio, get feedback, and see how others are investing.", anchor: "#highlight-community" },
-  { id: "news", title: "News", desc: "Market and holdings-filtered news, with an optional AI sentiment summary.", anchor: null },
-  { id: "learn", title: "Learn", desc: "Guided lessons and daily streaks to build real financial literacy.", anchor: null },
-];
-
 // The 4 highlight sections, in the order they appear on the page.
 const HIGHLIGHTS: { id: string; label: string; title: string; desc: string; shot: string }[] = [
   {
@@ -107,86 +88,31 @@ const HIGHLIGHTS: { id: string; label: string; title: string; desc: string; shot
   },
 ];
 
-// Verbatim against what each page actually does (checked against
-// HomePage.tsx, SearchPage/PortfolioPage/AIAdvisorPage/NewsPage in
-// PortfolioTerminal.tsx, AnalysisPage.tsx, CommunityPage.tsx, LearnPage.tsx)
-// — no feature described here is invented.
-const TOUR_STOPS = [
-  { id: "home", title: "Home", desc: "See everything at a glance. Live indices, your portfolio overview, and market status in one place." },
-  { id: "search", title: "Search", desc: "Search any stock, ETF, crypto, bond, or commodity — with real-time quotes and company data." },
-  { id: "portfolio", title: "Portfolio", desc: "Build your portfolio, track real positions, and see your true risk exposure." },
-  { id: "analysis", title: "Analysis", desc: "Go deep: allocation breakdown, risk scoring, performance history, and What-If scenarios." },
-  { id: "community", title: "Community", desc: "Share your portfolio, get feedback, and see how others are investing." },
-  { id: "news", title: "News", desc: "Stay informed with real-time market news, filtered to what matters to your holdings." },
-  { id: "learn", title: "Learn", desc: "Build real financial literacy with bite-sized lessons and daily streaks." },
-];
-
-// True pinned scrollytelling: a tall (steps * 100vh) track holds a
-// position:sticky 100vh viewport, so the visible page appears to stay put
-// while the mouse wheel just advances which step's text/icon is shown —
-// no page-scroll-jacking (nothing calls preventDefault on the wheel/scroll
-// event, so native scrolling, keyboard nav, and scrollbar dragging all
-// keep working), just plain scroll-position math driving which step is
-// "active" via a passive scroll listener. Desktop-only — see the mobile
-// stacked-list fallback below, where pinning a 100vh block per step
-// doesn't work well on short/address-bar-resizing viewports.
-function useScrollTrack(steps: number) {
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const [active, setActive] = useState(0);
-  useEffect(() => {
-    const onScroll = () => {
-      const el = trackRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const total = rect.height - vh;
-      const progress = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
-      setActive(Math.min(steps - 1, Math.floor(progress * steps)));
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [steps]);
-  return { trackRef, active };
-}
-
-function MiniBars() {
-  const bars = [18, 30, 24, 42, 36];
-  return (
-    <svg viewBox="0 0 80 50" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
-      {bars.map((h, i) => (
-        <rect key={i} x={i * 16 + 4} y={46 - h} width="10" height={h} rx="2" fill="var(--sm-blueL)" opacity={0.55 + i * 0.09} />
-      ))}
-    </svg>
-  );
-}
-
-function MiniDonut() {
-  return (
-    <svg viewBox="0 0 100 100" width="100%" height="100%">
-      <circle cx="50" cy="50" r="36" fill="none" stroke={PIE_COLS[1]} strokeWidth="14" strokeDasharray="110 226" strokeDashoffset="0" transform="rotate(-90 50 50)" />
-      <circle cx="50" cy="50" r="36" fill="none" stroke={PIE_COLS[8]} strokeWidth="14" strokeDasharray="70 226" strokeDashoffset="-110" transform="rotate(-90 50 50)" />
-      <circle cx="50" cy="50" r="36" fill="none" stroke={PIE_COLS[6]} strokeWidth="14" strokeDasharray="46 226" strokeDashoffset="-180" transform="rotate(-90 50 50)" />
-    </svg>
-  );
-}
-
 // Browser-window-style placeholder frame for a real screenshot that isn't
 // loaded yet — a title bar with 3 dots plus an honest "screenshot coming
 // soon" placeholder, never fake UI content pretending to be the app.
-function MockupFrame({ icon, label }: { icon: JSX.Element; label: string }) {
+// `src` is a plain /public path (e.g. "/portfolio.png"), not a bundled
+// import — drop a file with that name directly under public/ and it starts
+// showing automatically, no code change needed. Until the file exists, the
+// <img> 404s, onError fires, and the honest icon+caption placeholder shows
+// instead — so this never breaks the build or shows a broken-image icon
+// while screenshots are still pending.
+function MockupFrame({ src, icon, label }: { src: string; icon: JSX.Element; label: string }) {
+  const [failed, setFailed] = useState(false);
   return (
     <div className="mockup-frame">
       <div className="mockup-titlebar">
         <span className="mockup-dot" /><span className="mockup-dot" /><span className="mockup-dot" />
       </div>
       <div className="mockup-body">
-        <div className="mockup-icon">{icon}</div>
-        <span className="mockup-caption">Screenshot coming soon — {label}</span>
+        {!failed ? (
+          <img src={src} alt={label} className="mockup-image" onError={() => setFailed(true)} />
+        ) : (
+          <>
+            <div className="mockup-icon">{icon}</div>
+            <span className="mockup-caption">Screenshot coming soon — {label}</span>
+          </>
+        )}
       </div>
     </div>
   );
@@ -195,10 +121,7 @@ function MockupFrame({ icon, label }: { icon: JSX.Element; label: string }) {
 export default function LandingPage() {
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
-  const isMobile = useIsMobile();
   const [quotes, setQuotes] = useState<Record<string, any>>({});
-  const { trackRef, active } = useScrollTrack(TOUR_STOPS.length);
-  const activeStop = TOUR_STOPS[active];
   const [posts, setPosts] = useState<BlogPost[]>([]);
 
   useEffect(() => {
@@ -273,47 +196,39 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* HERO — headline up top, then the product tour scrollytelling
-          flows directly underneath in the same section: a sticky icon
-          panel on the right stays pinned while 7 tall text blocks scroll
-          past on the left. This replaces what used to be 4 static floating
-          decorative icons with something that actually means something —
-          the icon on the right updates to match whichever real feature
-          you're currently reading about. */}
+      {/* HERO — headline + a placeholder "window" on the right, CTA, live
+          ticker. Scrolls straight into the first HIGHLIGHTS section below
+          (no product tour / feature grid between them anymore — cut per
+          feedback that it was too much before reaching the actual feature
+          content). */}
       <section className="home-hero" id="home">
         <div className="hero-intro">
-          <div className="container">
-            <span className="eyebrow">Portfolio Analytics Terminal</span>
+          <div className="container hero-intro-grid">
+            <div>
+              <span className="eyebrow">Portfolio Analytics Terminal</span>
 
-            <h1 className="home-hero-headline">
-              Track markets.
-              <br />
-              Test strategy.
-              <br />
-              Learn what <span className="accent">actually</span> drives risk.
-            </h1>
+              <h1 className="home-hero-headline">
+                Track markets.
+                <br />
+                Test strategy.
+                <br />
+                Learn what <span className="accent">actually</span> drives risk.
+              </h1>
 
-            <p className="home-hero-sub">
-              Strategic Markets is an educational portfolio terminal — live quotes
-              across stocks, ETFs, bonds, crypto and FX, real risk analytics, and an
-              AI assistant for scenario analysis. Built to help you understand
-              markets, not to give financial advice.
-            </p>
+              <div className="hero-cta-row">
+                <a href="/terminal" className="btn glow-btn-primary">
+                  Open Terminal <span className="btn-arrow">→</span>
+                </a>
+                <a href="#highlight-portfolio" className="btn-text" onClick={anchorClick("highlight-portfolio")}>
+                  See how it works <span className="btn-arrow">→</span>
+                </a>
+              </div>
+            </div>
 
-            <div className="hero-cta-row">
-              <a href="/terminal" className="btn glow-btn-primary">
-                Open Terminal <span className="btn-arrow">→</span>
-              </a>
-              <a
-                href="#tour"
-                className="btn-text"
-                onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById("tour")?.scrollIntoView({ behavior: "smooth" });
-                }}
-              >
-                See how it works <span className="btn-arrow">→</span>
-              </a>
+            <div className="hero-visual">
+              {/* Drop a real screenshot at public/hero.png — it starts
+                  showing automatically, no code change needed. */}
+              <MockupFrame src="/hero.png" icon={FEATURE_ICONS.home} label="Terminal overview" />
             </div>
           </div>
 
@@ -340,127 +255,11 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-
-        {/* PRODUCT TOUR — see TOUR_STOPS/useScrollTrack above. Desktop: a
-            true pinned scrollytelling — the visible page stays put (the
-            .tour-sticky-viewport is position:sticky, full-height) while
-            the mouse wheel just advances which step's text+icon is shown,
-            inside an otherwise-invisible tall .tour-track that supplies
-            the scroll distance. Mobile falls back to a plain stacked list
-            (pinning a 100vh block per step doesn't work well with a
-            resizing address bar / short viewport). */}
-        {!isMobile ? (
-          <>
-            {/* Without JS, useScrollTrack's `active` never advances past 0,
-                so only the first stop would ever be in the rendered output
-                — this <noscript> block is a plain-text, always-crawlable
-                copy of all 7 stops as a safety net (same content the
-                mobile branch already shows, just gated to the no-JS case
-                here since JS users get the pinned version above it). */}
-            <noscript>
-              <div className="container tour">
-                <div className="tour-mobile-list">
-                  {TOUR_STOPS.map((stop, i) => (
-                    <div key={stop.id} className="tour-block">
-                      <span className="card-label">{String(i + 1).padStart(2, "0")}</span>
-                      <h3>{stop.title}</h3>
-                      <p>{stop.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </noscript>
-            <div className="tour-track" id="tour" ref={trackRef} style={{ height: `${TOUR_STOPS.length * 100}vh` }}>
-              <div className="tour-sticky-viewport">
-                <div className="container">
-                  <div className="tour-pin-grid">
-                    <div className="tour-pin-text" key={`text-${active}`}>
-                      <span className="eyebrow">Product tour — {String(active + 1).padStart(2, "0")} / {String(TOUR_STOPS.length).padStart(2, "0")}</span>
-                      <h3>{activeStop.title}</h3>
-                      <p>{activeStop.desc}</p>
-                      {active === TOUR_STOPS.length - 1 && (
-                        <a href="/terminal" className="btn glow-btn-primary tour-pin-cta">
-                          Start your journey — Open Terminal <span className="btn-arrow">→</span>
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="tour-pin-visual">
-                      <div className="tour-visual-badge" key={`badge-${active}`}>
-                        {activeStop.id === "portfolio" ? <MiniDonut />
-                          : activeStop.id === "analysis" ? <MiniBars />
-                          : TOUR_ICONS[activeStop.id]}
-                      </div>
-                      <div className="tour-progress-rail">
-                        {TOUR_STOPS.map((s, i) => (
-                          <span key={s.id} className={`tour-dot${i === active ? " active" : ""}`} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="container tour" id="tour">
-            <div className="section-title">
-              <span className="eyebrow">Product tour</span>
-              <h2>One terminal, seven ways to understand your portfolio.</h2>
-            </div>
-
-            <div className="tour-mobile-list">
-              {TOUR_STOPS.map((stop, i) => (
-                <div key={stop.id} className="tour-block">
-                  <div className="tour-block-icon">{TOUR_ICONS[stop.id]}</div>
-                  <span className="card-label">{String(i + 1).padStart(2, "0")}</span>
-                  <h3>{stop.title}</h3>
-                  <p>{stop.desc}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="tour-cta">
-              <a href="/terminal" className="btn glow-btn-primary">
-                Start your journey — Open Terminal <span className="btn-arrow">→</span>
-              </a>
-            </div>
-          </div>
-        )}
       </section>
 
-      {/* FEATURE GRID — 7 real feature areas, each a clickable card. The 4
-          with a matching HIGHLIGHTS entry scroll down to it; the rest
-          (Search/News/Learn) link straight into the terminal. */}
-      <section className="home-features" id="features">
-        <div className="container">
-          <div className="section-title">
-            <span className="eyebrow">What's inside</span>
-            <h2>Everything in one terminal — click any of these for more.</h2>
-          </div>
-
-          <div className="feature-grid">
-            {FEATURE_GRID_ITEMS.map((f) => (
-              <a
-                key={f.id}
-                href={f.anchor || "/terminal"}
-                className="feature-grid-card"
-                onClick={f.anchor ? anchorClick(f.anchor.slice(1)) : undefined}
-              >
-                <div className="feature-grid-icon">{TOUR_ICONS[f.id]}</div>
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
-                {f.anchor && <span className="feature-grid-more">Learn more <span className="btn-arrow">→</span></span>}
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* HIGHLIGHTS — 4 alternating text/mockup sections, one per
-          FEATURE_GRID_ITEMS entry with an anchor. Mockups are placeholder
-          frames only — real screenshots to be dropped in at the paths
-          noted above each one. */}
+      {/* HIGHLIGHTS — 4 alternating text/mockup sections, straight after the
+          hero. Mockups are placeholder frames only — real screenshots to
+          be dropped in at the paths noted above each one. */}
       {HIGHLIGHTS.map((h, i) => (
         <section key={h.id} id={h.id} className={`highlight${i % 2 === 1 ? " highlight--reverse" : ""}`}>
           <div className="container highlight-row">
@@ -473,8 +272,9 @@ export default function LandingPage() {
               </a>
             </div>
             <div className="highlight-visual">
-              {/* TODO: replace with real screenshot — src/assets/screenshots/{h.shot} */}
-              <MockupFrame icon={TOUR_ICONS[h.id.replace("highlight-", "")]} label={h.label} />
+              {/* Drop a real screenshot at public/{h.shot} — it starts
+                  showing automatically, no code change needed. */}
+              <MockupFrame src={`/${h.shot}`} icon={FEATURE_ICONS[h.id.replace("highlight-", "")]} label={h.label} />
             </div>
           </div>
         </section>
