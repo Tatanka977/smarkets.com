@@ -668,16 +668,28 @@ footer {
 
 /* ==========================================================================
  * PHONE FRAME + FLOATING-CARD SCENE — CSS-only iPhone mockup for the
- * hero's real screenshot (public/home.jpg, cropped by the source image
- * itself down to status-bar-through-IWM — the frame's aspect-ratio
- * matches that crop almost exactly, so object-fit: cover needs to do
- * very little work).
- * The phone itself stays flat/frontal, no 3D tilt (per reference: the
- * reference photo's own camera angle is on the whole scene, not the
- * phone render, which is dead-on). .hero-3d-scene is just a positioning
- * context now — the "3d" in the name is legacy, kept for a smaller diff.
- * 2-3 light glassmorphism cards float absolutely positioned over the
- * frame's edges, some spilling outside the frame's own box.
+ * hero's real screenshot (public/home.jpg).
+ *
+ * .phone-image is sized width: 100%; height: auto (its OWN intrinsic
+ * ratio, no object-fit/aspect-ratio at all) so .phone-screen's height is
+ * always exactly whatever the loaded file's real ratio is — this can
+ * never crop, no matter what the actual pixel dimensions of home.jpg
+ * are or become later. Bug this replaced: the frame used to carry a
+ * hardcoded aspect-ratio on its OUTER (border-box) edge with
+ * object-fit: cover on the image; box-sizing: border-box meant the
+ * fixed 9px padding then ate proportionally more off the width than
+ * the height on a portrait box, so the inner content area ended up
+ * narrower than the image and cover cropped a hairline off both sides.
+ * Letting the image drive its own box height sidesteps the whole class
+ * of bug rather than just hand-tuning a ratio constant that could drift
+ * out of sync again the next time the source screenshot changes.
+ *
+ * The bottom bezel is deliberately gone: .phone-frame has no
+ * padding-bottom and square bottom corners (border-radius: ...  0 0),
+ * so the screenshot's own bottom edge (already cropped to end right
+ * after IWM) IS the frame's bottom edge — no black chin, no rounded
+ * corner closing it off, so the phone reads as continuing past what's
+ * visible instead of visibly ending.
  * ========================================================================== */
 
 .hero-visual {
@@ -691,15 +703,15 @@ footer {
   padding: 34px 46px;
 }
 
-/* Thinner bezel + a floating (not edge-flush) Dynamic Island, to match
- * the reference's real-iPhone proportions rather than a generic
- * thick-bezel/notch mockup. */
+/* Thin bezel + a floating (not edge-flush) Dynamic Island, real-iPhone
+ * proportions on three sides — no bottom bezel, see block comment
+ * above. No aspect-ratio here — .phone-screen's own intrinsic ratio
+ * drives the height. */
 .phone-frame {
   position: relative;
   width: min(300px, 72vw);
-  aspect-ratio: 9 / 14.4;
-  padding: 9px;
-  border-radius: 46px;
+  padding: 9px 9px 0;
+  border-radius: 46px 46px 0 0;
   background: linear-gradient(155deg, #3a3a40 0%, #121214 45%, #050506 100%);
   box-shadow:
     0 40px 90px rgba(0,0,0,0.55),
@@ -712,21 +724,18 @@ footer {
 .phone-screen {
   position: relative;
   width: 100%;
-  height: 100%;
-  border-radius: 38px;
+  border-radius: 38px 38px 0 0;
   overflow: hidden;
   background: #000;
 }
 
-/* The source image's own aspect ratio (1170x1878 = 0.623) already
-   matches .phone-frame's (9/14.4 = 0.625) almost exactly, so cover only
-   ever trims a hairline off the top/bottom — never the sides. */
+/* No object-fit / height:100% — the image's own intrinsic ratio sets
+   .phone-screen's height (see block comment above), so it's never
+   scaled against a mismatched container and never crops. */
 .phone-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
   display: block;
+  width: 100%;
+  height: auto;
 }
 
 /* Dynamic Island — floats inset from the screen's top edge with a
@@ -734,7 +743,9 @@ footer {
    against the bezel like a notch. */
 .phone-notch {
   position: absolute;
-  top: 22px;
+  /* Raised from 22px — it was dropping low enough to dip into the
+     "STRATEGIC MARKETS" wordmark row below the status bar. */
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
   width: 27%;
@@ -773,7 +784,12 @@ footer {
 }
 
 .float-card--1 {
-  top: 4%;
+  /* Raised from the original 4% — with the thinner bezel + floating
+     Dynamic Island, 4% landed the card's bottom edge right across the
+     status-bar clock, obscuring it. -8% clears the frame's top edge
+     with ~22px to spare, verified by compositing the real screenshot
+     through this exact box model. */
+  top: -8%;
   left: -4%;
   z-index: 3;
   animation-delay: 0s;
@@ -786,7 +802,7 @@ footer {
   animation-duration: 6s;
 }
 .float-card--3 {
-  bottom: 6%;
+  bottom: 16%;
   right: -8%;
   z-index: 3;
   animation-delay: 0.6s;
