@@ -783,12 +783,11 @@ footer {
 }
 
 .float-card--1 {
-  /* Raised from the original 4% — with the thinner bezel + floating
-     Dynamic Island, 4% landed the card's bottom edge right across the
-     status-bar clock, obscuring it. -8% clears the frame's top edge
-     with ~22px to spare, verified by compositing the real screenshot
-     through this exact box model. */
-  top: -8%;
+  /* -8% pushed the card above .hero-intro's own top edge, which has
+     overflow: hidden and no padding-top — the card's icon/label got
+     clipped off, leaving just a blank rounded sliver showing. 1% stays
+     inside that boundary while still mostly clearing the status bar. */
+  top: 1%;
   left: -4%;
   z-index: 3;
   animation-delay: 0s;
