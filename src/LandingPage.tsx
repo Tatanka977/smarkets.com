@@ -134,6 +134,18 @@ function PhoneFrame({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+// Stylized upward trend line for the "Real-Time Market Data" floating
+// card — decorative only, no axis/numbers, so it never reads as a claim
+// about real performance.
+function MiniTrendLine() {
+  return (
+    <svg width="34" height="22" viewBox="0 0 60 34" fill="none">
+      <polyline points="2,28 14,20 24,24 36,10 48,14 58,4" stroke="#16A34A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <circle cx="58" cy="4" r="3" fill="#16A34A" />
+    </svg>
+  );
+}
+
 export default function LandingPage() {
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
@@ -246,12 +258,28 @@ export default function LandingPage() {
             </div>
 
             <div className="hero-visual">
-              {/* Real screenshot expected at public/home.jpg (not uploaded
-                  yet) — no placeholder image is faked in its place. The
-                  crop (object-position/height below) is a best-effort
-                  estimate until the actual file exists to calibrate
-                  against precisely. */}
-              <PhoneFrame src="/home.jpg" alt="Strategic Markets app — Home screen showing live indices and portfolio overview" />
+              <div className="hero-3d-scene">
+                <PhoneFrame src="/home.jpg" alt="Strategic Markets app — Home screen showing live indices and portfolio overview" />
+
+                {/* Floating glass cards — feature labels only, never a
+                    specific number presented as a real user's data. */}
+                <div className="float-card float-card--1">
+                  <span className="float-card-icon">{FEATURE_ICONS.ai}</span>
+                  <span className="float-card-label">AI-Powered Insights</span>
+                </div>
+                <div className="float-card float-card--2">
+                  <span className="float-card-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m12 2 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5" /><path d="m3 17 9 5 9-5" />
+                    </svg>
+                  </span>
+                  <span className="float-card-label">7+ Asset Classes</span>
+                </div>
+                <div className="float-card float-card--3">
+                  <MiniTrendLine />
+                  <span className="float-card-label">Real-Time Market Data</span>
+                </div>
+              </div>
             </div>
           </div>
 
