@@ -638,16 +638,25 @@ footer {
 }
 
 .home-hero-headline {
-  font-size: clamp(2.5rem, 5.6vw, 4.75rem);
-  line-height: 1.05;
+  font-size: clamp(2rem, 3.6vw, 3.4rem);
+  line-height: 1.12;
   letter-spacing: -0.01em !important;
   font-weight: 800;
   margin: 0 0 24px;
   color: var(--glow-fg);
-  max-width: 16ch;
 }
 .home-hero-headline .accent {
   color: var(--sm-blueL);
+}
+
+/* Toggled per breakpoint below — desktop groups the first two sentences
+   on one line and splits the third across two; mobile keeps one sentence
+   per line instead (see the media query further down). */
+.hero-br-mobile {
+  display: none;
+}
+.hero-br-desktop {
+  display: inline;
 }
 
 .hero-intro-grid {
@@ -657,11 +666,64 @@ footer {
   align-items: center;
 }
 
-.hero-visual .mockup-frame {
-  box-shadow: 0 30px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
+/* ==========================================================================
+ * PHONE FRAME — CSS-only iPhone mockup for the hero's real screenshot.
+ * Realistic device proportions (outer frame) are independent of the crop
+ * (object-position/object-fit on the image inside) — the frame always
+ * looks like a phone regardless of the screenshot's own dimensions.
+ * ========================================================================== */
+
+.hero-visual {
+  display: flex;
+  justify-content: center;
 }
-.hero-visual .mockup-body {
-  aspect-ratio: 4 / 3;
+
+.phone-frame {
+  position: relative;
+  width: min(300px, 78vw);
+  aspect-ratio: 9 / 19.3;
+  padding: 14px;
+  border-radius: 54px;
+  background: linear-gradient(155deg, #3a3a40 0%, #121214 45%, #050506 100%);
+  box-shadow:
+    0 40px 90px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(255,255,255,0.06),
+    inset 0 1px 1px rgba(255,255,255,0.18),
+    inset 0 -1px 2px rgba(0,0,0,0.6);
+  transform: rotate(3deg);
+}
+
+.phone-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 40px;
+  overflow: hidden;
+  background: #000;
+}
+
+/* object-position: top crops from the bottom, keeping the status bar /
+   top of the app visible — see the note above PhoneFrame's usage in
+   LandingPage.tsx: exact framing needs a final check once the real
+   public/home.jpg exists to calibrate against. */
+.phone-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+}
+
+.phone-notch {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32%;
+  height: 22px;
+  background: #000;
+  border-radius: 14px;
+  z-index: 2;
 }
 
 /* ==========================================================================
@@ -742,13 +804,14 @@ footer {
 }
 .mockup-body {
   position: relative;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 1.7;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12px;
   padding: 24px;
+  background: #05070f;
 }
 .mockup-icon {
   color: var(--glow-border);
@@ -760,14 +823,16 @@ footer {
   text-transform: uppercase;
   text-align: center;
 }
-/* Fills the frame edge-to-edge (ignoring .mockup-body's own padding,
-   which only applies to the icon+caption placeholder state). */
+/* object-fit: contain (not cover) — the whole screenshot must always be
+   visible, never cropped, even if its aspect ratio doesn't exactly match
+   the frame; .mockup-body's own dark background shows as letterboxing on
+   whichever axis doesn't fill. */
 .mockup-image {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -888,11 +953,21 @@ footer {
 
 @media (max-width: 900px) {
   .home-hero-headline {
-    font-size: clamp(2.1rem, 8vw, 3rem);
+    font-size: clamp(1.7rem, 7vw, 2.4rem);
+  }
+  .hero-br-mobile {
+    display: inline;
+  }
+  .hero-br-desktop {
+    display: none;
   }
   .hero-intro-grid {
     grid-template-columns: 1fr;
     gap: 32px;
+  }
+  .phone-frame {
+    width: min(240px, 68vw);
+    transform: rotate(0deg);
   }
   .highlight-row,
   .highlight--reverse .highlight-row {

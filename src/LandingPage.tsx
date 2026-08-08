@@ -118,6 +118,22 @@ function MockupFrame({ src, icon, label }: { src: string; icon: JSX.Element; lab
   );
 }
 
+// CSS-only iPhone-style frame for the hero's real Home-screen screenshot.
+// No placeholder fallback here (unlike MockupFrame) — the file is expected
+// to land at the given path separately; until then this is a broken-image
+// icon rather than a fake "coming soon" screen, per the explicit request
+// not to invent a placeholder for this one.
+function PhoneFrame({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="phone-frame">
+      <div className="phone-screen">
+        <img src={src} alt={alt} className="phone-image" />
+      </div>
+      <div className="phone-notch" />
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
@@ -196,23 +212,27 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* HERO — headline + a placeholder "window" on the right, CTA, live
-          ticker. Scrolls straight into the first HIGHLIGHTS section below
-          (no product tour / feature grid between them anymore — cut per
-          feedback that it was too much before reaching the actual feature
-          content). */}
+      {/* HERO — headline + a real iPhone-framed screenshot on the right,
+          CTA, live ticker. Scrolls straight into the first HIGHLIGHTS
+          section below (no product tour / feature grid between them
+          anymore — cut per feedback that it was too much before reaching
+          the actual feature content). */}
       <section className="home-hero" id="home">
         <div className="hero-intro">
           <div className="container hero-intro-grid">
             <div>
               <span className="eyebrow">Portfolio Analytics Terminal</span>
 
+              {/* Line breaks are explicit, not left to natural wrapping, so
+                  the 1-line/2-line split is guaranteed regardless of
+                  viewport width — but desktop and mobile want a different
+                  split, so .hero-br-desktop/.hero-br-mobile toggle via
+                  CSS media query (one real <h1>, not two duplicated ones,
+                  so screen readers/SEO only ever see one heading). */}
               <h1 className="home-hero-headline">
-                Track markets.
+                Track markets.<br className="hero-br-mobile" /> Test strategy.
                 <br />
-                Test strategy.
-                <br />
-                Learn what <span className="accent">actually</span> drives risk.
+                Learn what <span className="accent">actually</span><br className="hero-br-desktop" /> drives risk.
               </h1>
 
               <div className="hero-cta-row">
@@ -226,9 +246,12 @@ export default function LandingPage() {
             </div>
 
             <div className="hero-visual">
-              {/* Drop a real screenshot at public/hero.png — it starts
-                  showing automatically, no code change needed. */}
-              <MockupFrame src="/hero.png" icon={FEATURE_ICONS.home} label="Terminal overview" />
+              {/* Real screenshot expected at public/home.jpg (not uploaded
+                  yet) — no placeholder image is faked in its place. The
+                  crop (object-position/height below) is a best-effort
+                  estimate until the actual file exists to calibrate
+                  against precisely. */}
+              <PhoneFrame src="/home.jpg" alt="Strategic Markets app — Home screen showing live indices and portfolio overview" />
             </div>
           </div>
 
