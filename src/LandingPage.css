@@ -743,9 +743,8 @@ footer {
    against the bezel like a notch. */
 .phone-notch {
   position: absolute;
-  /* Raised from 22px — it was dropping low enough to dip into the
-     "STRATEGIC MARKETS" wordmark row below the status bar. */
-  top: 10px;
+  /* Centered between the top edge and the "STRATEGIC MARKETS" row. */
+  top: 16px;
   left: 50%;
   transform: translateX(-50%);
   width: 27%;
