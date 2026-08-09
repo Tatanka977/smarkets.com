@@ -208,15 +208,15 @@ function TopBar({time,setPage}:any) {
         <img src="/sm-icon.png" alt="" style={{height:22,width:"auto",filter:"brightness(0) invert(1)"}} />
         <span style={{fontSize:16,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
           letterSpacing:"0.14em",whiteSpace:"nowrap"}}>STRATEGIC MARKETS</span>
-        <span className="sm-tagline" style={{fontSize:12,color:"rgba(255,255,255,0.75)",
+        <span className="sm-tagline" style={{fontSize:14,color:"rgba(255,255,255,0.75)",
           fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>
           PORTFOLIO TERMINAL
         </span>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-        <span style={{fontSize:12,color:B.yellow,fontFamily:"'Courier New',monospace",
+        <span style={{fontSize:14,color:B.yellow,fontFamily:"'Courier New',monospace",
           fontWeight:700,letterSpacing:"0.06em"}}>● LIVE</span>
-        <span style={{fontSize:12,color:B.white,fontFamily:"'Courier New',monospace",opacity:0.85}}>{time}</span>
+        <span style={{fontSize:14,color:B.white,fontFamily:"'Courier New',monospace",opacity:0.85}}>{time}</span>
         <NotificationBell setPage={setPage}/>
         <button
           data-testid="theme-toggle-button"
@@ -252,7 +252,7 @@ function TopBar({time,setPage}:any) {
             sidebar and this is the only way to reach it. */}
         {isMobile && (
           <Link to={user ? "/profile" : "/auth"} style={{
-            fontSize:12,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
+            fontSize:14,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
             textDecoration:"none",background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.4)",
             padding:"4px 10px",letterSpacing:"0.08em",whiteSpace:"nowrap"}}>
             {user ? "◉ PROFILE" : "▸ SIGN IN"}
@@ -279,7 +279,7 @@ function FKeyBar({page,setPage}:any) {
         <FKey key={k.id} label={k.l} active={page===k.id} onClick={()=>setPage(k.id)}/>
       ))}
       <div style={{flex:1}}/>
-      <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",
+      <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",
         alignSelf:"center",paddingRight:4,letterSpacing:"0.06em"}}>HELP</span>
     </div>
   );
@@ -378,10 +378,10 @@ function BottomNav({page,setPage,badge}:any) {
             color:active?B.blue:B.gray2,
           }}>
             {t.badge>0&&<div style={{position:"absolute",top:3,right:"20%",
-              background:B.blue,color:B.white,fontSize:9,fontWeight:700,
+              background:B.blue,color:B.white,fontSize:11,fontWeight:700,
               fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"13px",borderRadius:6,minWidth:13,textAlign:"center"}}>{t.badge}</div>}
             {NAV_ICONS[t.id]}
-            <span className="sm-navlabel" style={{fontSize:9,fontWeight:700,
+            <span className="sm-navlabel" style={{fontSize:11,fontWeight:700,
               fontFamily:"'Courier New',monospace",letterSpacing:0,whiteSpace:"nowrap"}}>{t.label}</span>
           </button>
         );
@@ -428,7 +428,7 @@ function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
       <div style={{padding:"16px 14px",display:"flex",alignItems:"center",gap:10,
         borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
         <LogoIcon size={26}/>
-        <span style={{fontSize:12,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
+        <span style={{fontSize:14,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
           letterSpacing:"0.08em",lineHeight:1.3}}>STRATEGIC<br/>MARKETS</span>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"10px 8px",display:"flex",flexDirection:"column",gap:2}}>
@@ -441,10 +441,10 @@ function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
           const label = (
             <>
               {t.badgeKey && badge>0 && <div style={{position:"absolute",top:6,right:8,
-                background:B.blue,color:B.white,fontSize:10,fontWeight:700,
+                background:B.blue,color:B.white,fontSize:12,fontWeight:700,
                 fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"14px",borderRadius:2}}>{badge}</div>}
               {NAV_ICONS[t.id]}
-              <span style={{fontSize:13,fontWeight:700,
+              <span style={{fontSize:15,fontWeight:700,
                 fontFamily:"'Courier New',monospace",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{t.label}</span>
             </>
           );
@@ -471,9 +471,9 @@ function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
           <div style={{borderTop:`1px solid ${B.border}`,marginTop:8,paddingTop:8}}>
             <button onClick={onRetakeProfile} style={{
               display:"flex",alignItems:"center",gap:8,padding:"9px 12px",
-              background:"transparent",border:`1px solid ${B.border}`,borderRadius:4,
+              background:"transparent",border:`1px solid ${B.borderB}`,borderRadius:4,
               color:B.gray2,cursor:"pointer",textAlign:"left",width:"100%",boxSizing:"border-box",
-              fontFamily:"'Courier New',monospace",fontSize:12,fontWeight:700,letterSpacing:"0.03em",
+              fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700,letterSpacing:"0.03em",
             }}>
               ↻ Retake Investor Profile
             </button>
@@ -508,7 +508,7 @@ export function MarketStatusBar() {
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",
         gap:0, background:B.panel}}>
         {loading && (
-          <div style={{padding:"8px 10px",color:B.gray3,fontSize:12,
+          <div style={{padding:"8px 10px",color:B.gray3,fontSize:14,
             fontFamily:"'Courier New',monospace"}}>LOADING…</div>
         )}
         {statuses.map((s:any, i:number) => {
@@ -521,12 +521,12 @@ export function MarketStatusBar() {
               <div style={{display:"flex",alignItems:"center",gap:4}}>
                 <span style={{width:8,height:8,background:color,borderRadius:"50%",
                   animation: s.isOpen ? "pulse 1.5s infinite" : "none",display:"inline-block"}}/>
-                <span style={{fontSize:12,color:B.gray1,fontWeight:700,letterSpacing:"0.06em"}}>{s.label}</span>
+                <span style={{fontSize:14,color:B.gray1,fontWeight:700,letterSpacing:"0.06em"}}>{s.label}</span>
               </div>
-              <div style={{fontSize:11,color:color,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase"}}>
+              <div style={{fontSize:13,color:color,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase"}}>
                 {s.holiday ? "HOLIDAY" : s.isOpen ? (s.session === "regular" ? "OPEN" : s.session.toUpperCase()) : "CLOSED"}
               </div>
-              <div style={{fontSize:11,color:B.gray3}}>{fmtLocal(s.timezone)} local</div>
+              <div style={{fontSize:13,color:B.gray3}}>{fmtLocal(s.timezone)} local</div>
             </div>
           );
         })}
@@ -572,14 +572,14 @@ export function IndicesOverview() {
               borderBottom: i < 3 ? `1px solid ${B.border}` : "none",
               fontFamily:"'Courier New',monospace"}}>
               <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:6}}>
-                <span style={{fontSize:13,color:B.blue,fontWeight:700,letterSpacing:"0.04em"}}>{it.sym}</span>
-                <span style={{fontSize:10,color:B.gray3,textTransform:"uppercase",letterSpacing:"0.05em"}}>{it.label}</span>
+                <span style={{fontSize:15,color:B.blue,fontWeight:700,letterSpacing:"0.04em"}}>{it.sym}</span>
+                <span style={{fontSize:12,color:B.gray3,textTransform:"uppercase",letterSpacing:"0.05em"}}>{it.label}</span>
               </div>
               <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginTop:2}}>
                 <span style={{fontSize:15,color:B.yellow,fontWeight:700}}>
                   {loading ? "…" : price != null ? price.toLocaleString(undefined,{maximumFractionDigits:2}) : "---"}
                 </span>
-                <span style={{fontSize:12,color:chgCol,fontWeight:700}}>
+                <span style={{fontSize:14,color:chgCol,fontWeight:700}}>
                   {chg != null ? `${pSign(fmt(chg, 2))}%` : "—"}
                 </span>
               </div>
@@ -642,8 +642,8 @@ function PricePerformancePanel({symbol, currency}:any) {
   return (
     <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:10}}>
-        <span style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>PRICE PERFORMANCE</span>
-        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:B.gray2,fontFamily:"'Courier New',monospace",cursor:"pointer"}}>
+        <span style={{fontSize:15,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>PRICE PERFORMANCE</span>
+        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:14,color:B.gray2,fontFamily:"'Courier New',monospace",cursor:"pointer"}}>
           <input type="checkbox" checked={showBenchmark} onChange={e=>setShowBenchmark(e.target.checked)}/>
           Compare to S&amp;P 500
         </label>
@@ -653,7 +653,7 @@ function PricePerformancePanel({symbol, currency}:any) {
         {RANGES.map(r=>(
           <button key={r.id} onClick={()=>setRange(r.id)} style={{
             background: range===r.id ? B.blue : "transparent", color: range===r.id ? B.white : B.gray2,
-            border:"none", fontSize:11, fontWeight:700, padding:"4px 8px", borderRadius:6,
+            border:"none", fontSize:13, fontWeight:700, padding:"4px 8px", borderRadius:6,
             cursor:"pointer", fontFamily:"'Courier New',monospace",
           }}>{r.label}</button>
         ))}
@@ -661,15 +661,15 @@ function PricePerformancePanel({symbol, currency}:any) {
 
       <div style={{height:220}}>
         {loading ? (
-          <div style={{height:"100%",display:"flex",alignItems:"center",justifyContent:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:12}}>LOADING…</div>
+          <div style={{height:"100%",display:"flex",alignItems:"center",justifyContent:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:14}}>LOADING…</div>
         ) : !chartData.length ? (
-          <div style={{height:"100%",display:"flex",alignItems:"center",justifyContent:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:12}}>No historical data available for this range.</div>
+          <div style={{height:"100%",display:"flex",alignItems:"center",justifyContent:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:14}}>No historical data available for this range.</div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <XAxis dataKey="label" tick={{fontSize:10,fill:B.gray3}} minTickGap={30}/>
-              <YAxis tick={{fontSize:10,fill:B.gray3}} tickFormatter={(v)=>`${v.toFixed(0)}%`}/>
-              <Tooltip formatter={(v:any)=>`${v.toFixed(2)}%`} contentStyle={{fontFamily:"'Courier New',monospace",fontSize:12}}/>
+              <XAxis dataKey="label" tick={{fontSize:12,fill:B.gray3}} minTickGap={30}/>
+              <YAxis tick={{fontSize:12,fill:B.gray3}} tickFormatter={(v)=>`${v.toFixed(0)}%`}/>
+              <Tooltip formatter={(v:any)=>`${v.toFixed(2)}%`} contentStyle={{fontFamily:"'Courier New',monospace",fontSize:14}}/>
               <ReferenceLine y={0} stroke={B.border}/>
               <Line type="monotone" dataKey="value" stroke={B.blue} strokeWidth={2} dot={false} name={symbol}/>
               {showBenchmark && <Line type="monotone" dataKey="benchmark" stroke={B.gray3} strokeWidth={1.5} dot={false} name="S&P 500"/>}
@@ -879,7 +879,7 @@ useEffect(()=>{
     <div style={{flex:1,overflowY:"auto",padding:14,display:"flex",flexDirection:"column",gap:14,background:B.bg}}>
       <button onClick={()=>{setSel(null);setDetail(null);}} style={{
         alignSelf:"flex-start",background:"none",border:"none",color:B.blue,cursor:"pointer",
-        fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,padding:0}}>
+        fontFamily:"'Courier New',monospace",fontSize:15,fontWeight:700,padding:0}}>
         ← BACK TO SEARCH
       </button>
 
@@ -891,7 +891,7 @@ useEffect(()=>{
             <span style={{fontSize:24,fontWeight:700,color:B.blue,fontFamily:"'Courier New',monospace"}}>{detail.ticker}</span>
             <span style={{fontSize:16,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{detail.shortName}</span>
           </div>
-          <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginTop:2}}>
+          <div style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginTop:2}}>
             {detail.exchange || "—"} · {detail.sector || "—"} · {detail.currency || "USD"}
           </div>
         </div>
@@ -905,13 +905,13 @@ useEffect(()=>{
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <button onClick={addWatch} disabled={watchBusy} style={{
-            background:"none",border:`1px solid ${B.border}`,color:B.blue,padding:"8px 16px",borderRadius:8,
-            cursor:watchBusy?"wait":"pointer",fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700}}>
+            background:"none",border:`1px solid ${B.borderB}`,color:B.blue,padding:"8px 16px",borderRadius:8,
+            cursor:watchBusy?"wait":"pointer",fontFamily:"'Courier New',monospace",fontSize:15,fontWeight:700}}>
             {watchBusy ? "..." : watchMsg || "ADD TO WATCHLIST"}
           </button>
           <button onClick={()=>setShowAlertForm(v=>!v)} style={{
-            background:showAlertForm?B.panel2:"none",border:`1px solid ${B.border}`,color:B.yellow,padding:"8px 16px",borderRadius:8,
-            cursor:"pointer",fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700}}>
+            background:showAlertForm?B.panel2:"none",border:`1px solid ${B.borderB}`,color:B.yellow,padding:"8px 16px",borderRadius:8,
+            cursor:"pointer",fontFamily:"'Courier New',monospace",fontSize:15,fontWeight:700}}>
             PRICE ALERT
           </button>
         </div>
@@ -919,23 +919,23 @@ useEffect(()=>{
 
       {showAlertForm && (
         <div style={{background:B.panel,border:`1px solid ${B.yellow}`,borderRadius:12,padding:"12px 16px",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-          <span style={{fontSize:12,color:B.gray2,fontFamily:"'Courier New',monospace"}}>NOTIFY ME WHEN {detail.ticker} GOES</span>
+          <span style={{fontSize:14,color:B.gray2,fontFamily:"'Courier New',monospace"}}>NOTIFY ME WHEN {detail.ticker} GOES</span>
           <select value={alertDir} onChange={e=>setAlertDir(e.target.value as any)} style={{
             background:B.panel2,border:`1px solid ${B.border}`,color:B.yellow,borderRadius:6,padding:"6px 8px",
-            fontFamily:"'Courier New',monospace",fontSize:12}}>
+            fontFamily:"'Courier New',monospace",fontSize:14}}>
             <option value="above">ABOVE</option>
             <option value="below">BELOW</option>
           </select>
           <input value={alertPrice} onChange={e=>setAlertPrice(e.target.value)} type="number" min="0" step="any"
             placeholder={detail.price!=null?detail.price.toFixed(2):"PRICE"}
             style={{width:100,background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,borderRadius:6,
-              padding:"6px 8px",fontSize:12,fontFamily:"'Courier New',monospace",outline:"none"}}/>
+              padding:"6px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
           <button onClick={saveAlert} disabled={watchBusy} style={{
             background:B.blue,border:"none",color:B.white,padding:"6px 14px",borderRadius:6,
-            cursor:watchBusy?"wait":"pointer",fontFamily:"'Courier New',monospace",fontSize:12,fontWeight:700}}>
+            cursor:watchBusy?"wait":"pointer",fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700}}>
             {watchBusy ? "..." : alertMsg || "SET ALERT"}
           </button>
-          <span style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace"}}>Requires browser notification permission &amp; the app open in a tab.</span>
+          <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace"}}>Requires browser notification permission &amp; the app open in a tab.</span>
         </div>
       )}
 
@@ -944,7 +944,7 @@ useEffect(()=>{
 
         {/* Key metrics */}
         <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
-          <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
+          <div style={{fontSize:15,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
             KEY METRICS
           </div>
           {[
@@ -955,8 +955,8 @@ useEffect(()=>{
           ].map((k,i,arr)=>(
             <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",
               borderBottom: i<arr.length-1?`1px solid ${B.border}`:"none"}}>
-              <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{k.l}</span>
-              <span style={{fontSize:13,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{k.v}</span>
+              <span style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{k.l}</span>
+              <span style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{k.v}</span>
             </div>
           ))}
         </div>
@@ -965,45 +965,45 @@ useEffect(()=>{
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1.2fr",gap:14}}>
         {/* Company/fund/instrument overview — copy varies by category, see OVERVIEW_COPY */}
         <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
-          <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
+          <div style={{fontSize:15,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
             {(OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).label}
           </div>
-          <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",lineHeight:1.6,maxHeight:260,overflowY:"auto"}}>
+          <div style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",lineHeight:1.6,maxHeight:260,overflowY:"auto"}}>
             {detail.description || (OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).fallback}
           </div>
         </div>
 
         {/* Position Impact Simulator — real numbers */}
         <div id="add-position-panel" style={{background:B.panel,border:`1px solid ${B.blue}`,borderRadius:12,padding:"16px 18px"}}>
-          <div style={{fontSize:13,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
+          <div style={{fontSize:15,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
             POSITION IMPACT SIMULATOR
           </div>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1.3fr",gap:8,marginBottom:10}}>
             <div>
-              <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>QUANTITY</div>
+              <div style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>QUANTITY</div>
               <input value={qty} onChange={e=>setQty(e.target.value)} type="number" min="0" step="any"
                 style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,borderRadius:6,
-                  padding:"6px 8px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
+                  padding:"6px 8px",fontSize:15,fontFamily:"'Courier New',monospace",outline:"none"}}/>
             </div>
             <div>
-              <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>BUY PRICE ({detail.currency||"USD"})</div>
+              <div style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>BUY PRICE ({detail.currency||"USD"})</div>
               <input value={buyPx} onChange={e=>setBuyPx(e.target.value)} type="number" min="0" step="any"
                 placeholder={detail.price!=null?detail.price.toFixed(2):""}
                 style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,borderRadius:6,
-                  padding:"6px 8px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
+                  padding:"6px 8px",fontSize:15,fontFamily:"'Courier New',monospace",outline:"none"}}/>
             </div>
             <div>
-              <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>PURCHASE DATE</div>
+              <div style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>PURCHASE DATE</div>
               <input value={buyDt} onChange={e=>handleDateChange(e.target.value)} type="date" max={todayYmd}
                 data-testid="search-purchase-date"
                 style={{width:"100%",background:B.panel2,border:`1px solid ${histBusy?B.blue:B.border}`,color:B.gray1,borderRadius:6,
-                  padding:"6px 8px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
+                  padding:"6px 8px",fontSize:15,fontFamily:"'Courier New',monospace",outline:"none"}}/>
             </div>
           </div>
 
           {histInfo.text && (
             <div data-testid="search-historical-status" style={{
-              padding:"6px 10px",marginBottom:10,fontSize:12,fontWeight:700,borderRadius:6,
+              padding:"6px 10px",marginBottom:10,fontSize:14,fontWeight:700,borderRadius:6,
               fontFamily:"'Courier New',monospace",
               border:`1px solid ${histInfo.kind==="ok"?B.green:histInfo.kind==="warn"?B.yellow:histInfo.kind==="err"?B.red:B.border}`,
               color: histInfo.kind==="ok"?B.green:histInfo.kind==="warn"?B.yellow:histInfo.kind==="err"?B.red:B.gray2,
@@ -1017,28 +1017,28 @@ useEffect(()=>{
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(110px,1fr))",gap:10,
             background:B.panel2,borderRadius:8,padding:"10px 12px",marginBottom:10}}>
             <div>
-              <div style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Investment Value</div>
+              <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Investment Value</div>
               <div style={{fontSize:14,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{ccySymbol(detail.currency)}{fmtM(investmentValue)}</div>
             </div>
             <div>
-              <div style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Expected Weight</div>
+              <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Expected Weight</div>
               <div style={{fontSize:14,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{fmt(expectedWeight,2)}%</div>
             </div>
             <div>
-              <div style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Sector Exposure Change</div>
+              <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Sector Exposure Change</div>
               <div style={{fontSize:14,fontWeight:700,color:B.green,fontFamily:"'Courier New',monospace"}}>
                 {detail.sector||detail.industry||"OTHER"} {pSign(fmt(newSectorPct-oldSectorPct,2))}%
               </div>
             </div>
             <div>
-              <div style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Cash Impact</div>
+              <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>Cash Impact</div>
               <div style={{fontSize:14,fontWeight:700,color:B.red,fontFamily:"'Courier New',monospace"}}>-{ccySymbol(detail.currency)}{fmtM(investmentValue)}</div>
             </div>
           </div>
 
           {addMsg && (
             <div style={{padding:"8px",marginBottom:8,background:"rgba(0,200,120,0.1)",border:`1px solid ${B.green}`,
-              color:B.green,borderRadius:6,fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,textAlign:"center"}}>
+              color:B.green,borderRadius:6,fontFamily:"'Courier New',monospace",fontSize:15,fontWeight:700,textAlign:"center"}}>
               {addMsg}
             </div>
           )}
@@ -1076,9 +1076,9 @@ useEffect(()=>{
             const active=cat===c.id;
             return (
               <button key={c.label} onClick={()=>setCat(c.id)} style={{
-                background:active?B.blue:B.panel,border:`1px solid ${active?B.blue:B.border}`,
+                background:active?B.blue:B.panel,border:`1px solid ${active?B.blue:B.borderB}`,
                 color:active?B.white:B.gray1,padding:"4px 10px",cursor:"pointer",
-                fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,
+                fontFamily:"'Courier New',monospace",fontSize:15,fontWeight:700,
                 letterSpacing:"0.06em",whiteSpace:"nowrap"}}>{c.label}</button>
             );
           })}
@@ -1110,7 +1110,7 @@ useEffect(()=>{
           );
         })}
         {!searching&&q.trim()&&results.length===0&&(
-          <div style={{padding:"14px 10px",fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
+          <div style={{padding:"14px 10px",fontSize:15,color:B.gray3,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
             NO RESULTS FOR "{q.toUpperCase()}"
           </div>
         )}
@@ -1133,7 +1133,7 @@ function EditableCell({value, onSave, type="text", format}:any) {
           if (e.key==="Escape") { setEditing(false); setDraft(String(value ?? "")); }
         }}
         style={{width:"100%",textAlign:"right",background:B.panel2,border:`1px solid ${B.blue}`,
-          color:B.gray1,borderRadius:4,padding:"2px 4px",fontSize:12,fontFamily:"'Courier New',monospace"}}
+          color:B.gray1,borderRadius:4,padding:"2px 4px",fontSize:14,fontFamily:"'Courier New',monospace"}}
       />
     );
   }
@@ -1241,7 +1241,7 @@ function ImportCsvModal({rows, onCancel, onConfirm, busy}:any) {
         </div>
         <div style={{overflowY:"auto", padding:"10px 14px", flex:1}}>
           {rows.map((r:any, i:number) => (
-            <div key={i} style={{padding:"6px 0", borderBottom:`1px solid ${B.border}`, fontSize:12}}>
+            <div key={i} style={{padding:"6px 0", borderBottom:`1px solid ${B.border}`, fontSize:14}}>
               {r.ok ? (
                 <span style={{color:B.gray1}}>
                   <span style={{color:B.green,fontWeight:700}}>✓ Row {r.row}</span> — {r.data.symbol} · qty {r.data.qty} · cost {r.data.costPrice} · {r.data.buyDate}
@@ -1256,13 +1256,13 @@ function ImportCsvModal({rows, onCancel, onConfirm, busy}:any) {
         </div>
         <div style={{display:"flex", gap:8, padding:"10px 14px", flexShrink:0, borderTop:`1px solid ${B.border}`}}>
           <button onClick={onCancel} disabled={busy} style={{
-            flex:1, background:"transparent", border:`1px solid ${B.border}`, color:B.gray1, padding:"10px",
-            fontFamily:"'Courier New',monospace", fontSize:13, fontWeight:700, cursor:busy?"wait":"pointer", borderRadius:6,
+            flex:1, background:"transparent", border:`1px solid ${B.borderB}`, color:B.gray1, padding:"10px",
+            fontFamily:"'Courier New',monospace", fontSize:15, fontWeight:700, cursor:busy?"wait":"pointer", borderRadius:6,
           }}>CANCEL</button>
           <button onClick={onConfirm} disabled={busy || !validCount} style={{
             flex:1, background:(busy||!validCount)?B.panel2:B.blue, border:"none",
             color:(busy||!validCount)?B.gray3:"#fff", padding:"10px", borderRadius:6,
-            fontFamily:"'Courier New',monospace", fontSize:13, fontWeight:700,
+            fontFamily:"'Courier New',monospace", fontSize:15, fontWeight:700,
             cursor:(busy||!validCount)?"not-allowed":"pointer",
           }}>{busy?"IMPORTING...":`IMPORT ${validCount} POSITION${validCount===1?"":"S"}`}</button>
         </div>
@@ -1440,7 +1440,7 @@ const addCash = () => {
           padding:"12px 4px",background:"none",border:"none",
           borderBottom: view===v ? `2px solid ${B.blue}` : "2px solid transparent",
           color: view===v ? B.blue : B.gray2,
-          fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,
+          fontFamily:"'Courier New',monospace",fontSize:15,fontWeight:700,
           letterSpacing:"0.04em",cursor:"pointer",
         }}>
           {v==="positions" ? "POSITIONS" : "SAVED PORTFOLIOS"}
@@ -1451,13 +1451,13 @@ const addCash = () => {
         <button onClick={handleSave} disabled={saving || !holdings.length} style={{
           background:"transparent", border:`1px solid ${B.blue}`, color:holdings.length?B.blue:B.gray3,
           padding:"6px 12px", borderRadius:6, cursor:(saving||!holdings.length)?(saving?"wait":"not-allowed"):"pointer",
-          fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700,
+          fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700,
         }}>{saving ? "..." : saveMsg || "SAVE"}</button>
         <button onClick={()=>{ setShareDefaultChannelId(null); setShowShareModal(true); }} style={{
           display:"flex", alignItems:"center", gap:6,
-          background:"transparent", border:`1px solid ${B.border}`, color:B.gray1,
+          background:"transparent", border:`1px solid ${B.borderB}`, color:B.gray1,
           padding:"6px 12px", borderRadius:6, cursor:"pointer",
-          fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700,
+          fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700,
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
@@ -1468,17 +1468,17 @@ const addCash = () => {
         <button onClick={addCash} style={{
           background:"transparent", border:`1px solid ${B.green}`, color:B.green,
           padding:"6px 12px", borderRadius:6, cursor:"pointer",
-          fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700,
+          fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700,
         }}>+ ADD CASH</button>
         <button onClick={()=>exportHoldingsCsv(holdings)} disabled={!holdings.length} style={{
-          background:"transparent", border:`1px solid ${B.border}`, color:holdings.length?B.gray1:B.gray3,
+          background:"transparent", border:`1px solid ${B.borderB}`, color:holdings.length?B.gray1:B.gray3,
           padding:"6px 12px", borderRadius:6, cursor:holdings.length?"pointer":"not-allowed",
-          fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700,
+          fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700,
         }}>↓ EXPORT CSV</button>
         <button onClick={()=>fileInputRef.current?.click()} style={{
-          background:"transparent", border:`1px solid ${B.border}`, color:B.gray1,
+          background:"transparent", border:`1px solid ${B.borderB}`, color:B.gray1,
           padding:"6px 12px", borderRadius:6, cursor:"pointer",
-          fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700,
+          fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700,
         }}>↑ IMPORT CSV</button>
         <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileSelected} style={{display:"none"}}/>
       </div>
@@ -1492,13 +1492,13 @@ const addCash = () => {
         <div style={{flex:1,overflowY:"auto",padding:14}}>
           {!user ? (
             <div style={{textAlign:"center",padding:"30px 0"}}>
-              <div style={{fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace",marginBottom:12}}>SIGN IN TO VIEW SAVED PORTFOLIOS</div>
-              <Link to="/auth" style={{fontSize:13,color:B.blue,fontFamily:"'Courier New',monospace",textDecoration:"underline"}}>→ SIGN IN</Link>
+              <div style={{fontSize:15,color:B.gray2,fontFamily:"'Courier New',monospace",marginBottom:12}}>SIGN IN TO VIEW SAVED PORTFOLIOS</div>
+              <Link to="/auth" style={{fontSize:15,color:B.blue,fontFamily:"'Courier New',monospace",textDecoration:"underline"}}>→ SIGN IN</Link>
             </div>
           ) : loadingSaved ? (
-            <div style={{textAlign:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:13}}>LOADING...</div>
+            <div style={{textAlign:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:15}}>LOADING...</div>
           ) : !savedList.length ? (
-            <div style={{textAlign:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:13,lineHeight:1.8}}>
+            <div style={{textAlign:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:15,lineHeight:1.8}}>
               NO SAVED PORTFOLIOS YET<br/>GO TO POSITIONS AND TAP SAVE
             </div>
           ) : (
@@ -1511,11 +1511,11 @@ const addCash = () => {
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:14,color:B.blue,fontWeight:700}}>{p.name}</span>
                     <button onClick={(e)=>{e.stopPropagation();handleDelete(p.id);}} style={{
-                      background:"transparent",border:`1px solid ${B.border}`,color:B.gray3,borderRadius:6,
-                      cursor:"pointer",fontSize:11,padding:"2px 8px",
+                      background:"transparent",border:`1px solid ${B.borderB}`,color:B.gray2,borderRadius:6,
+                      cursor:"pointer",fontSize:13,padding:"2px 8px",
                     }}>✕</button>
                   </div>
-                  <div style={{fontSize:11,color:B.gray3,marginTop:4}}>
+                  <div style={{fontSize:13,color:B.gray3,marginTop:4}}>
                     {(p.holdings||[]).length} SECURITIES · UPDATED {new Date(p.updated_at).toLocaleDateString()}
                   </div>
                 </div>
@@ -1607,7 +1607,7 @@ const addCash = () => {
         <td style={{padding:"9px 8px",color:B.blue,fontWeight:700}}>
           {h.asset.ticker}
           {h.asset.currency && h.asset.currency!=="USD" && (
-            <span style={{fontSize:10,color:B.gray3,fontWeight:400,marginLeft:4}} title="Values in this row are in the asset's native currency, not converted">{h.asset.currency}</span>
+            <span style={{fontSize:12,color:B.gray3,fontWeight:400,marginLeft:4}} title="Values in this row are in the asset's native currency, not converted">{h.asset.currency}</span>
           )}
         </td>
         <td style={{padding:"9px 8px",color:B.gray1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:160}}>{h.asset.shortName||h.asset.ticker}</td>
@@ -1655,11 +1655,11 @@ const addCash = () => {
         <td style={{padding:"9px 8px",textAlign:"center",whiteSpace:"nowrap"}}>
           <button onClick={()=>setSellTarget(h)} style={{
             background:"none",border:`1px solid ${B.red}`,color:B.red,borderRadius:6,
-            cursor:"pointer",fontSize:11,padding:"3px 9px",marginRight:4,
+            cursor:"pointer",fontSize:13,padding:"3px 9px",marginRight:4,
           }}>SELL</button>
           <button onClick={()=>onRemove(h.isin||h.asset.ticker)} style={{
-            background:"none",border:`1px solid ${B.border}`,color:B.gray3,borderRadius:6,
-            cursor:"pointer",fontSize:11,padding:"3px 9px",
+            background:"none",border:`1px solid ${B.borderB}`,color:B.gray2,borderRadius:6,
+            cursor:"pointer",fontSize:13,padding:"3px 9px",
           }}>✕</button>
         </td>
       </tr>
@@ -1681,14 +1681,14 @@ const addCash = () => {
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <span style={{color:B.blue,fontWeight:700,fontSize:16}}>{h.asset.ticker}</span>
               {h.asset.currency && h.asset.currency!=="USD" && (
-                <span style={{fontSize:10,color:B.gray3}}>{h.asset.currency}</span>
+                <span style={{fontSize:12,color:B.gray3}}>{h.asset.currency}</span>
               )}
             </div>
-            <div style={{color:B.gray3,fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{h.asset.shortName||h.asset.ticker}</div>
+            <div style={{color:B.gray3,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{h.asset.shortName||h.asset.ticker}</div>
           </div>
           <div style={{textAlign:"right",flexShrink:0}}>
             <div style={{color:B.gray1,fontWeight:700,fontSize:16}}>{ccySymbol(h.asset.currency)}{fmtM(h.value)}</div>
-            <div style={{color:pCol(h.asset.dayChangePct),fontWeight:700,fontSize:12}}>
+            <div style={{color:pCol(h.asset.dayChangePct),fontWeight:700,fontSize:14}}>
               {h.asset.dayChangePct!=null?`${pSign(fmt(h.asset.dayChangePct,2))}%`:"—"}
             </div>
           </div>
@@ -1696,23 +1696,23 @@ const addCash = () => {
 
         <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:6,background:B.panel2,borderRadius:8,padding:"8px 10px"}}>
           <div>
-            <div style={{fontSize:9,color:B.gray3,textTransform:"uppercase"}}>Weight</div>
-            <div style={{fontSize:12,color:B.gray1,fontWeight:700}}>{w.toFixed(1)}%</div>
+            <div style={{fontSize:11,color:B.gray3,textTransform:"uppercase"}}>Weight</div>
+            <div style={{fontSize:14,color:B.gray1,fontWeight:700}}>{w.toFixed(1)}%</div>
           </div>
           <div>
-            <div style={{fontSize:9,color:B.gray3,textTransform:"uppercase"}}>P&amp;L</div>
-            <div style={{fontSize:12,fontWeight:700,color:pl!=null?pCol(pl):B.gray3}}>
+            <div style={{fontSize:11,color:B.gray3,textTransform:"uppercase"}}>P&amp;L</div>
+            <div style={{fontSize:14,fontWeight:700,color:pl!=null?pCol(pl):B.gray3}}>
               {pl!=null?`${pl>=0?"+":"−"}${ccySymbol(h.asset.currency)}${fmtM(Math.abs(pl))}`:"—"}
-              {plPct!=null && <span style={{fontSize:10,marginLeft:3}}>({pSign(fmt(plPct,1))}%)</span>}
+              {plPct!=null && <span style={{fontSize:12,marginLeft:3}}>({pSign(fmt(plPct,1))}%)</span>}
             </div>
           </div>
           <div>
-            <div style={{fontSize:9,color:B.gray3,textTransform:"uppercase"}}>Price</div>
-            <div style={{fontSize:12,color:B.gray1,fontWeight:700}}>{h.asset.price!=null?h.asset.price.toFixed(2):"—"}</div>
+            <div style={{fontSize:11,color:B.gray3,textTransform:"uppercase"}}>Price</div>
+            <div style={{fontSize:14,color:B.gray1,fontWeight:700}}>{h.asset.price!=null?h.asset.price.toFixed(2):"—"}</div>
           </div>
         </div>
 
-        <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:B.gray3,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:B.gray3,flexWrap:"wrap",gap:8}}>
           <span>QTY {" "}
             <EditableCell value={h.qty} type="number" format={(v:any)=>v!=null?fmt(v,v<1?4:2):"—"}
               onSave={(v:string)=>{ const n=parseFloat(v); if(!isNaN(n)&&n>0) onUpdate(h.isin||h.asset.ticker,{qty:n}); }}/>
@@ -1738,11 +1738,11 @@ const addCash = () => {
         <div style={{display:"flex",gap:8}}>
           <button onClick={()=>setSellTarget(h)} style={{
             flex:1,background:"none",border:`1px solid ${B.red}`,color:B.red,borderRadius:6,
-            cursor:"pointer",fontSize:13,fontWeight:700,padding:"10px 0",
+            cursor:"pointer",fontSize:15,fontWeight:700,padding:"10px 0",
           }}>SELL</button>
           <button onClick={()=>onRemove(h.isin||h.asset.ticker)} style={{
-            flex:1,background:"none",border:`1px solid ${B.border}`,color:B.gray2,borderRadius:6,
-            cursor:"pointer",fontSize:13,fontWeight:700,padding:"10px 0",
+            flex:1,background:"none",border:`1px solid ${B.borderB}`,color:B.gray2,borderRadius:6,
+            cursor:"pointer",fontSize:15,fontWeight:700,padding:"10px 0",
           }}>✕ REMOVE</button>
         </div>
       </div>
@@ -1761,35 +1761,35 @@ const addCash = () => {
               <button key={c} onClick={()=>setBaseCcy(c)} style={{
                 background:baseCcy===c?B.blue:"transparent",color:baseCcy===c?B.white:B.gray2,
                 border:"none",padding:"4px 12px",cursor:"pointer",
-                fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,letterSpacing:"0.04em",
+                fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,letterSpacing:"0.04em",
               }}>{c}</button>
             ))}
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))",gap:14}}>
         <div>
-          <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Portfolio Value</div>
+          <div style={{fontSize:12,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Portfolio Value</div>
           <div style={{fontSize:20,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{ccySym}{fmtM(dm.total)}</div>
         </div>
         <div>
-          <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Day P&amp;L</div>
+          <div style={{fontSize:12,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Day P&amp;L</div>
           <div style={{fontSize:20,fontWeight:700,color:pCol(dayPL),fontFamily:"'Courier New',monospace"}}>
             {dayPL>=0?"+":"−"}{ccySym}{fmtM(Math.abs(dayPL))}
           </div>
-          <div style={{fontSize:12,color:pCol(dm.wDay),fontFamily:"'Courier New',monospace"}}>{pSign(fmt(dm.wDay,2))}%</div>
+          <div style={{fontSize:14,color:pCol(dm.wDay),fontFamily:"'Courier New',monospace"}}>{pSign(fmt(dm.wDay,2))}%</div>
         </div>
         <div>
-          <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Total Return</div>
+          <div style={{fontSize:12,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Total Return</div>
           <div style={{fontSize:20,fontWeight:700,color:pCol(totalPLPct),fontFamily:"'Courier New',monospace"}}>{pSign(fmt(totalPLPct,1))}%</div>
-          <div style={{fontSize:12,color:pCol(totalPL),fontFamily:"'Courier New',monospace"}}>{totalPL>=0?"+":"−"}{ccySym}{fmtM(Math.abs(totalPL))}</div>
+          <div style={{fontSize:14,color:pCol(totalPL),fontFamily:"'Courier New',monospace"}}>{totalPL>=0?"+":"−"}{ccySym}{fmtM(Math.abs(totalPL))}</div>
         </div>
         <div>
-          <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Cash</div>
+          <div style={{fontSize:12,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Cash</div>
           <div style={{fontSize:20,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{cash>0?`${ccySym}${fmtM(cash)}`:"—"}</div>
-          <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{cash>0?`${cashPct.toFixed(1)}% of portfolio`:"No cash added yet"}</div>
+          <div style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{cash>0?`${cashPct.toFixed(1)}% of portfolio`:"No cash added yet"}</div>
         </div>
         <div>
-          <div style={{fontSize:10,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Positions</div>
+          <div style={{fontSize:12,color:B.gray3,letterSpacing:"0.06em",textTransform:"uppercase",fontFamily:"'Courier New',monospace"}}>Positions</div>
           <div style={{fontSize:20,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{holdings.length}</div>
         </div>
         </div>
@@ -1811,21 +1811,21 @@ const addCash = () => {
                 fontFamily:"'Courier New',monospace",minHeight:44,
               }}>
                 <span style={{display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:13,color:B.gray3}}>{isCollapsed?"▸":"▾"}</span>
+                  <span style={{fontSize:15,color:B.gray3}}>{isCollapsed?"▸":"▾"}</span>
                   <span style={{fontSize:15,fontWeight:700,color:B.blue,letterSpacing:"0.05em"}}>{g.label}</span>
-                  <span style={{fontSize:12,color:B.gray3}}>({g.holdings.length})</span>
+                  <span style={{fontSize:14,color:B.gray3}}>({g.holdings.length})</span>
                 </span>
                 <span style={{display:"flex",alignItems:"center",gap:isMobile?10:16}}>
-                  {!isMobile && <span style={{fontSize:13,color:B.gray3}}>{catPct.toFixed(1)}%</span>}
+                  {!isMobile && <span style={{fontSize:15,color:B.gray3}}>{catPct.toFixed(1)}%</span>}
                   <span style={{fontSize:16,fontWeight:700,color:B.gray1}}>{ccySym}{fmtM(g.total)}</span>
                 </span>
               </button>
               {!isCollapsed && (isMobile ? (
                 <div>{g.holdings.map(renderHoldingCard)}</div>
               ) : (
-                <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"'Courier New',monospace",fontSize:13,minWidth:640}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"'Courier New',monospace",fontSize:15,minWidth:640}}>
                   <thead>
-                    <tr style={{color:B.gray3,fontSize:11}}>
+                    <tr style={{color:B.gray3,fontSize:13}}>
                       <th style={{textAlign:"left",padding:"6px 8px"}}>TICKER</th>
                       <th style={{textAlign:"left",padding:"6px 8px"}}>NAME</th>
                       <th style={{textAlign:"right",padding:"6px 8px"}}>PRICE</th>
@@ -1848,7 +1848,7 @@ const addCash = () => {
             </div>
           );
         })}
-        <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginTop:8,padding:isMobile?"0 14px":0}}>
+        <div style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginTop:8,padding:isMobile?"0 14px":0}}>
           Showing {holdings.length} of {holdings.length} positions
         </div>
       </div>
@@ -1915,22 +1915,22 @@ function SavePromptModal({channels, channelId, onChannelChange, onShare, onSkip}
           Portfolio saved! Want to share it with the community?
         </div>
         <div>
-          <div style={{ fontSize:10, color:B.gray3, fontFamily:"'Courier New',monospace", marginBottom:4 }}>TOPIC (OPTIONAL)</div>
+          <div style={{ fontSize:12, color:B.gray3, fontFamily:"'Courier New',monospace", marginBottom:4 }}>TOPIC (OPTIONAL)</div>
           <select value={channelId} onChange={(e:any)=>onChannelChange(e.target.value)} style={{
             width:"100%", background:B.panel2, border:`1px solid ${B.border}`, color:B.gray1, borderRadius:6,
-            padding:"8px 10px", fontFamily:"'Courier New',monospace", fontSize:13,
+            padding:"8px 10px", fontFamily:"'Courier New',monospace", fontSize:15,
           }}>
             <option value="">No specific channel</option>
             {channels.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
-          <button onClick={onSkip} style={{ background:"none", border:"none", color:B.gray3, cursor:"pointer", fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700 }}>
+          <button onClick={onSkip} style={{ background:"none", border:"none", color:B.gray3, cursor:"pointer", fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700 }}>
             Skip
           </button>
           <button onClick={onShare} style={{
             background:B.blue, color:B.white, border:"none", padding:"8px 18px", borderRadius:6,
-            fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, cursor:"pointer",
+            fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, cursor:"pointer",
           }}>
             Share
           </button>
@@ -1982,45 +1982,45 @@ function SellModal({holding, onCancel, onConfirm}:any) {
         <div style={{background:B.red, padding:"6px 10px", color:"#000", fontWeight:700, fontSize:14, letterSpacing:"0.08em", flexShrink:0}}>
           SELL {holding.asset.ticker}
         </div>
-        <div style={{padding:"14px 16px", color:B.gray1, fontSize:13, display:"flex", flexDirection:"column", gap:10, overflowY:"auto", flex:1, minHeight:0}}>
-          <div style={{fontSize:11, color:B.gray3}}>You currently hold {fmt(holding.qty, holding.qty<1?4:2)} shares @ avg cost {holding.costPrice!=null?holding.costPrice.toFixed(2):"—"}.</div>
+        <div style={{padding:"14px 16px", color:B.gray1, fontSize:15, display:"flex", flexDirection:"column", gap:10, overflowY:"auto", flex:1, minHeight:0}}>
+          <div style={{fontSize:13, color:B.gray3}}>You currently hold {fmt(holding.qty, holding.qty<1?4:2)} shares @ avg cost {holding.costPrice!=null?holding.costPrice.toFixed(2):"—"}.</div>
           <div>
-            <div style={{fontSize:10,color:B.gray3,marginBottom:2}}>QUANTITY TO SELL</div>
+            <div style={{fontSize:12,color:B.gray3,marginBottom:2}}>QUANTITY TO SELL</div>
             <input value={qty} onChange={e=>setQty(e.target.value)} type="number" min="0" max={holding.qty} step="any"
               style={{width:"100%",background:B.panel2,border:`1px solid ${validQty?B.border:B.red}`,color:B.gray1,borderRadius:6,
                 padding:"9px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
           </div>
           <div>
-            <div style={{fontSize:10,color:B.gray3,marginBottom:2}}>SELL PRICE</div>
+            <div style={{fontSize:12,color:B.gray3,marginBottom:2}}>SELL PRICE</div>
             <input value={price} onChange={e=>setPrice(e.target.value)} type="number" min="0" step="any"
               style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,borderRadius:6,
                 padding:"9px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
           </div>
           <div>
-            <div style={{fontSize:10,color:B.gray3,marginBottom:2}}>SALE DATE</div>
+            <div style={{fontSize:12,color:B.gray3,marginBottom:2}}>SALE DATE</div>
             <input value={date} onChange={e=>handleDateChange(e.target.value)} type="date" max={todayYmd}
               style={{width:"100%",background:B.panel2,border:`1px solid ${histBusy?B.blue:B.border}`,color:B.gray1,borderRadius:6,
                 padding:"9px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
           </div>
           {histInfo.text && (
-            <div style={{padding:"6px 10px",fontSize:11,fontWeight:700,borderRadius:6,
+            <div style={{padding:"6px 10px",fontSize:13,fontWeight:700,borderRadius:6,
               border:`1px solid ${histInfo.kind==="ok"?B.green:histInfo.kind==="warn"?B.yellow:histInfo.kind==="err"?B.red:B.border}`,
               color: histInfo.kind==="ok"?B.green:histInfo.kind==="warn"?B.yellow:histInfo.kind==="err"?B.red:B.gray2}}>
               {histInfo.text}
             </div>
           )}
           <div style={{display:"flex",justifyContent:"space-between",background:B.panel2,borderRadius:8,padding:"8px 10px"}}>
-            <span style={{fontSize:11,color:B.gray3}}>Est. realized P&amp;L</span>
-            <span style={{fontSize:13,fontWeight:700,color:pCol(estRealizedPnl)}}>
+            <span style={{fontSize:13,color:B.gray3}}>Est. realized P&amp;L</span>
+            <span style={{fontSize:15,fontWeight:700,color:pCol(estRealizedPnl)}}>
               {qtyNum>0?`${estRealizedPnl>=0?"+":"−"}$${fmtM(Math.abs(estRealizedPnl))}`:"—"}
             </span>
           </div>
-          {!validQty && <div style={{fontSize:11,color:B.red}}>Quantity must be greater than 0 and at most {fmt(holding.qty, holding.qty<1?4:2)}.</div>}
+          {!validQty && <div style={{fontSize:13,color:B.red}}>Quantity must be greater than 0 and at most {fmt(holding.qty, holding.qty<1?4:2)}.</div>}
         </div>
         <div style={{display:"flex",gap:8,padding:"12px 16px",flexShrink:0,borderTop:`1px solid ${B.border}`}}>
           <button onClick={onCancel} style={{
-            flex:1,background:"transparent",border:`1px solid ${B.border}`,color:B.gray1,padding:"11px",
-            fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,cursor:"pointer",borderRadius:6,
+            flex:1,background:"transparent",border:`1px solid ${B.borderB}`,color:B.gray1,padding:"11px",
+            fontFamily:"'Courier New',monospace",fontSize:15,fontWeight:700,cursor:"pointer",borderRadius:6,
           }}>CANCEL</button>
           <button
             data-testid="sell-confirm-btn"
@@ -2029,7 +2029,7 @@ function SellModal({holding, onCancel, onConfirm}:any) {
             style={{
               flex:1,background:(validQty && priceNum>0)?B.red:B.panel2,border:"none",
               color:(validQty && priceNum>0)?"#fff":B.gray3,padding:"11px",borderRadius:6,
-              fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,
+              fontFamily:"'Courier New',monospace",fontSize:15,fontWeight:700,
               cursor:(validQty && priceNum>0)?"pointer":"not-allowed",
           }}>CONFIRM SELL</button>
         </div>
@@ -2189,17 +2189,17 @@ function AIWelcomeScreen({name, input, setInput, onSend, loading}:any) {
         {AI_SUGGESTIONS.map((s,i)=>(
           <button key={i} onClick={()=>onSend(s.prompt)} disabled={loading} style={{
             display:"flex",alignItems:"center",gap:6,
-            background:B.panel,border:`1px solid ${B.border}`,borderRadius:20,
-            padding:"8px 14px",color:B.gray1,fontSize:12,fontWeight:700,
+            background:B.panel,border:`1px solid ${B.borderB}`,borderRadius:20,
+            padding:"8px 14px",color:B.gray1,fontSize:14,fontWeight:700,
             fontFamily:"'Courier New',monospace",cursor:loading?"not-allowed":"pointer",
           }}>
-            {s.icon ? <s.icon size={14}/> : <span style={{fontWeight:700,fontSize:13}}>Σ</span>}
+            {s.icon ? <s.icon size={14}/> : <span style={{fontWeight:700,fontSize:15}}>Σ</span>}
             {s.label}
           </button>
         ))}
       </div>
 
-      <div style={{display:"flex",alignItems:"center",gap:6,color:B.gray4,fontSize:11,fontFamily:"'Courier New',monospace"}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,color:B.gray4,fontSize:13,fontFamily:"'Courier New',monospace"}}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
@@ -2302,7 +2302,7 @@ function AIAdvisorPage({holdings,setPage}:any) {
   const Avatar = () => (
     <div style={{
       width:28,height:28,borderRadius:"50%",background:B.blue,color:B.white,flexShrink:0,
-      display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,
+      display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,
       fontFamily:"'Courier New',monospace",
     }}>AI</div>
   );
@@ -2312,8 +2312,8 @@ function AIAdvisorPage({holdings,setPage}:any) {
       <div style={{background:B.panel2,borderBottom:`1px solid ${B.border}`,padding:"8px 12px",
         display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
         <div>
-          <span style={{fontSize:13,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>AI ADVISOR</span>
-          <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:8}}>Your AI financial assistant</span>
+          <span style={{fontSize:15,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>AI ADVISOR</span>
+          <span style={{fontSize:15,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:8}}>Your AI financial assistant</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <button onClick={async()=>{
@@ -2328,14 +2328,14 @@ function AIAdvisorPage({holdings,setPage}:any) {
             }
           }} disabled={!msgs.length} style={{
             background:"none",border:`1px solid ${B.green}`,color:B.green,borderRadius:6,
-            fontFamily:"'Courier New',monospace",fontSize:12,fontWeight:700,
+            fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700,
             padding:"4px 10px",cursor:msgs.length?"pointer":"not-allowed",opacity:msgs.length?1:0.4}}>
             SAVE
           </button>
           <div style={{display:"flex",alignItems:"center",gap:5,background:"rgba(0,255,102,0.08)",
             border:`1px solid ${B.green}`,borderRadius:20,padding:"3px 10px"}}>
             <div style={{width:6,height:6,borderRadius:"50%",background:B.green,animation:"blink 2s infinite"}}/>
-            <span style={{fontSize:11,color:B.green,fontFamily:"'Courier New',monospace",fontWeight:700}}>ONLINE</span>
+            <span style={{fontSize:13,color:B.green,fontFamily:"'Courier New',monospace",fontWeight:700}}>ONLINE</span>
           </div>
         </div>
       </div>
@@ -2353,7 +2353,7 @@ function AIAdvisorPage({holdings,setPage}:any) {
                 <div key={i} style={{display:"flex",gap:8,justifyContent:isUser?"flex-end":"flex-start"}}>
                   {!isUser && <Avatar/>}
                   <div style={{maxWidth:"85%",display:"flex",flexDirection:"column",gap:2,alignItems:isUser?"flex-end":"flex-start"}}>
-                    <span style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",padding:"0 4px"}}>
+                    <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",padding:"0 4px"}}>
                       {isUser?"YOU":"STRATEGIC MARKETS AI"}
                     </span>
                     <div style={{
@@ -2370,17 +2370,17 @@ function AIAdvisorPage({holdings,setPage}:any) {
                         display:"flex",alignItems:"center",gap:8,marginTop:4,padding:"6px 10px",
                         background:B.panel2,border:`1px solid ${B.border}`,borderRadius:20,
                       }}>
-                        <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace"}}>
+                        <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace"}}>
                           Want a second opinion? Share this with the community
                         </span>
                         <button onClick={()=>{ setShareDefaultBody(shareSuggestion.summary); setShowShareModal(true); }} style={{
                           background:"none",border:`1px solid ${B.blue}`,color:B.blue,borderRadius:14,
-                          padding:"3px 10px",fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,cursor:"pointer",
+                          padding:"3px 10px",fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,cursor:"pointer",
                         }}>
                           Share
                         </button>
                         <button onClick={()=>setShareSuggestion(null)} style={{
-                          background:"none",border:"none",color:B.gray3,cursor:"pointer",fontSize:13,lineHeight:1,padding:0,
+                          background:"none",border:"none",color:B.gray3,cursor:"pointer",fontSize:15,lineHeight:1,padding:0,
                         }}>
                           ✕
                         </button>
@@ -2399,7 +2399,7 @@ function AIAdvisorPage({holdings,setPage}:any) {
                     <div key={j} style={{width:5,height:5,borderRadius:"50%",background:B.blue,
                       animation:`pulse 1s ${j*0.2}s infinite ease-in-out`}}/>
                   ))}
-                  <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:4}}>Analyzing live data...</span>
+                  <span style={{fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",marginLeft:4}}>Analyzing live data...</span>
                 </div>
               </div>
             )}
@@ -2415,8 +2415,8 @@ function AIAdvisorPage({holdings,setPage}:any) {
           <div className="sm-fkeys" style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2}}>
             {QUICK_Q.map((q,i)=>(
               <button key={i} onClick={()=>send(q)} disabled={loading} style={{
-                background:B.panel,border:`1px solid ${B.border}`,borderRadius:20,padding:"6px 12px",
-                color:B.gray1,fontSize:11,cursor:"pointer",flexShrink:0,
+                background:B.panel,border:`1px solid ${B.borderB}`,borderRadius:20,padding:"6px 12px",
+                color:B.gray1,fontSize:13,cursor:"pointer",flexShrink:0,
                 fontFamily:"'Courier New',monospace",fontWeight:700,letterSpacing:"0.02em"}}>
                 {q}
               </button>
@@ -2445,7 +2445,7 @@ function AIAdvisorPage({holdings,setPage}:any) {
               </svg>
             </button>
           </div>
-          <div style={{fontSize:10,color:B.gray4,fontFamily:"'Courier New',monospace",
+          <div style={{fontSize:12,color:B.gray4,fontFamily:"'Courier New',monospace",
             padding:"6px 4px 0",letterSpacing:"0.03em",textAlign:"center"}}>
             FOR INFORMATIONAL PURPOSES ONLY. NOT FINANCIAL ADVICE.
           </div>
@@ -2629,7 +2629,7 @@ Max 180 words. Respond in ENGLISH.`;
 
   const inputStyle:any = {
     background:B.bg, border:`1px solid ${B.border}`, color:B.gray1, borderRadius:8,
-    padding:"5px 10px", fontSize:13, fontFamily:"'Courier New',monospace",
+    padding:"5px 10px", fontSize:15, fontFamily:"'Courier New',monospace",
     outline:"none", letterSpacing:"0.04em",
   };
   const selectStyle:any = {...inputStyle, color:B.yellow, cursor:"pointer"};
@@ -2650,9 +2650,9 @@ Max 180 words. Respond in ENGLISH.`;
         <div style={{display:"flex",gap:6,padding:"8px 10px",overflowX:"auto",borderBottom:`1px solid ${B.border}`,background:B.panel}}>
           {["general","forex","crypto","merger"].map(c => (
             <button key={c} onClick={()=>setMarketCat(c)} style={{
-              background: marketCat===c ? B.blue : B.panel2, border:`1px solid ${marketCat===c?B.blue:B.border}`,
+              background: marketCat===c ? B.blue : B.panel2, border:`1px solid ${marketCat===c?B.blue:B.borderB}`,
               color: marketCat===c ? B.white : B.gray1, padding:"5px 14px", cursor:"pointer", borderRadius:20,
-              fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.06em",
+              fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, letterSpacing:"0.06em",
               whiteSpace:"nowrap", textTransform:"uppercase", flexShrink:0,
             }}>{c}</button>
           ))}
@@ -2669,7 +2669,7 @@ Max 180 words. Respond in ENGLISH.`;
               letterSpacing:"0.02em"}}/>
           <button data-testid="news-symbol-fetch-btn" onClick={()=>loadSymbol(symInput.trim())} style={{
             background:B.blue,border:"none",color:B.white,padding:"7px 18px",cursor:"pointer",borderRadius:20,
-            fontFamily:"'Courier New',monospace",fontSize:12,fontWeight:700,letterSpacing:"0.06em"}}>
+            fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700,letterSpacing:"0.06em"}}>
             FETCH
           </button>
         </div>
@@ -2694,9 +2694,9 @@ Max 180 words. Respond in ENGLISH.`;
           )}
         </div>
         <button onClick={()=>setShowFilters(!showFilters)} data-testid="news-toggle-filters" style={{
-          background: showFilters ? B.blue : B.panel, border:`1px solid ${showFilters?B.blue:B.border}`,
+          background: showFilters ? B.blue : B.panel, border:`1px solid ${showFilters?B.blue:B.borderB}`,
           color: showFilters ? B.white : B.gray1, padding:"6px 14px", cursor:"pointer", borderRadius:20,
-          fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.06em",
+          fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, letterSpacing:"0.06em",
           whiteSpace:"nowrap",
         }}>
           FILTERS{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
@@ -2706,7 +2706,7 @@ Max 180 words. Respond in ENGLISH.`;
       {showFilters && (
         <div style={{padding:"10px",borderBottom:`1px solid ${B.border}`,background:B.panel,
           display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:12,
+          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:14,
             color:B.gray2,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em"}}>
             DATE
             <select data-testid="news-date-select" value={dateRange} onChange={e=>setDateRange(e.target.value as any)} style={selectStyle}>
@@ -2722,13 +2722,13 @@ Max 180 words. Respond in ENGLISH.`;
 
           {dateRange === "custom" && (
             <>
-              <label style={{display:"flex",alignItems:"center",gap:4,fontSize:12,
+              <label style={{display:"flex",alignItems:"center",gap:4,fontSize:14,
                 color:B.gray2,fontFamily:"'Courier New',monospace"}}>
                 FROM
                 <input data-testid="news-date-from" type="date" value={customFrom}
                   onChange={e=>setCustomFrom(e.target.value)} style={inputStyle}/>
               </label>
-              <label style={{display:"flex",alignItems:"center",gap:4,fontSize:12,
+              <label style={{display:"flex",alignItems:"center",gap:4,fontSize:14,
                 color:B.gray2,fontFamily:"'Courier New',monospace"}}>
                 TO
                 <input data-testid="news-date-to" type="date" value={customTo}
@@ -2737,7 +2737,7 @@ Max 180 words. Respond in ENGLISH.`;
             </>
           )}
 
-          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:12,
+          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:14,
             color:B.gray2,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em"}}>
             SOURCE
             <select data-testid="news-source-select" value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)} style={selectStyle}>
@@ -2746,7 +2746,7 @@ Max 180 words. Respond in ENGLISH.`;
             </select>
           </label>
 
-          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:12,
+          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:14,
             color:B.gray2,fontFamily:"'Courier New',monospace",letterSpacing:"0.06em"}}>
             SORT
             <select data-testid="news-sort-select" value={sortMode} onChange={e=>setSortMode(e.target.value as any)} style={selectStyle}>
@@ -2760,7 +2760,7 @@ Max 180 words. Respond in ENGLISH.`;
             <button data-testid="news-reset-filters" onClick={resetFilters} style={{
               background:"transparent", border:`1px solid ${B.red}`, color:B.red, borderRadius:20,
               padding:"5px 14px", cursor:"pointer", marginLeft:"auto",
-              fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.06em",
+              fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, letterSpacing:"0.06em",
             }}>
               RESET
             </button>
@@ -2783,7 +2783,7 @@ Max 180 words. Respond in ENGLISH.`;
           }} disabled={loading} style={{
             background:"transparent", border:`1px solid ${B.gray3}`, color:B.gray1, borderRadius:20,
             padding:"5px 14px", cursor:loading?"wait":"pointer",
-            fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.06em",
+            fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, letterSpacing:"0.06em",
             opacity: loading ? 0.5 : 1,
           }}>
             {loading ? "..." : "REFRESH"}
@@ -2791,7 +2791,7 @@ Max 180 words. Respond in ENGLISH.`;
           <button data-testid="news-ai-sentiment-btn" onClick={runSentiment} disabled={sentBusy || !list.length} style={{
             background:"transparent", border:`1px solid ${B.cyan}`, color:B.cyan, borderRadius:20,
             padding:"5px 14px", cursor:list.length?"pointer":"not-allowed",
-            fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.06em",
+            fontFamily:"'Courier New',monospace", fontSize:14, fontWeight:700, letterSpacing:"0.06em",
             opacity: list.length ? 1 : 0.4,
           }}>
             {sentBusy ? "ANALYZING..." : "AI SENTIMENT"}
@@ -2802,7 +2802,7 @@ Max 180 words. Respond in ENGLISH.`;
       <div style={{flex:1,overflowY:"auto",padding:"10px",paddingBottom:80}}>
         {sentiment && (
           <div style={{padding:"12px 14px",borderRadius:12,border:`1px solid ${B.cyan}`,background:B.panel2,marginBottom:10}}>
-            <div style={{fontSize:13,color:B.cyan,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:6,letterSpacing:"0.08em"}}>
+            <div style={{fontSize:15,color:B.cyan,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:6,letterSpacing:"0.08em"}}>
               STRATEGIC MARKETS AI SENTIMENT
             </div>
             {sentiment.split("\n").map((line, i) => {
@@ -2825,7 +2825,7 @@ Max 180 words. Respond in ENGLISH.`;
         {!loading && rawList.length > 0 && list.length === 0 && (
           <div style={{padding:"20px 14px",borderRadius:12,border:`1px solid ${B.border}`,background:B.panel,fontSize:14,color:B.yellow,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
             NO HEADLINES MATCH YOUR FILTERS
-            <div style={{fontSize:12,color:B.gray3,marginTop:6}}>
+            <div style={{fontSize:14,color:B.gray3,marginTop:6}}>
               Try adjusting keyword, date range or source.
             </div>
           </div>
@@ -2850,16 +2850,16 @@ Max 180 words. Respond in ENGLISH.`;
                  style={{display:"block",textDecoration:"none",padding:"12px 14px",borderRadius:12,
                          background:B.panel,border:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
-                  {n._sym && <span style={{fontSize:13,color:B.blue,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{n._sym}</span>}
-                  <span style={{fontSize:11,color:B.cyan,fontFamily:"'Courier New',monospace"}}>{dateStr}</span>
-                  {n.source && <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>· {n.source}</span>}
-                  {n.category && <span style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",border:`1px solid ${B.gray4}`,borderRadius:10,padding:"1px 8px",textTransform:"uppercase",marginLeft:"auto"}}>{n.category}</span>}
+                  {n._sym && <span style={{fontSize:15,color:B.blue,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{n._sym}</span>}
+                  <span style={{fontSize:13,color:B.cyan,fontFamily:"'Courier New',monospace"}}>{dateStr}</span>
+                  {n.source && <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>· {n.source}</span>}
+                  {n.category && <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",border:`1px solid ${B.gray4}`,borderRadius:10,padding:"1px 8px",textTransform:"uppercase",marginLeft:"auto"}}>{n.category}</span>}
                 </div>
                 <div style={{fontSize:15,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:4,lineHeight:1.35}}>
                   {highlightKeyword(n.headline, kwTokens)}
                 </div>
                 {n.summary && (
-                  <div style={{fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace",lineHeight:1.45,
+                  <div style={{fontSize:15,color:B.gray2,fontFamily:"'Courier New',monospace",lineHeight:1.45,
                                overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
                     {highlightKeyword(n.summary, kwTokens)}
                   </div>
@@ -3295,7 +3295,7 @@ function DisclaimerBar() {
     <div data-testid="disclaimer-bar" style={{
       background:"#1a0f00", borderTop:`1px solid ${B.yellow}`, borderBottom:`1px solid ${B.border}`,
       padding:"4px 8px", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap",
-      fontFamily:"'Courier New',monospace", fontSize:11, color:B.yellow, lineHeight:1.3,
+      fontFamily:"'Courier New',monospace", fontSize:13, color:B.yellow, lineHeight:1.3,
     }}>
       <span style={{fontWeight:700,letterSpacing:"0.06em",whiteSpace:"nowrap"}}>⚠ EDU/INFO ONLY</span>
       <span className="sm-disclaimer-full" style={{color:B.gray2,letterSpacing:"0.02em"}}>
@@ -3347,7 +3347,7 @@ function DisclaimerModal({onAccept}:{onAccept:()=>void}) {
           </p>
         </div>
         <div style={{padding:"12px 16px",flexShrink:0,borderTop:`1px solid ${B.border}`}}>
-          <p style={{margin:"0 0 12px 0",color:B.gray2,fontSize:13}}>
+          <p style={{margin:"0 0 12px 0",color:B.gray2,fontSize:15}}>
             By clicking "ACCEPT" you confirm that you have read and understood this notice.
           </p>
           <div style={{display:"flex",gap:8}}>

@@ -22,19 +22,19 @@ const FONT = "'Courier New', Courier, monospace";
 
 const backBtnStyle: any = {
   background: "none", border: "none", color: B.blue, cursor: "pointer",
-  fontFamily: FONT, fontSize: 12, fontWeight: 700, padding: 0, letterSpacing: "0.04em",
+  fontFamily: FONT, fontSize: 14, fontWeight: 700, padding: 0, letterSpacing: "0.04em",
 };
 
 const primaryBtnStyle = (enabled: boolean): any => ({
   background: enabled ? B.blue : B.panel2,
   color: enabled ? B.white : B.gray3,
-  border: "none", padding: "8px 16px", borderRadius: 6, fontFamily: FONT, fontSize: 12, fontWeight: 700,
+  border: "none", padding: "8px 16px", borderRadius: 6, fontFamily: FONT, fontSize: 14, fontWeight: 700,
   cursor: enabled ? "pointer" : "not-allowed",
 });
 
 const inputStyle: any = {
   background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, borderRadius: 6,
-  padding: "8px 10px", fontSize: 13, fontFamily: FONT, outline: "none",
+  padding: "8px 10px", fontSize: 15, fontFamily: FONT, outline: "none",
 };
 
 function fmtDate(iso: string) {
@@ -60,7 +60,7 @@ function VoteControl({ score, myVote, disabled, onVote }: {
           <path d="M12 19V5M5 12l7-7 7 7" />
         </svg>
       </button>
-      <span style={{ fontSize: 13, fontWeight: 700, fontFamily: FONT, color: score > 0 ? B.green : score < 0 ? B.red : B.gray2 }}>{score}</span>
+      <span style={{ fontSize: 15, fontWeight: 700, fontFamily: FONT, color: score > 0 ? B.green : score < 0 ? B.red : B.gray2 }}>{score}</span>
       <button disabled={disabled} onClick={(e) => vote(e, -1)} title={disabled ? "Sign in to vote" : "Downvote"} style={{
         background: "none", border: "none", cursor: disabled ? "default" : "pointer",
         color: myVote === -1 ? B.red : B.gray3, padding: 2, opacity: disabled ? 0.4 : 1,
@@ -154,15 +154,15 @@ function PostTypeTag({ type }: { type: CommunityPostType }) {
     <span style={{
       display: "inline-block", padding: "2px 8px", borderRadius: 999,
       background: B.panel2, color: meta.color, border: `1px solid ${meta.color}`,
-      fontSize: 10, fontWeight: 700, fontFamily: FONT, letterSpacing: "0.03em", whiteSpace: "nowrap",
+      fontSize: 12, fontWeight: 700, fontFamily: FONT, letterSpacing: "0.03em", whiteSpace: "nowrap",
     }}>{meta.label}</span>
   );
 }
 
 const actionBtnStyle: any = {
   display: "inline-flex", alignItems: "center", gap: 5,
-  background: "none", border: "none", color: B.gray3, cursor: "pointer",
-  fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: "4px 6px", borderRadius: 6,
+  background: "none", border: "none", color: B.gray2, cursor: "pointer",
+  fontFamily: FONT, fontSize: 13, fontWeight: 700, padding: "4px 6px", borderRadius: 6,
 };
 
 // Comments (opens the post), Share (copies a direct link), Save (a
@@ -210,7 +210,7 @@ function PostActions({ post, onOpenComments }: { post: CommunityPost; onOpenComm
       <button onClick={share} style={actionBtnStyle}>
         <ShareIcon /> {copied ? "Link copied" : "Share"}
       </button>
-      <button onClick={toggleSave} style={{ ...actionBtnStyle, color: isSaved ? B.blue : B.gray3 }}>
+      <button onClick={toggleSave} style={{ ...actionBtnStyle, color: isSaved ? B.blue : B.gray2 }}>
         <BookmarkIcon filled={isSaved} /> {isSaved ? "Saved" : "Save"}
       </button>
       <div ref={menuRef} style={{ position: "relative", marginLeft: "auto" }}>
@@ -218,15 +218,15 @@ function PostActions({ post, onOpenComments }: { post: CommunityPost; onOpenComm
         {menuOpen && (
           <div style={{
             position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 10, minWidth: 140,
-            background: B.panel, border: `1px solid ${B.border}`, borderRadius: 8, overflow: "hidden",
+            background: B.panel, border: `1px solid ${B.borderB}`, borderRadius: 8, overflow: "hidden",
           }}>
             <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} style={{
               display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
-              color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "8px 12px",
+              color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 14, padding: "8px 12px",
             }}>Report</button>
             <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} style={{
               display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
-              color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "8px 12px",
+              color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 14, padding: "8px 12px",
             }}>Hide</button>
           </div>
         )}
@@ -299,7 +299,7 @@ function snapshotChartRows(snapshot: PortfolioSnapshot) {
 function MiniKpi({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div style={{ background: B.panel2, border: `1px solid ${B.border}`, borderRadius: 8, padding: "8px 10px", flex: "1 1 92px", minWidth: 92 }}>
-      <div style={{ fontSize: 9, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 11, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 3 }}>{label}</div>
       <div style={{ fontSize: 14, fontWeight: 700, color: color || B.gray1, fontFamily: FONT }}>{value}</div>
     </div>
   );
@@ -309,11 +309,11 @@ function AllocationBars({ title, data }: { title: string; data?: { name: string;
   if (!data?.length) return null;
   return (
     <div style={{ flex: "1 1 200px", minWidth: 180 }}>
-      <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 12, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>{title}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {data.slice(0, 6).map((d, i) => (
           <div key={d.name}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: B.gray1, fontFamily: FONT, marginBottom: 2 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: B.gray1, fontFamily: FONT, marginBottom: 2 }}>
               <span>{d.name}</span><span style={{ fontWeight: 700 }}>{d.pct.toFixed(1)}%</span>
             </div>
             <div style={{ height: 4, borderRadius: 2, background: B.panel2, overflow: "hidden" }}>
@@ -347,17 +347,17 @@ function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, color: B.blue }}>
         <BarChartIcon />
-        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", fontFamily: FONT }}>SHARED PORTFOLIO</span>
-        <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, fontWeight: 400 }}>· {snapshot.sourceName}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.08em", fontFamily: FONT }}>SHARED PORTFOLIO</span>
+        <span style={{ fontSize: 13, color: B.gray3, fontFamily: FONT, fontWeight: 400 }}>· {snapshot.sourceName}</span>
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
         <span style={{ fontSize: 26, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
           ${snapshot.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
         </span>
-        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: FONT, color: pCol(wDay) }}>
+        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: FONT, color: pCol(wDay) }}>
           {wDay >= 0 ? "+" : ""}{wDay.toFixed(2)}% today
         </span>
-        <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{snapshot.holdings.length} positions</span>
+        <span style={{ fontSize: 13, color: B.gray3, fontFamily: FONT }}>{snapshot.holdings.length} positions</span>
       </div>
 
       {metrics && (
@@ -371,7 +371,7 @@ function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
         </div>
       )}
 
-      <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>TOP HOLDINGS</div>
+      <div style={{ fontSize: 12, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>TOP HOLDINGS</div>
       <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center", marginBottom: 18 }}>
         <ResponsiveContainer width={140} height={140} style={{ flexShrink: 0 }}>
           <PieChart>
@@ -384,12 +384,12 @@ function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
           <tbody>
             {chartRows.map((row, i) => (
               <tr key={row.name}>
-                <td style={{ padding: "3px 0", fontSize: 12, color: B.gray1 }}>
+                <td style={{ padding: "3px 0", fontSize: 14, color: B.gray1 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: PIE_COLS[i % PIE_COLS.length], display: "inline-block", marginRight: 6 }} />
                   {row.name}
                 </td>
-                <td style={{ padding: "3px 0", fontSize: 12, color: B.gray1, textAlign: "right", fontWeight: 700 }}>{row.value.toFixed(1)}%</td>
-                <td style={{ padding: "3px 0 3px 10px", fontSize: 11, textAlign: "right", color: row.change == null ? B.gray3 : row.change >= 0 ? B.green : B.red }}>
+                <td style={{ padding: "3px 0", fontSize: 14, color: B.gray1, textAlign: "right", fontWeight: 700 }}>{row.value.toFixed(1)}%</td>
+                <td style={{ padding: "3px 0 3px 10px", fontSize: 13, textAlign: "right", color: row.change == null ? B.gray3 : row.change >= 0 ? B.green : B.red }}>
                   {row.change == null ? "—" : `${row.change >= 0 ? "+" : ""}${row.change.toFixed(1)}%`}
                 </td>
               </tr>
@@ -408,17 +408,17 @@ function PortfolioShareCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
 
       {alerts.length > 0 && (
         <>
-          <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>RISK ALERTS</div>
+          <div style={{ fontSize: 12, color: B.gray3, letterSpacing: "0.06em", fontFamily: FONT, marginBottom: 8 }}>RISK ALERTS</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {alerts.map((a, i) => {
               const style = SEV_STYLE[a.sev];
               return (
                 <div key={i} style={{ border: `1px solid ${style.border}`, background: style.bg, borderRadius: 8, padding: "8px 10px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: style.text, fontFamily: FONT }}>{style.icon} {a.title}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: style.text, fontFamily: FONT, flexShrink: 0 }}>{a.metric}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: style.text, fontFamily: FONT }}>{style.icon} {a.title}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: style.text, fontFamily: FONT, flexShrink: 0 }}>{a.metric}</span>
                   </div>
-                  <div style={{ fontSize: 11, color: B.gray2, fontFamily: FONT, lineHeight: 1.4 }}>{a.detail}</div>
+                  <div style={{ fontSize: 13, color: B.gray2, fontFamily: FONT, lineHeight: 1.4 }}>{a.detail}</div>
                 </div>
               );
             })}
@@ -459,8 +459,8 @@ function PostPortfolioWidget({ snapshot }: { snapshot: PortfolioSnapshot }) {
           {top.map((d, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
               <span style={{ width: 7, height: 7, borderRadius: 2, background: PIE_COLS[i % PIE_COLS.length], flexShrink: 0 }} />
-              <span style={{ fontSize: 10, color: B.gray2, fontFamily: FONT, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{d.pct.toFixed(0)}%</span>
+              <span style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{d.pct.toFixed(0)}%</span>
             </div>
           ))}
         </div>
@@ -476,11 +476,11 @@ export function PortfolioBadge({ snapshot }: { snapshot: PortfolioSnapshot }) {
       padding: "4px 8px", background: B.panel2, border: `1px solid ${B.border}`, borderRadius: 6, color: B.blue,
     }}>
       <BarChartIcon size={12} />
-      <span style={{ fontSize: 11, fontWeight: 700, fontFamily: FONT }}>Portfolio attached</span>
-      <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, fontWeight: 400 }}>
+      <span style={{ fontSize: 13, fontWeight: 700, fontFamily: FONT }}>Portfolio attached</span>
+      <span style={{ fontSize: 13, color: B.gray3, fontFamily: FONT, fontWeight: 400 }}>
         · ${snapshot.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} · {snapshot.holdings.length} positions
       </span>
-      {highRisk && <span style={{ fontSize: 11, color: SEV_STYLE.HIGH.text, fontWeight: 700, fontFamily: FONT }}>{SEV_STYLE.HIGH.icon} risk flag</span>}
+      {highRisk && <span style={{ fontSize: 13, color: SEV_STYLE.HIGH.text, fontWeight: 700, fontFamily: FONT }}>{SEV_STYLE.HIGH.icon} risk flag</span>}
     </div>
   );
 }
@@ -515,8 +515,8 @@ function PortfolioAttachPicker({ holdings, value, onChange }: {
     return (
       <button type="button" onClick={() => setOpen(true)} style={{
         display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
-        background: "transparent", border: `1px dashed ${B.border}`, color: B.blue, borderRadius: 6,
-        padding: "6px 10px", fontFamily: FONT, fontSize: 11, fontWeight: 700, cursor: "pointer",
+        background: "transparent", border: `1px dashed ${B.borderB}`, color: B.blue, borderRadius: 6,
+        padding: "6px 10px", fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer",
       }}>
         <BarChartIcon size={12} /> ATTACH A PORTFOLIO
       </button>
@@ -526,13 +526,13 @@ function PortfolioAttachPicker({ holdings, value, onChange }: {
   return (
     <div style={{ background: B.panel2, border: `1px solid ${B.border}`, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 11, color: B.gray2, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.04em" }}>ATTACH A PORTFOLIO</span>
+        <span style={{ fontSize: 13, color: B.gray2, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.04em" }}>ATTACH A PORTFOLIO</span>
         <button type="button" onClick={() => { setOpen(false); setSource(""); onChange(null); }} style={{
-          background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700,
+          background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 700,
         }}>REMOVE</button>
       </div>
       {!hasCurrent && !(saved && saved.length) ? (
-        <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>Add positions in Portfolio first to share one.</div>
+        <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT }}>Add positions in Portfolio first to share one.</div>
       ) : (
         <select value={source} onChange={(e) => pick(e.target.value)} style={{ ...inputStyle, width: "100%" }}>
           <option value="">Select a portfolio…</option>
@@ -572,7 +572,7 @@ function UsernamePrompt({ onSet }: { onSet: (username: string) => void }) {
 
   return (
     <div style={{ background: B.panel, border: `1px solid ${B.blue}`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 14, color: B.gray2, fontFamily: FONT, lineHeight: 1.5 }}>
         Choose a username to participate in the community (3-20 characters: lowercase letters, numbers, underscore).
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -586,7 +586,7 @@ function UsernamePrompt({ onSet }: { onSet: (username: string) => void }) {
           {busy ? "..." : "SAVE USERNAME"}
         </button>
       </div>
-      {err && <div style={{ fontSize: 11, color: B.red, fontFamily: FONT }}>{err}</div>}
+      {err && <div style={{ fontSize: 13, color: B.red, fontFamily: FONT }}>{err}</div>}
     </div>
   );
 }
@@ -614,16 +614,16 @@ function PostCard({ post, myVote, disabled, onVote, onOpen, showChannel }: {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
             <PostTypeTag type={post.post_type} />
             {showChannel && post.community_channels && (
-              <span style={{ fontSize: 11, color: B.blue, fontWeight: 700, fontFamily: FONT }}>{post.community_channels.name}</span>
+              <span style={{ fontSize: 13, color: B.blue, fontWeight: 700, fontFamily: FONT }}>{post.community_channels.name}</span>
             )}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 4 }}>{post.title}</div>
           <div style={{
-            fontSize: 12, color: B.gray2, fontFamily: FONT, marginBottom: 6,
+            fontSize: 14, color: B.gray2, fontFamily: FONT, marginBottom: 6,
             overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
             WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
           }}>{post.body}</div>
-          <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <Avatar name={post.author_name} size={18} />
             <span>u/{post.author_name}</span>
             <span>· {fmtDate(post.created_at)}</span>
@@ -898,7 +898,7 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
   };
 
   if (channelsLoading) {
-    return <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>;
+    return <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 15 }}>LOADING...</div>;
   }
 
   return (
@@ -911,8 +911,8 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
               <button key={t} onClick={() => setSortTab(t)} style={{
                 background: sortTab === t ? B.blue : B.panel2,
                 color: sortTab === t ? B.white : B.gray2,
-                border: `1px solid ${sortTab === t ? B.blue : B.border}`,
-                borderRadius: 999, padding: "6px 14px", fontFamily: FONT, fontSize: 12, fontWeight: 700,
+                border: `1px solid ${sortTab === t ? B.blue : B.borderB}`,
+                borderRadius: 999, padding: "6px 14px", fontFamily: FONT, fontSize: 14, fontWeight: 700,
                 letterSpacing: "0.03em", cursor: "pointer", textTransform: "capitalize",
               }}>{t}</button>
             ))}
@@ -920,8 +920,8 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
 
           <div ref={dropdownRef} style={{ position: "relative" }}>
             <button onClick={() => setDropdownOpen((v) => !v)} style={{
-              display: "flex", alignItems: "center", gap: 6, background: B.panel2, border: `1px solid ${B.border}`,
-              borderRadius: 8, padding: "7px 12px", color: B.gray1, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 6, background: B.panel2, border: `1px solid ${B.borderB}`,
+              borderRadius: 8, padding: "7px 12px", color: B.gray1, fontFamily: FONT, fontSize: 14, fontWeight: 700, cursor: "pointer",
             }}>
               {selectedChannel ? selectedChannel.name : "All Topics"}
               <ChevronIcon open={dropdownOpen} />
@@ -934,15 +934,15 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
                 <div style={{ padding: 8, borderBottom: `1px solid ${B.border}` }}>
                   <input
                     autoFocus value={channelSearch} onChange={(e) => setChannelSearch(e.target.value)}
-                    placeholder="Search communities…" style={{ ...inputStyle, width: "100%", fontSize: 12, padding: "6px 8px" }}
+                    placeholder="Search communities…" style={{ ...inputStyle, width: "100%", fontSize: 14, padding: "6px 8px" }}
                   />
                 </div>
                 <button onClick={() => { setSelectedChannel(null); setDropdownOpen(false); }} style={{
                   display: "block", width: "100%", textAlign: "left", background: !selectedChannel ? B.panel2 : "none", border: "none",
-                  color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700, padding: "10px 12px",
+                  color: B.gray1, cursor: "pointer", fontFamily: FONT, fontSize: 14, fontWeight: 700, padding: "10px 12px",
                 }}>All Topics</button>
                 {filteredChannels.length === 0 ? (
-                  <div style={{ padding: "12px", fontSize: 11, color: B.gray3, fontFamily: FONT }}>
+                  <div style={{ padding: "12px", fontSize: 13, color: B.gray3, fontFamily: FONT }}>
                     No communities match "{channelSearch.trim()}".
                   </div>
                 ) : filteredChannels.map((c) => (
@@ -951,12 +951,12 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
                     background: selectedChannel?.id === c.id ? B.panel2 : "none", border: "none",
                     color: B.gray1, cursor: "pointer", fontFamily: FONT, padding: "10px 12px",
                   }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700 }}>
                       <span>{c.name}</span>
                       <span style={{ color: B.gray3, fontWeight: 400 }}>{c.post_count}</span>
                     </div>
                     {c.description && (
-                      <div style={{ fontSize: 10, color: B.gray3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.description}</div>
+                      <div style={{ fontSize: 12, color: B.gray3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.description}</div>
                     )}
                   </button>
                 ))}
@@ -964,10 +964,10 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
                   {user ? (
                     <button onClick={() => setShowCreateChannel((v) => !v)} style={{
                       display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
-                      color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700, padding: "10px 12px",
+                      color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 14, fontWeight: 700, padding: "10px 12px",
                     }}>+ Create Topic</button>
                   ) : (
-                    <Link to="/auth" style={{ display: "block", padding: "10px 12px", color: B.blue, fontFamily: FONT, fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
+                    <Link to="/auth" style={{ display: "block", padding: "10px 12px", color: B.blue, fontFamily: FONT, fontSize: 14, fontWeight: 700, textDecoration: "none" }}>
                       Sign in to create a topic
                     </Link>
                   )}
@@ -983,11 +983,11 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
         {!showForm && (
           <button onClick={openComposer} style={{
             display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
-            background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10,
+            background: B.panel, border: `1px solid ${B.borderB}`, borderRadius: 10,
             padding: "10px 14px", marginBottom: 12, cursor: "pointer",
           }}>
             <Avatar name={username || "?"} size={28} />
-            <span style={{ flex: 1, fontSize: 13, color: B.gray3, fontFamily: FONT }}>
+            <span style={{ flex: 1, fontSize: 15, color: B.gray3, fontFamily: FONT }}>
               {user ? "Create Post" : "Sign in to create a post"}
             </span>
           </button>
@@ -1001,7 +1001,7 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
               <input value={channelName} onChange={(e) => setChannelName(e.target.value)} placeholder="Topic name (e.g. US Stocks)" maxLength={60} style={inputStyle} />
               <textarea value={channelDesc} onChange={(e) => setChannelDesc(e.target.value)} placeholder="Description (optional)" rows={2} maxLength={300} style={{ ...inputStyle, resize: "vertical" }} />
               <div>
-                <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, marginBottom: 4 }}>RULES (optional, one per line) — you decide these as the topic's creator</div>
+                <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginBottom: 4 }}>RULES (optional, one per line) — you decide these as the topic's creator</div>
                 <textarea value={channelRulesText} onChange={(e) => setChannelRulesText(e.target.value)} placeholder={"Be respectful\nNo spam\n..."} rows={3} maxLength={1000} style={{ ...inputStyle, width: "100%", resize: "vertical" }} />
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -1016,15 +1016,15 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
         {showForm && (
           !user ? (
             <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12 }}>
-              <Link to="/auth" style={{ color: B.blue, fontFamily: FONT, fontSize: 12, fontWeight: 700, textDecoration: "none" }}>Sign in to post →</Link>
+              <Link to="/auth" style={{ color: B.blue, fontFamily: FONT, fontSize: 14, fontWeight: 700, textDecoration: "none" }}>Sign in to post →</Link>
             </div>
           ) : username === null ? (
             <div style={{ marginBottom: 12 }}><UsernamePrompt onSet={onUsernameSet} /></div>
           ) : (
             <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.04em" }}>NEW POST</span>
-                <button onClick={() => setShowForm(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700 }}>CANCEL</button>
+                <span style={{ fontSize: 14, color: B.gray2, fontFamily: FONT, fontWeight: 700, letterSpacing: "0.04em" }}>NEW POST</span>
+                <button onClick={() => setShowForm(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 700 }}>CANCEL</button>
               </div>
               <select value={formChannelId} onChange={(e) => setFormChannelId(e.target.value)} style={inputStyle}>
                 <option value="">No topic (posts to Community Home)</option>
@@ -1033,7 +1033,7 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {(Object.keys(POST_TYPE_META) as CommunityPostType[]).map((t) => (
                   <button key={t} type="button" onClick={() => setPostType(t)} style={{
-                    padding: "5px 12px", borderRadius: 999, fontFamily: FONT, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                    padding: "5px 12px", borderRadius: 999, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer",
                     background: postType === t ? POST_TYPE_META[t].color : B.panel2,
                     color: postType === t ? B.bg : POST_TYPE_META[t].color,
                     border: `1px solid ${POST_TYPE_META[t].color}`,
@@ -1053,23 +1053,23 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
         )}
 
         {error && (
-          <div style={{ padding: "8px 10px", fontSize: 12, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, marginBottom: 10, fontFamily: FONT }}>
+          <div style={{ padding: "8px 10px", fontSize: 14, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, marginBottom: 10, fontFamily: FONT }}>
             {error}
           </div>
         )}
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>
+          <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 15 }}>LOADING...</div>
         ) : isFollowingTab && !user ? (
-          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13, lineHeight: 1.6 }}>
+          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 15, lineHeight: 1.6 }}>
             Sign in to follow topics and see their posts here.
           </div>
         ) : isFollowingTab && followedIds.size === 0 ? (
-          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13, lineHeight: 1.6 }}>
+          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 15, lineHeight: 1.6 }}>
             You're not following any topics yet — open a topic and hit + Follow.
           </div>
         ) : sortedPosts.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>
+          <div style={{ textAlign: "center", padding: 40, color: B.gray3, fontFamily: FONT, fontSize: 15 }}>
             {isFollowingTab ? "No posts yet in the topics you follow." : "No discussions yet — be the first to write one."}
           </div>
         ) : (
@@ -1083,18 +1083,18 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
 
       <div style={{ width: isMobile ? "100%" : 300, flexShrink: 0, display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 10 }}>About {communityName}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 10 }}>About {communityName}</div>
           {about ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: FONT }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontFamily: FONT }}>
                 <span style={{ color: B.gray3 }}>Members</span><span style={{ color: B.gray1, fontWeight: 700 }}>{about.memberCount}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: FONT }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontFamily: FONT }}>
                 <span style={{ color: B.gray3 }}>Posts</span><span style={{ color: B.gray1, fontWeight: 700 }}>{about.postCount}</span>
               </div>
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>Loading…</div>
+            <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT }}>Loading…</div>
           )}
           {selectedChannel && user && (
             <button disabled={followBusy} onClick={toggleFollow} style={{
@@ -1102,32 +1102,32 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
               background: followedIds.has(selectedChannel.id) ? B.panel2 : B.blue,
               border: `1px solid ${followedIds.has(selectedChannel.id) ? B.border : B.blue}`,
               color: followedIds.has(selectedChannel.id) ? B.gray1 : B.white,
-              borderRadius: 6, padding: "6px 10px", fontFamily: FONT, fontSize: 11, fontWeight: 700,
+              borderRadius: 6, padding: "6px 10px", fontFamily: FONT, fontSize: 13, fontWeight: 700,
               cursor: followBusy ? "wait" : "pointer", width: "100%",
             }}>{followedIds.has(selectedChannel.id) ? "✓ FOLLOWING" : "+ FOLLOW"}</button>
           )}
           {selectedChannel && user && (user.user_id === selectedChannel.created_by || isAdmin) && (
             <button onClick={deleteSelectedChannel} style={{
               marginTop: 12, background: "none", border: `1px solid ${B.red}`, color: B.red, borderRadius: 6,
-              padding: "6px 10px", fontFamily: FONT, fontSize: 11, fontWeight: 700, cursor: "pointer", width: "100%",
+              padding: "6px 10px", fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer", width: "100%",
             }}>DELETE THIS TOPIC</button>
           )}
         </div>
 
         <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 10 }}>Trending Topics</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 10 }}>Trending Topics</div>
           {trending === null ? (
-            <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>Loading…</div>
+            <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT }}>Loading…</div>
           ) : totalTrendingCount < 5 ? (
-            <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT, lineHeight: 1.5 }}>
               Not enough activity yet to show trends — check back once there are more posts.
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {trending.map((t, i) => (
                 <div key={t.id} onClick={() => { const c = channels.find((ch) => ch.id === t.id); if (c) setSelectedChannel(c); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                  <span style={{ fontSize: 12, color: B.gray1, fontFamily: FONT }}>{i + 1}. {t.name}</span>
-                  <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{t.count} posts</span>
+                  <span style={{ fontSize: 14, color: B.gray1, fontFamily: FONT }}>{i + 1}. {t.name}</span>
+                  <span style={{ fontSize: 13, color: B.gray3, fontFamily: FONT }}>{t.count} posts</span>
                 </div>
               ))}
             </div>
@@ -1139,35 +1139,35 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
             display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
             background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: rulesOpen ? 10 : 0,
           }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
               {selectedChannel ? `${selectedChannel.name} Rules` : "Topic Rules"}
             </span>
             <span style={{ color: B.gray3 }}><ChevronIcon open={rulesOpen} /></span>
           </button>
           {rulesOpen && (
             !selectedChannel ? (
-              <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT, lineHeight: 1.5 }}>
                 Select a topic to see its rules — each one is set by whoever created it, like a subreddit's own rules.
               </div>
             ) : editingRules ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <textarea
                   value={rulesDraft} onChange={(e) => setRulesDraft(e.target.value)} rows={5}
-                  placeholder={"One rule per line"} style={{ ...inputStyle, width: "100%", resize: "vertical", fontSize: 12 }}
+                  placeholder={"One rule per line"} style={{ ...inputStyle, width: "100%", resize: "vertical", fontSize: 14 }}
                 />
                 <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button onClick={() => setEditingRules(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700 }}>CANCEL</button>
+                  <button onClick={() => setEditingRules(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 700 }}>CANCEL</button>
                   <button disabled={savingRules} onClick={saveRules} style={primaryBtnStyle(!savingRules)}>{savingRules ? "SAVING..." : "SAVE"}</button>
                 </div>
               </div>
             ) : (
               <>
                 {(selectedChannel.rules || []).length === 0 ? (
-                  <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, lineHeight: 1.5 }}>No rules set for this topic yet.</div>
+                  <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT, lineHeight: 1.5 }}>No rules set for this topic yet.</div>
                 ) : (
                   <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
                     {selectedChannel.rules.map((r, i) => (
-                      <li key={i} style={{ fontSize: 12, color: B.gray2, fontFamily: FONT, lineHeight: 1.4 }}>{r}</li>
+                      <li key={i} style={{ fontSize: 14, color: B.gray2, fontFamily: FONT, lineHeight: 1.4 }}>{r}</li>
                     ))}
                   </ol>
                 )}
@@ -1176,8 +1176,8 @@ function Feed({ user, username, isAdmin, holdings, onUsernameSet, onOpenPost, se
                     unlike delete). */}
                 {user && user.user_id === selectedChannel.created_by && (
                   <button onClick={startEditRules} style={{
-                    marginTop: 10, background: "none", border: `1px solid ${B.border}`, color: B.blue, borderRadius: 6,
-                    padding: "6px 10px", fontFamily: FONT, fontSize: 11, fontWeight: 700, cursor: "pointer", width: "100%",
+                    marginTop: 10, background: "none", border: `1px solid ${B.borderB}`, color: B.blue, borderRadius: 6,
+                    padding: "6px 10px", fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer", width: "100%",
                   }}>EDIT RULES</button>
                 )}
               </>
@@ -1298,13 +1298,13 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
   };
 
   if (loading) {
-    return <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING...</div>;
+    return <div style={{ textAlign: "center", padding: 30, color: B.gray3, fontFamily: FONT, fontSize: 15 }}>LOADING...</div>;
   }
   if (!post) {
     return (
       <div>
         <button onClick={onBack} style={backBtnStyle}>← BACK</button>
-        <div style={{ padding: 20, color: B.gray3, fontFamily: FONT, fontSize: 13 }}>Discussion not found.</div>
+        <div style={{ padding: 20, color: B.gray3, fontFamily: FONT, fontSize: 15 }}>Discussion not found.</div>
       </div>
     );
   }
@@ -1313,7 +1313,7 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
     <div>
       <button onClick={onBack} style={backBtnStyle}>← BACK</button>
       {error && (
-        <div style={{ padding: "8px 10px", fontSize: 12, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, margin: "10px 0", fontFamily: FONT }}>
+        <div style={{ padding: "8px 10px", fontSize: 14, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, margin: "10px 0", fontFamily: FONT }}>
           {error}
         </div>
       )}
@@ -1323,21 +1323,21 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
             <PostTypeTag type={post.post_type} />
             {post.community_channels && (
-              <span style={{ fontSize: 11, color: B.blue, fontWeight: 700, fontFamily: FONT }}>{post.community_channels.name}</span>
+              <span style={{ fontSize: 13, color: B.blue, fontWeight: 700, fontFamily: FONT }}>{post.community_channels.name}</span>
             )}
           </div>
           <div style={{ fontSize: 17, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 6 }}>{post.title}</div>
-          <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT, marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <Avatar name={post.author_name} size={18} />
             <span>u/{post.author_name}</span>
             <span>· {fmtDate(post.created_at)}</span>
             {user && (user.user_id === post.user_id || isAdmin) && (
-              <button onClick={removePost} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0, marginLeft: "auto" }}>
+              <button onClick={removePost} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 700, padding: 0, marginLeft: "auto" }}>
                 DELETE
               </button>
             )}
           </div>
-          <div style={{ fontSize: 13, color: B.gray1, fontFamily: FONT, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{post.body}</div>
+          <div style={{ fontSize: 15, color: B.gray1, fontFamily: FONT, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{post.body}</div>
           <PostActions post={post} onOpenComments={() => document.getElementById("community-comments")?.scrollIntoView({ behavior: "smooth" })} />
         </div>
       </div>
@@ -1345,7 +1345,7 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
       {post.portfolio_snapshot && <PortfolioShareCard snapshot={post.portfolio_snapshot} />}
 
       <div id="community-comments" style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 8, fontFamily: FONT }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 8, fontFamily: FONT }}>
           {comments.length} COMMENTS
         </div>
 
@@ -1363,30 +1363,30 @@ function PostDetail({ postId, user, username, isAdmin, onUsernameSet, onBack }: 
             </div>
           )
         ) : (
-          <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginBottom: 14 }}>
+          <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT, marginBottom: 14 }}>
             <Link to="/auth" style={{ color: B.blue, fontWeight: 700, textDecoration: "none" }}>Sign in</Link> to leave a comment.
           </div>
         )}
 
         {comments.length === 0 ? (
-          <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>No comments yet.</div>
+          <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>No comments yet.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {comments.map((c) => (
               <div key={c.id} style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px", display: "flex", gap: 10 }}>
                 <VoteControl score={c.score} myVote={myCommentVotes[c.id] || 0} disabled={!user} onVote={(v) => voteComment(c.id, v)} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 4, display: "flex", gap: 8, alignItems: "center" }}>
+                  <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT, marginBottom: 4, display: "flex", gap: 8, alignItems: "center" }}>
                     <Avatar name={c.author_name} size={16} />
                     <span style={{ color: B.gray2, fontWeight: 700 }}>u/{c.author_name}</span>
                     <span>{fmtDate(c.created_at)}</span>
                     {user && (user.user_id === c.user_id || isAdmin) && (
-                      <button onClick={() => removeComment(c.id)} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: 0, marginLeft: "auto" }}>
+                      <button onClick={() => removeComment(c.id)} style={{ background: "none", border: "none", color: B.red, cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 700, padding: 0, marginLeft: "auto" }}>
                         DELETE
                       </button>
                     )}
                   </div>
-                  <div style={{ fontSize: 13, color: B.gray1, fontFamily: FONT, whiteSpace: "pre-wrap" }}>{c.body}</div>
+                  <div style={{ fontSize: 15, color: B.gray1, fontFamily: FONT, whiteSpace: "pre-wrap" }}>{c.body}</div>
                 </div>
               </div>
             ))}

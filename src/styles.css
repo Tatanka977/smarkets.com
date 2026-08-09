@@ -205,7 +205,7 @@
   --sm-green-tint:  #0C2318;
   --sm-red-tint:    #2A1215;
   --sm-yellow-tint: #2A1F0A;
-  --sm-font:    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --sm-font:    'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
   --sm-radius:  16px;
   --sm-radius-lg: 24px;
   --sm-shadow:  0 1px 3px rgba(0,0,0,0.3), 0 10px 24px rgba(0,0,0,0.4);
@@ -238,7 +238,7 @@
   --sm-green-tint:  #DCFCE7;
   --sm-red-tint:    #FEE2E2;
   --sm-yellow-tint: #FEF3C7;
-  --sm-font:    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --sm-font:    'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
   --sm-radius:  16px;
   --sm-radius-lg: 24px;
   --sm-shadow:  0 1px 3px rgba(15,23,42,0.04), 0 10px 24px rgba(15,23,42,0.06);

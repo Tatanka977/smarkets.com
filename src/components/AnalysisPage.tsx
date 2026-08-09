@@ -34,9 +34,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 function KpiCard({ label, value, sub, subColor }: any) {
   return (
     <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "14px 16px", flex: 1, minWidth: 150 }}>
-      <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.08em", fontFamily: FONT, textTransform: "uppercase", marginBottom: 8 }}>{label}</div>
+      <div style={{ fontSize: 12, color: B.gray3, letterSpacing: "0.08em", fontFamily: FONT, textTransform: "uppercase", marginBottom: 8 }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: subColor || B.gray3, fontFamily: FONT, marginTop: 2 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 13, color: subColor || B.gray3, fontFamily: FONT, marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }
@@ -57,18 +57,18 @@ function AllocationPanel({ title, data }: { title: string; data: { name: string;
             <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left", fontSize: 10, color: B.gray3, fontWeight: 400, paddingBottom: 4 }}>NAME</th>
-                  <th style={{ textAlign: "right", fontSize: 10, color: B.gray3, fontWeight: 400, paddingBottom: 4 }}>WEIGHT</th>
+                  <th style={{ textAlign: "left", fontSize: 12, color: B.gray3, fontWeight: 400, paddingBottom: 4 }}>NAME</th>
+                  <th style={{ textAlign: "right", fontSize: 12, color: B.gray3, fontWeight: 400, paddingBottom: 4 }}>WEIGHT</th>
                 </tr>
               </thead>
               <tbody>
                 {data.slice(0, 6).map((d, i) => (
                   <tr key={i}>
-                    <td style={{ fontSize: 12, color: B.gray1, padding: "3px 0", display: "flex", alignItems: "center", gap: 6 }}>
+                    <td style={{ fontSize: 14, color: B.gray1, padding: "3px 0", display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ width: 8, height: 8, borderRadius: 2, background: PIE_COLS[i % PIE_COLS.length], display: "inline-block" }} />
                       {d.name}
                     </td>
-                    <td style={{ fontSize: 12, color: B.gray1, textAlign: "right", fontWeight: 700 }}>{d.pct}%</td>
+                    <td style={{ fontSize: 14, color: B.gray1, textAlign: "right", fontWeight: 700 }}>{d.pct}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -76,7 +76,7 @@ function AllocationPanel({ title, data }: { title: string; data: { name: string;
           </div>
         </div>
         {data[0] && (
-          <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>
+          <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT }}>
             Largest: <span style={{ color: B.blue, fontWeight: 700 }}>{data[0].name} ({data[0].pct}%)</span>
           </div>
         )}
@@ -223,10 +223,10 @@ function PerformanceTab({ holdings, m }: any) {
   };
 
   if (loading) return (
-    <div style={{ padding: 30, textAlign: "center", color: B.gray3, fontFamily: FONT, fontSize: 13 }}>LOADING…</div>
+    <div style={{ padding: 30, textAlign: "center", color: B.gray3, fontFamily: FONT, fontSize: 15 }}>LOADING…</div>
   );
   if (!stats) return (
-    <div style={{ padding: 30, textAlign: "center", color: B.gray3, fontFamily: FONT, fontSize: 13, lineHeight: 1.6 }}>
+    <div style={{ padding: 30, textAlign: "center", color: B.gray3, fontFamily: FONT, fontSize: 15, lineHeight: 1.6 }}>
       Not enough historical price data yet. Add positions with a purchase date to see this view.
     </div>
   );
@@ -248,9 +248,9 @@ function PerformanceTab({ holdings, m }: any) {
           {l:"Worst Performer", v:worst?.ticker||"—", sub:worst?`${pSign(fmt(worst.pct,1))}%`:"", col:B.red},
         ].map((k,i)=>(
           <div key={i}>
-            <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{k.l}</div>
+            <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{k.l}</div>
             <div style={{fontSize:17,fontWeight:700,color:k.col,fontFamily:FONT}}>{k.v}</div>
-            <div style={{fontSize:10,color:B.gray3,fontFamily:FONT}}>{k.sub}</div>
+            <div style={{fontSize:12,color:B.gray3,fontFamily:FONT}}>{k.sub}</div>
           </div>
         ))}
       </div>
@@ -264,7 +264,7 @@ function PerformanceTab({ holdings, m }: any) {
                 {(["1M","3M","6M","YTD","1Y","3Y","5Y","ALL"] as const).map(r=>(
                   <button key={r} onClick={()=>setRange(r)} style={{
                     background:range===r?B.blue:"transparent", color:range===r?B.white:B.gray2,
-                    border:"none", fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6,
+                    border:"none", fontSize:13, fontWeight:700, padding:"3px 8px", borderRadius:6,
                     cursor:"pointer", fontFamily:FONT,
                   }}>{r}</button>
                 ))}
@@ -273,7 +273,7 @@ function PerformanceTab({ holdings, m }: any) {
                 {BENCHMARKS.map(b=>(
                   <button key={b.sym} onClick={()=>setBenchmark(b.sym)} style={{
                     background:benchmark===b.sym?B.panel2:"transparent", color:benchmark===b.sym?B.gray1:B.gray3,
-                    border:`1px solid ${benchmark===b.sym?B.border:"transparent"}`, fontSize:10, fontWeight:700, padding:"3px 6px", borderRadius:6,
+                    border:`1px solid ${benchmark===b.sym?B.border:"transparent"}`, fontSize:12, fontWeight:700, padding:"3px 6px", borderRadius:6,
                     cursor:"pointer", fontFamily:FONT,
                   }}>{b.label}</button>
                 ))}
@@ -282,7 +282,7 @@ function PerformanceTab({ holdings, m }: any) {
                 {(["value","return","drawdown"] as const).map(v=>(
                   <button key={v} onClick={()=>setView(v)} style={{
                     background:view===v?B.blue:"transparent", color:view===v?B.white:B.gray2,
-                    border:`1px solid ${view===v?B.blue:B.border}`, fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6,
+                    border:`1px solid ${view===v?B.blue:B.borderB}`, fontSize:13, fontWeight:700, padding:"3px 8px", borderRadius:6,
                     cursor:"pointer", fontFamily:FONT,
                   }}>{v.toUpperCase()}</button>
                 ))}
@@ -291,9 +291,9 @@ function PerformanceTab({ holdings, m }: any) {
             <div style={{height:260}}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={filtered} margin={{top:8,right:16,bottom:8,left:0}}>
-                  <XAxis dataKey="label" tick={{fontSize:10,fill:B.gray3}} minTickGap={50} tickLine={false}/>
-                  <YAxis tick={{fontSize:10,fill:B.gray3}} tickFormatter={(v)=>view==="value"?`$${fmtM(v)}`:`${v.toFixed(0)}%`} axisLine={false} tickLine={false} width={50}/>
-                  <Tooltip formatter={(v:any)=>view==="value"?`$${fmtM(v)}`:`${v?.toFixed?.(2)}%`} contentStyle={{fontFamily:FONT,fontSize:12,borderRadius:8}}/>
+                  <XAxis dataKey="label" tick={{fontSize:12,fill:B.gray3}} minTickGap={50} tickLine={false}/>
+                  <YAxis tick={{fontSize:12,fill:B.gray3}} tickFormatter={(v)=>view==="value"?`$${fmtM(v)}`:`${v.toFixed(0)}%`} axisLine={false} tickLine={false} width={50}/>
+                  <Tooltip formatter={(v:any)=>view==="value"?`$${fmtM(v)}`:`${v?.toFixed?.(2)}%`} contentStyle={{fontFamily:FONT,fontSize:14,borderRadius:8}}/>
                   <ReferenceLine y={0} stroke={B.border}/>
                   {view==="value" ? (
                     <Line type="monotone" dataKey="value" stroke={B.blue} strokeWidth={2.5} dot={false} name="Portfolio Value"/>
@@ -305,7 +305,7 @@ function PerformanceTab({ holdings, m }: any) {
                       <Line type="monotone" dataKey="benchmark" stroke={B.gray3} strokeWidth={1.5} dot={false} name={benchmarkLabel}/>
                     </>
                   )}
-                  <Legend wrapperStyle={{fontSize:12,fontFamily:FONT}}/>
+                  <Legend wrapperStyle={{fontSize:14,fontFamily:FONT}}/>
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -327,8 +327,8 @@ function PerformanceTab({ holdings, m }: any) {
               {l:"Calmar Ratio", v:fmt(stats.calmar,2)},
             ].map((row,i)=>(
               <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"7px 14px", borderBottom:i<8?`1px solid ${B.border}`:"none"}}>
-                <span style={{fontSize:12,color:B.gray3,fontFamily:FONT}}>{row.l}</span>
-                <span style={{fontSize:13,fontWeight:700,color:row.col||B.gray1,fontFamily:FONT}}>{row.v}</span>
+                <span style={{fontSize:14,color:B.gray3,fontFamily:FONT}}>{row.l}</span>
+                <span style={{fontSize:15,fontWeight:700,color:row.col||B.gray1,fontFamily:FONT}}>{row.v}</span>
               </div>
             ))}
           </div>
@@ -341,9 +341,9 @@ function PerformanceTab({ holdings, m }: any) {
           <div style={{padding:"10px 12px", height:220}}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={perHoldingReturn} layout="vertical" margin={{left:10,right:10}}>
-                <XAxis type="number" tick={{fontSize:10,fill:B.gray3}} tickFormatter={(v)=>`${v.toFixed(0)}%`}/>
-                <YAxis type="category" dataKey="ticker" tick={{fontSize:11,fill:B.gray1}} width={50}/>
-                <Tooltip formatter={(v:any)=>`${v.toFixed(2)}pp`} contentStyle={{fontFamily:FONT,fontSize:12}}/>
+                <XAxis type="number" tick={{fontSize:12,fill:B.gray3}} tickFormatter={(v)=>`${v.toFixed(0)}%`}/>
+                <YAxis type="category" dataKey="ticker" tick={{fontSize:13,fill:B.gray1}} width={50}/>
+                <Tooltip formatter={(v:any)=>`${v.toFixed(2)}pp`} contentStyle={{fontFamily:FONT,fontSize:14}}/>
                 <ReferenceLine x={0} stroke={B.border}/>
                 <Bar dataKey="contribution" name="Contribution to Return">
                   {perHoldingReturn.map((h:any,i:number)=><Cell key={i} fill={h.contribution>=0?B.green:B.red}/>)}
@@ -367,8 +367,8 @@ function PerformanceTab({ holdings, m }: any) {
               {sectorAttribution.slice(0,6).map((s,i)=>(
                 <div key={i} style={{display:"flex", alignItems:"center", gap:6, marginBottom:3}}>
                   <span style={{width:7,height:7,borderRadius:2,background:PIE_COLS[i%PIE_COLS.length],display:"inline-block"}}/>
-                  <span style={{fontSize:11,color:B.gray1,flex:1,fontFamily:FONT}}>{s.name}</span>
-                  <span style={{fontSize:11,fontWeight:700,color:pCol(s.value),fontFamily:FONT}}>{pSign(fmt(s.value,1))}%</span>
+                  <span style={{fontSize:13,color:B.gray1,flex:1,fontFamily:FONT}}>{s.name}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:pCol(s.value),fontFamily:FONT}}>{pSign(fmt(s.value,1))}%</span>
                 </div>
               ))}
             </div>
@@ -381,17 +381,17 @@ function PerformanceTab({ holdings, m }: any) {
         <div style={{padding:12}}>
           <button onClick={explainPerformance} disabled={aiBusy} style={{
             background:"transparent", border:`1px solid ${B.cyan}`, color:B.cyan, padding:"7px 14px",
-            borderRadius:6, cursor:"pointer", fontFamily:FONT, fontSize:12, fontWeight:700, marginBottom:10,
+            borderRadius:6, cursor:"pointer", fontFamily:FONT, fontSize:14, fontWeight:700, marginBottom:10,
           }}>{aiBusy?"ANALYZING…":aiText?"↻ REFRESH":"EXPLAIN IN DETAIL"}</button>
           {aiText ? (
-            <div style={{fontSize:12,color:B.gray1,lineHeight:1.6,fontFamily:FONT}}>
+            <div style={{fontSize:14,color:B.gray1,lineHeight:1.6,fontFamily:FONT}}>
               {aiText.split("\n").map((line,i)=>{
                 const parts = line.split(/(\*\*[^*]+\*\*)/g);
                 return <div key={i} style={{marginBottom:6}}>{parts.map((p,j)=>p.startsWith("**")&&p.endsWith("**")?<b key={j} style={{color:B.blue}}>{p.slice(2,-2)}</b>:p)}</div>;
               })}
             </div>
           ) : (
-            <div style={{fontSize:12,color:B.gray3,fontFamily:FONT,lineHeight:1.6}}>
+            <div style={{fontSize:14,color:B.gray3,fontFamily:FONT,lineHeight:1.6}}>
               Tap the button for an AI-generated breakdown of what's driving these numbers — educational only.
             </div>
           )}
@@ -516,26 +516,26 @@ function WhatIfTableRow({ row }: { row: WhatIfRowSpec }) {
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
         <span style={{ color: B.gray3, marginTop: 2, flexShrink: 0 }}>{row.icon}</span>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 12, color: B.gray1, fontFamily: FONT, fontWeight: 700 }}>{row.label}</div>
-          <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT }}>{row.sub}</div>
+          <div style={{ fontSize: 14, color: B.gray1, fontFamily: FONT, fontWeight: 700 }}>{row.label}</div>
+          <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>{row.sub}</div>
         </div>
       </div>
       <div>
-        <div style={{ fontSize: 12, color: B.gray1, fontFamily: FONT, fontWeight: 700, marginBottom: 3 }}>{row.fmtValue(row.before)}</div>
+        <div style={{ fontSize: 14, color: B.gray1, fontFamily: FONT, fontWeight: 700, marginBottom: 3 }}>{row.fmtValue(row.before)}</div>
         <MetricBar pct={row.barPct(row.before)} color={B.blue} />
       </div>
-      <div style={{ textAlign: "center", color: B.gray3, fontSize: 13 }}>→</div>
+      <div style={{ textAlign: "center", color: B.gray3, fontSize: 15 }}>→</div>
       <div>
-        <div style={{ fontSize: 12, color: B.gray1, fontFamily: FONT, fontWeight: 700, marginBottom: 3 }}>
+        <div style={{ fontSize: 14, color: B.gray1, fontFamily: FONT, fontWeight: 700, marginBottom: 3 }}>
           {row.after != null ? row.fmtValue(row.after) : "—"}
         </div>
         <MetricBar pct={row.after != null ? row.barPct(row.after) : 0} color={B.green} />
       </div>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: row.impactColor, fontFamily: FONT }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: row.impactColor, fontFamily: FONT }}>
           {arrowGlyph} {row.impactText}
         </div>
-        <div style={{ fontSize: 10, color: row.impactColor, fontFamily: FONT }}>{row.impactLabel}</div>
+        <div style={{ fontSize: 12, color: row.impactColor, fontFamily: FONT }}>{row.impactLabel}</div>
       </div>
     </div>
   );
@@ -733,7 +733,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
 
             <BPanel title="TOP HOLDINGS">
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, flexWrap: "wrap" }}>
-                <table style={{ flex: 1, minWidth: 220, borderCollapse: "collapse", fontFamily: FONT, fontSize: 12 }}>
+                <table style={{ flex: 1, minWidth: 220, borderCollapse: "collapse", fontFamily: FONT, fontSize: 14 }}>
                   <thead>
                     <tr style={{ color: B.gray3 }}>
                       <th style={{ textAlign: "left", padding: "6px 10px", fontWeight: 400 }}>SYMBOL</th>
@@ -964,12 +964,12 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                 <div style={{padding:"14px 16px",display:"flex",gap:20,flexWrap:"wrap",alignItems:"center"}}>
                   <div style={{textAlign:"center",minWidth:100}}>
                     <div style={{fontSize:32,fontWeight:700,color:riskColor,fontFamily:FONT}}>{riskScore}</div>
-                    <div style={{fontSize:10,color:B.gray3,fontFamily:FONT}}>/100</div>
-                    <div style={{fontSize:11,fontWeight:700,color:riskColor,fontFamily:FONT,marginTop:4}}>{riskLabel}</div>
+                    <div style={{fontSize:12,color:B.gray3,fontFamily:FONT}}>/100</div>
+                    <div style={{fontSize:13,fontWeight:700,color:riskColor,fontFamily:FONT,marginTop:4}}>{riskLabel}</div>
                   </div>
-                  <div style={{flex:1,minWidth:180,fontSize:12,color:B.gray1,fontFamily:FONT,lineHeight:1.5}}>
+                  <div style={{flex:1,minWidth:180,fontSize:14,color:B.gray1,fontFamily:FONT,lineHeight:1.5}}>
                     Score based on concentration (HHI), sector exposure, beta and volatility of your current holdings. This is our own educational scoring method, not an external credit or risk rating or a validated quantitative model.
-                    <div style={{marginTop:8,fontSize:11,color:B.gray3}}>
+                    <div style={{marginTop:8,fontSize:13,color:B.gray3}}>
                       {communityScores === null ? (
                         "Loading community comparison…"
                       ) : communityPercentile !== null ? (
@@ -982,7 +982,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                   <button onClick={()=>setShowShareModal(true)} style={{
                     display:"flex",alignItems:"center",gap:6,alignSelf:"flex-start",
                     background:"transparent",border:`1px solid ${B.blue}`,color:B.blue,borderRadius:6,
-                    padding:"7px 12px",fontFamily:FONT,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",
+                    padding:"7px 12px",fontFamily:FONT,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",
                   }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
@@ -993,24 +993,24 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px,1fr))",gap:10,padding:"0 16px 16px"}}>
                   <div>
-                    <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Expected Volatility (Ann.)</div>
+                    <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Expected Volatility (Ann.)</div>
                     <div style={{fontSize:16,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{fmt(m.wVol,1)}%</div>
-                    <div style={{fontSize:10,color:B.gray3,fontFamily:FONT}}>Benchmark (S&amp;P 500, approx.): 15.6%</div>
+                    <div style={{fontSize:12,color:B.gray3,fontFamily:FONT}}>Benchmark (S&amp;P 500, approx.): 15.6%</div>
                   </div>
                   <div>
-                    <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Max Drawdown (est.)</div>
+                    <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Max Drawdown (est.)</div>
                     <div style={{fontSize:16,fontWeight:700,color:B.red,fontFamily:FONT}}>-{fmt(maxDD,1)}%</div>
-                    <div style={{fontSize:10,color:B.gray3,fontFamily:FONT}}>Estimate, not tracked history</div>
+                    <div style={{fontSize:12,color:B.gray3,fontFamily:FONT}}>Estimate, not tracked history</div>
                   </div>
                   <div>
-                    <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Sharpe Ratio</div>
+                    <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Sharpe Ratio</div>
                     <div style={{fontSize:16,fontWeight:700,color:m.sharpe>0?B.green:B.red,fontFamily:FONT}}>{fmt(m.sharpe,2)}</div>
-                    <div style={{fontSize:10,color:B.gray3,fontFamily:FONT}}>Benchmark (S&amp;P 500, approx.): 0.78</div>
+                    <div style={{fontSize:12,color:B.gray3,fontFamily:FONT}}>Benchmark (S&amp;P 500, approx.): 0.78</div>
                   </div>
                   <div>
-                    <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Beta (vs S&amp;P 500)</div>
+                    <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Beta (vs S&amp;P 500)</div>
                     <div style={{fontSize:16,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{fmt(m.wBeta,2)}</div>
-                    <div style={{fontSize:10,color:B.gray3,fontFamily:FONT}}>Benchmark: 1.00 (by definition)</div>
+                    <div style={{fontSize:12,color:B.gray3,fontFamily:FONT}}>Benchmark: 1.00 (by definition)</div>
                   </div>
                 </div>
               </BPanel>
@@ -1022,10 +1022,10 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                     const s = SEV_STYLE[d.sev];
                     return (
                       <div key={i} style={{background:B.panel2,borderRadius:8,padding:"10px 12px",borderLeft:`3px solid ${s.border}`}}>
-                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>{d.l}</div>
+                        <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>{d.l}</div>
                         <div style={{fontSize:18,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{d.v}</div>
-                        <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,marginBottom:6}}>{d.sub}</div>
-                        <span style={{fontSize:9,fontWeight:700,color:s.text,border:`1px solid ${s.border}`,padding:"1px 6px",borderRadius:4}}>{d.sev}</span>
+                        <div style={{fontSize:13,color:B.gray3,fontFamily:FONT,marginBottom:6}}>{d.sub}</div>
+                        <span style={{fontSize:11,fontWeight:700,color:s.text,border:`1px solid ${s.border}`,padding:"1px 6px",borderRadius:4}}>{d.sev}</span>
                       </div>
                     );
                   })}
@@ -1037,17 +1037,17 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                 <div style={{padding:"10px 12px"}}>
                   <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:12}}>
                     <div style={{flex:"1 1 200px",minWidth:160}}>
-                      <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>Add Position</div>
+                      <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>Add Position</div>
                       <div style={{position:"relative"}}>
                         <input value={whatIfTicker} onChange={e => handleTickerInput(e.target.value)}
                           onKeyDown={e => e.key === "Enter" && runWhatIf()}
                           onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                          placeholder="SEARCH TICKER..." style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 28px 6px 8px",fontFamily:FONT,fontSize:12,borderRadius:6}} />
+                          placeholder="SEARCH TICKER..." style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 28px 6px 8px",fontFamily:FONT,fontSize:14,borderRadius:6}} />
                         {whatIfTicker && (
                           <button onClick={clearWhatIfTicker} aria-label="Clear ticker" style={{
                             position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",
-                            background:"none",border:"none",color:B.gray3,cursor:"pointer",fontSize:14,lineHeight:1,padding:2,
+                            background:"none",border:"none",color:B.gray2,cursor:"pointer",fontSize:14,lineHeight:1,padding:2,
                           }}>✕</button>
                         )}
                         {showSuggestions && suggestions.length > 0 && (
@@ -1055,7 +1055,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                             background:B.panel,border:`1px solid ${B.border}`,borderRadius:6,marginTop:2,maxHeight:200,overflowY:"auto"}}>
                             {suggestions.slice(0, 8).map((r: any) => (
                               <div key={r.symbol} onClick={() => pickSuggestion(r)} style={{
-                                padding:"6px 10px",cursor:"pointer",fontFamily:FONT,fontSize:12,
+                                padding:"6px 10px",cursor:"pointer",fontFamily:FONT,fontSize:14,
                                 borderBottom:`1px solid ${B.border}`,
                               }}>
                                 <span style={{color:B.blue,fontWeight:700}}>{r.symbol}</span>
@@ -1067,25 +1067,25 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                       </div>
                     </div>
                     <div style={{width:100}}>
-                      <div style={{fontSize:9,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>Quantity</div>
+                      <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>Quantity</div>
                       <input value={whatIfQty} onChange={e => setWhatIfQty(e.target.value)}
                         onKeyDown={e => e.key === "Enter" && runWhatIf()}
-                        type="number" step="any" placeholder="SHARES" style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:12,borderRadius:6}} />
+                        type="number" step="any" placeholder="SHARES" style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:14,borderRadius:6}} />
                     </div>
                     <div style={{display:"flex",alignItems:"flex-end"}}>
                       <button onClick={runWhatIf} disabled={whatIfBusy || !whatIfTicker.trim()} style={{
                         background:B.blue,border:"none",color:B.white,padding:"7px 16px",borderRadius:6,
-                        cursor:whatIfBusy ? "wait" : "pointer",fontFamily:FONT,fontSize:12,fontWeight:700,
+                        cursor:whatIfBusy ? "wait" : "pointer",fontFamily:FONT,fontSize:14,fontWeight:700,
                       }}>{whatIfBusy ? "..." : "SIMULATE"}</button>
                     </div>
                   </div>
 
                   {whatIfError && (
-                    <div style={{fontSize:11,color:B.red,fontFamily:FONT,marginBottom:8}}>{whatIfError}</div>
+                    <div style={{fontSize:13,color:B.red,fontFamily:FONT,marginBottom:8}}>{whatIfError}</div>
                   )}
 
                   {!whatIf ? (
-                    <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,lineHeight:1.6}}>
+                    <div style={{fontSize:13,color:B.gray3,fontFamily:FONT,lineHeight:1.6}}>
                       Enter a ticker and a hypothetical number of shares, then tap Simulate to see the immediate impact on your risk parameters and score — before you actually buy it.
                     </div>
                   ) : (
@@ -1094,7 +1094,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                         <div style={{minWidth: isMobile ? 640 : "auto"}}>
                           <div style={{
                             display:"grid", gridTemplateColumns:"minmax(170px,1.7fr) minmax(100px,1fr) 20px minmax(100px,1fr) minmax(120px,1fr)",
-                            gap:10, fontSize:9, color:B.gray3, fontFamily:FONT, textTransform:"uppercase", paddingBottom:6,
+                            gap:10, fontSize:11, color:B.gray3, fontFamily:FONT, textTransform:"uppercase", paddingBottom:6,
                           }}>
                             <div>Metric</div>
                             <div>Current Portfolio</div>
@@ -1108,7 +1108,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                       <button onClick={sendToAI} style={{
                         marginTop:14,width:"100%",background:"transparent",border:`1px solid ${B.cyan}`,
                         color:B.cyan,padding:"8px",borderRadius:6,cursor:"pointer",
-                        fontFamily:FONT,fontSize:12,fontWeight:700,letterSpacing:"0.06em",
+                        fontFamily:FONT,fontSize:14,fontWeight:700,letterSpacing:"0.06em",
                       }}>
                         VIEW ADVANCED ANALYSIS →
                       </button>
@@ -1116,9 +1116,9 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                       {/* AI Insight — locally-built from the real numbers above, no AI call */}
                       <div style={{marginTop:14,padding:"10px 12px",background:B.panel2,borderRadius:8,display:"flex",gap:10}}>
                         <span style={{color:B.cyan,flexShrink:0,marginTop:1}}><IconBulb size={16}/></span>
-                        <div style={{fontSize:9,color:B.gray3,fontFamily:FONT}}>
+                        <div style={{fontSize:11,color:B.gray3,fontFamily:FONT}}>
                           <div style={{textTransform:"uppercase",marginBottom:4,fontWeight:700}}>AI Insight</div>
-                          <div style={{fontSize:12,color:B.gray1,lineHeight:1.5}}>{aiInsightText}</div>
+                          <div style={{fontSize:14,color:B.gray1,lineHeight:1.5}}>{aiInsightText}</div>
                         </div>
                       </div>
                     </>
@@ -1132,12 +1132,12 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
               <div style={{padding:12}}>
                 <button onClick={explainAlerts} disabled={aiBusy} style={{
                   width:"100%",background:"transparent",border:`1px solid ${B.cyan}`,color:B.cyan,
-                  padding:"8px",cursor:"pointer",fontFamily:FONT,fontSize:12,fontWeight:700,letterSpacing:"0.06em",borderRadius:6,marginBottom:10,
+                  padding:"8px",cursor:"pointer",fontFamily:FONT,fontSize:14,fontWeight:700,letterSpacing:"0.06em",borderRadius:6,marginBottom:10,
                 }}>
                   {aiBusy ? "ANALYZING…" : aiExplain ? "↻ REFRESH EXPLANATION" : "EXPLAIN MY RISK"}
                 </button>
                 {aiExplain ? (
-                  <div style={{fontSize:12,color:B.gray1,lineHeight:1.6,fontFamily:FONT}}>
+                  <div style={{fontSize:14,color:B.gray1,lineHeight:1.6,fontFamily:FONT}}>
                     {aiExplain.split("\n").map((line, i) => {
                       const parts = line.split(/(\*\*[^*]+\*\*)/g);
                       return (
@@ -1148,7 +1148,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                     })}
                   </div>
                 ) : (
-                  <div style={{fontSize:12,color:B.gray3,fontFamily:FONT,lineHeight:1.6}}>
+                  <div style={{fontSize:14,color:B.gray3,fontFamily:FONT,lineHeight:1.6}}>
                     Tap the button above for an AI-generated, plain-English breakdown of these risk drivers — educational only, not personalized advice.
                   </div>
                 )}

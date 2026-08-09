@@ -9,9 +9,9 @@ const FONT = "'Courier New', Courier, monospace";
 
 const inputStyle: any = {
   background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, borderRadius: 6,
-  padding: "8px 10px", fontSize: 13, fontFamily: FONT, outline: "none",
+  padding: "8px 10px", fontSize: 15, fontFamily: FONT, outline: "none",
 };
-const labelStyle: any = { fontSize: 10, color: B.gray3, letterSpacing: "0.08em", fontFamily: FONT, marginBottom: 4 };
+const labelStyle: any = { fontSize: 12, color: B.gray3, letterSpacing: "0.08em", fontFamily: FONT, marginBottom: 4 };
 
 // The single "share my portfolio to the community" form, reused everywhere
 // a Share to Community entry point exists (Portfolio page, Analysis Risk
@@ -121,10 +121,10 @@ export default function ShareToCommunityModal({
           </div>
         )}
 
-        {error && <div style={{ fontSize: 11, color: B.red, fontFamily: FONT }}>{error}</div>}
+        {error && <div style={{ fontSize: 13, color: B.red, fontFamily: FONT }}>{error}</div>}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700 }}>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 14, fontWeight: 700 }}>
             CANCEL
           </button>
           <button
@@ -132,7 +132,7 @@ export default function ShareToCommunityModal({
             style={{
               background: (!title.trim() || !body.trim() || posting) ? B.panel2 : B.blue,
               color: (!title.trim() || !body.trim() || posting) ? B.gray3 : B.white,
-              border: "none", padding: "8px 18px", borderRadius: 6, fontFamily: FONT, fontSize: 12, fontWeight: 700,
+              border: "none", padding: "8px 18px", borderRadius: 6, fontFamily: FONT, fontSize: 14, fontWeight: 700,
               cursor: (!title.trim() || !body.trim() || posting) ? "not-allowed" : "pointer",
             }}
           >

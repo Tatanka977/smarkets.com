@@ -108,7 +108,7 @@ function GlobalMarketStatus() {
 
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 8, fontFamily: FONT }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 8, fontFamily: FONT }}>
         GLOBAL MARKET STATUS
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
@@ -125,12 +125,12 @@ function GlobalMarketStatus() {
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, display: "inline-block" }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{ex.label}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{ex.label}</span>
                 </div>
-                <div style={{ fontSize: 12, color, fontWeight: 700, fontFamily: FONT }}>
+                <div style={{ fontSize: 14, color, fontWeight: 700, fontFamily: FONT }}>
                   {s?.holiday ? "HOLIDAY" : isOpen ? "OPEN" : "CLOSED"}
                 </div>
-                <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>{fmtLocal(s?.timezone)} local</div>
+                <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT }}>{fmtLocal(s?.timezone)} local</div>
               </div>
               <MiniSparkline values={values} color={trendColor} loading={seriesLoading} />
             </div>
@@ -153,7 +153,7 @@ function KeyIndices() {
 
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 8, fontFamily: FONT }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 8, fontFamily: FONT }}>
         KEY INDICES — SNAPSHOT
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
@@ -162,12 +162,12 @@ function KeyIndices() {
           const chg = q?.dayChangePct;
           return (
             <div key={it.sym} style={{ ...CARD, padding: "10px 12px" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: B.blue, fontFamily: FONT }}>{it.sym}</div>
-              <div style={{ fontSize: 10, color: B.gray3, marginBottom: 6, fontFamily: FONT }}>{it.label}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: B.blue, fontFamily: FONT }}>{it.sym}</div>
+              <div style={{ fontSize: 12, color: B.gray3, marginBottom: 6, fontFamily: FONT }}>{it.label}</div>
               <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
                 {q?.price != null ? q.price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "…"}
               </div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: pCol(chg), fontFamily: FONT }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: pCol(chg), fontFamily: FONT }}>
                 {chg != null ? `${pSign(fmt(chg, 2))}%` : "—"}
               </div>
             </div>
@@ -181,9 +181,9 @@ function KeyIndices() {
 function StatField({ label, value, sub, color }: any) {
   return (
     <div>
-      <div style={{ fontSize: 10, color: B.gray3, letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: FONT, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 12, color: B.gray3, letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: FONT, marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 700, color: color || B.gray1, fontFamily: FONT }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT }}>{sub}</div>}
     </div>
   );
 }
@@ -204,10 +204,10 @@ function PortfolioOverview({ holdings, transactions, m }: any) {
   return (
     <div style={{ ...CARD, padding: "16px 18px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasForeignCcy ? 4 : 16 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>PORTFOLIO OVERVIEW</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>PORTFOLIO OVERVIEW</span>
       </div>
       {hasForeignCcy && (
-        <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginBottom: 12 }}>
           Base currency: USD — non-USD holdings converted using live FX rates.
         </div>
       )}
@@ -305,13 +305,13 @@ function PerformancePanel({ holdings }: any) {
   return (
     <div style={{ ...CARD, padding: "16px 18px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>PERFORMANCE</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>PERFORMANCE</span>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 2 }}>
             {BENCHMARKS.map(b => (
               <button key={b.sym} onClick={() => setBenchmark(b.sym)} style={{
                 background: benchmark === b.sym ? B.panel2 : "transparent", color: benchmark === b.sym ? B.gray1 : B.gray3,
-                border: `1px solid ${benchmark === b.sym ? B.border : "transparent"}`, fontSize: 10, fontWeight: 700, padding: "3px 6px", borderRadius: 6,
+                border: `1px solid ${benchmark === b.sym ? B.border : "transparent"}`, fontSize: 12, fontWeight: 700, padding: "3px 6px", borderRadius: 6,
                 cursor: "pointer", fontFamily: FONT,
               }}>{b.label}</button>
             ))}
@@ -320,7 +320,7 @@ function PerformancePanel({ holdings }: any) {
             {(["1M","3M","6M","YTD","1Y","ALL"] as const).map(r => (
               <button key={r} onClick={() => setRange(r)} style={{
                 background: range === r ? B.blue : "transparent", color: range === r ? B.white : B.gray2,
-                border: "none", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6,
+                border: "none", fontSize: 13, fontWeight: 700, padding: "3px 8px", borderRadius: 6,
                 cursor: "pointer", fontFamily: FONT,
               }}>{r}</button>
             ))}
@@ -330,11 +330,11 @@ function PerformancePanel({ holdings }: any) {
 
       {loading ? (
         <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", background: B.panel2, borderRadius: 8 }}>
-          <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT }}>LOADING…</div>
+          <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT }}>LOADING…</div>
         </div>
       ) : filtered.length < 2 ? (
         <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", background: B.panel2, borderRadius: 8 }}>
-          <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, textAlign: "center", padding: "0 20px", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT, textAlign: "center", padding: "0 20px", lineHeight: 1.6 }}>
             {holdings.length ? "Not enough historical price data for this range yet." : "Add positions with a purchase date to see this chart."}
           </div>
         </div>
@@ -342,13 +342,13 @@ function PerformancePanel({ holdings }: any) {
         <div style={{ height: 280, width: "100%" }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={filtered} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-              <XAxis dataKey="label" tick={{fontSize:11,fill:B.gray3}} minTickGap={50} axisLine={{stroke:B.border}} tickLine={false}/>
-              <YAxis tick={{fontSize:11,fill:B.gray3}} tickFormatter={(v)=>`${v.toFixed(0)}%`} axisLine={false} tickLine={false} width={45}/>
-              <Tooltip formatter={(v:any)=>v!=null?`${v.toFixed(2)}%`:"—"} contentStyle={{fontFamily:FONT,fontSize:12,borderRadius:8}}/>
+              <XAxis dataKey="label" tick={{fontSize:13,fill:B.gray3}} minTickGap={50} axisLine={{stroke:B.border}} tickLine={false}/>
+              <YAxis tick={{fontSize:13,fill:B.gray3}} tickFormatter={(v)=>`${v.toFixed(0)}%`} axisLine={false} tickLine={false} width={45}/>
+              <Tooltip formatter={(v:any)=>v!=null?`${v.toFixed(2)}%`:"—"} contentStyle={{fontFamily:FONT,fontSize:14,borderRadius:8}}/>
               <ReferenceLine y={0} stroke={B.border}/>
               <Line type="monotone" dataKey="portfolio" stroke={B.blue} strokeWidth={2.5} dot={false} name="Your Portfolio"/>
               <Line type="monotone" dataKey="benchmark" stroke={B.gray3} strokeWidth={1.5} dot={false} name={benchmarkLabel}/>
-              <Legend wrapperStyle={{fontSize:12,fontFamily:FONT}}/>
+              <Legend wrapperStyle={{fontSize:14,fontFamily:FONT}}/>
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -398,22 +398,22 @@ function CommunityCallout({ setPage }: any) {
   return (
     <div style={{ ...CARD, padding: "16px 18px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>
           {followingMode ? "FROM TOPICS YOU FOLLOW" : "COMMUNITY"}
         </span>
         <button onClick={() => setPage("community")} style={{
-          background: "none", border: "none", color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 700,
+          background: "none", border: "none", color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 700,
         }}>VIEW ALL →</button>
       </div>
       {loading ? (
-        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>LOADING…</div>
+        <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>LOADING…</div>
       ) : !posts.length ? (
-        <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>No discussions yet — be the first to write one.</div>
+        <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>No discussions yet — be the first to write one.</div>
       ) : (
         posts.map((p: any) => (
           <div key={p.id} onClick={() => openPost(p.id)} style={{ padding: "8px 0", borderTop: `1px solid ${B.border}`, cursor: "pointer" }}>
-            <div style={{ fontSize: 13, color: B.gray1, fontFamily: FONT, lineHeight: 1.4, marginBottom: 3 }}>{p.title}</div>
-            <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT }}>
+            <div style={{ fontSize: 15, color: B.gray1, fontFamily: FONT, lineHeight: 1.4, marginBottom: 3 }}>{p.title}</div>
+            <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT }}>
               {p.community_channels?.name || "No topic"} · u/{p.author_name} · {p.score} pts
             </div>
           </div>
@@ -440,8 +440,8 @@ export default function HomePage({ holdings, transactions, setPage, onRefresh, r
 
       <div style={{ textAlign: "right" }}>
         <button onClick={onRefresh} disabled={refreshing || !holdings.length} style={{
-          background: "none", border: `1px solid ${B.border}`, color: (refreshing || !holdings.length) ? B.gray3 : B.blue,
-          fontFamily: FONT, fontSize: 12, cursor: (refreshing || !holdings.length) ? "not-allowed" : "pointer", padding: "4px 10px", borderRadius: 6,
+          background: "none", border: `1px solid ${B.borderB}`, color: (refreshing || !holdings.length) ? B.gray3 : B.blue,
+          fontFamily: FONT, fontSize: 14, cursor: (refreshing || !holdings.length) ? "not-allowed" : "pointer", padding: "4px 10px", borderRadius: 6,
         }}>{refreshing ? "UPDATING..." : "↻ REFRESH"}</button>
     </div>
     </div>
