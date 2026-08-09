@@ -195,7 +195,7 @@ function PhoneShell({children,naturalScroll}:any) {
   );
 }
 
-function TopBar({time,setPage}:any) {
+function TopBar({time,setPage,onMenuClick}:any) {
   const { user } = useUser();
   useTheme(); // dark-only now, no toggle — this just ensures data-theme="terminal" is set
   const isMobile = useIsMobile();
@@ -204,6 +204,18 @@ function TopBar({time,setPage}:any) {
       justifyContent:"space-between",padding:"6px 12px",flexShrink:0,gap:8,flexWrap:"wrap",
       position:"sticky",top:0,zIndex:50}}>
       <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+        {/* Mobile only — opens MobileNavDrawer. Desktop keeps the always-
+            visible SidebarNav, no hamburger needed there. */}
+        {isMobile && (
+          <button onClick={onMenuClick} aria-label="Open menu" style={{
+            background:"none",border:"none",cursor:"pointer",padding:4,
+            display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+        )}
         <img src="/sm-icon.png" alt="" style={{height:22,width:"auto",filter:"brightness(0) invert(1)"}} />
         <span style={{fontSize:16,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
           letterSpacing:"0.14em",whiteSpace:"nowrap"}}>STRATEGIC MARKETS</span>
@@ -318,48 +330,6 @@ const NAV_ICONS: Record<string, JSX.Element> = {
   ),
 };
 
-function BottomNav({page,setPage,badge}:any) {
-  const tabs=[
-    {id:"home",     label:"HOME"},
-    {id:"search",   label:"SEARCH"},
-    {id:"portfolio",label:"PORTFOLIO",badge},
-    {id:"analysis", label:"ANALYSIS"},
-    {id:"ai",       label:"AI"},
-    {id:"news",     label:"NEWS"},
-    {id:"community",label:"COMMUNITY"},
-    {id:"learn",    label:"LEARN"},
-  ];
-  // App-style tab bar: icon on top, label below (was icon+label side by
-  // side, which needs ~90px per tab — with 7 tabs that never fits a phone
-  // width, so some tabs' icons/labels were pushed off past the edge of the
-  // screen). Stacked, each tab only needs its own icon/label width, and the
-  // sm-navlabel class below hides labels entirely on very narrow phones.
-  return (
-    <div className="sm-bottomnav" style={{background:B.panel2,borderTop:`1px solid ${B.borderB}`,
-      display:"flex",paddingBottom:"env(safe-area-inset-bottom, 6px)",flexShrink:0,
-      position:"sticky",bottom:0,zIndex:50}}>
-      {tabs.map(t=>{
-        const active=page===t.id;
-        return (
-          <button key={t.id} onClick={()=>setPage(t.id)} style={{
-            flex:1,background:"none",border:"none",cursor:"pointer",
-            padding:"7px 2px 6px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,
-            borderTop:`2px solid ${active?B.blue:"transparent"}`,position:"relative",minWidth:0,minHeight:48,
-            color:active?B.blue:B.gray2,
-          }}>
-            {t.badge>0&&<div style={{position:"absolute",top:3,right:"20%",
-              background:B.blue,color:B.white,fontSize:10,fontWeight:700,
-              fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"13px",borderRadius:6,minWidth:13,textAlign:"center"}}>{t.badge}</div>}
-            {NAV_ICONS[t.id]}
-            <span className="sm-navlabel" style={{fontSize:10,fontWeight:700,
-              fontFamily:"'Courier New',monospace",letterSpacing:0,whiteSpace:"nowrap"}}>{t.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 // Grouped into four visually separated sections: Home on its own, the
 // core portfolio workflow (Search → AI Advisor) together, the
 // content/social pages (News, Community), and Profile on its own at the
@@ -451,6 +421,100 @@ function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
         )}
       </div>
     </div>
+  );
+}
+
+// Mobile-only replacement for the old bottom tab bar — a hamburger
+// (TopBar) opens this instead of eating a permanent strip of screen
+// height. Same SIDEBAR_GROUPS/NAV_ICONS as SidebarNav so mobile and
+// desktop navigation stay in sync automatically. Slides in from the
+// left over a dimmed backdrop; either dismisses on its own after a
+// selection (onClose called alongside setPage) or via backdrop tap /
+// the explicit close button.
+function MobileNavDrawer({page,setPage,badge,onRetakeProfile,onClose}:any) {
+  const { user } = useUser();
+  const itemStyle:any = {
+    display:"flex",alignItems:"center",gap:10,padding:"11px 12px",
+    border:"none",borderRadius:6,position:"relative",
+    textAlign:"left",width:"100%",textDecoration:"none",boxSizing:"border-box",
+  };
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:200,
+      }}/>
+      <div className="sm-mobilenav" style={{
+        position:"fixed",top:0,left:0,bottom:0,width:"min(78vw, 280px)",
+        background:B.panel2,borderRight:`1px solid ${B.borderB}`,zIndex:201,
+        display:"flex",flexDirection:"column",overflow:"hidden",
+        boxShadow:"4px 0 24px rgba(0,0,0,0.4)",
+      }}>
+        <div style={{padding:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",
+          borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <LogoIcon size={26}/>
+            <span style={{fontSize:13,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
+              letterSpacing:"0.08em",lineHeight:1.3}}>STRATEGIC<br/>MARKETS</span>
+          </div>
+          <button onClick={onClose} aria-label="Close menu" style={{
+            background:"none",border:"none",cursor:"pointer",padding:4,color:B.gray2,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"10px 8px",display:"flex",flexDirection:"column",gap:2}}>
+          {SIDEBAR_GROUPS.map((group,gi)=>(
+            <div key={gi} style={{display:"flex",flexDirection:"column",gap:2,
+              borderTop: gi>0 ? `1px solid ${B.border}` : "none",
+              marginTop: gi>0 ? 8 : 0, paddingTop: gi>0 ? 8 : 0}}>
+              {group.map((t:any)=>{
+                const active=page===t.id;
+                const label = (
+                  <>
+                    {t.badgeKey && badge>0 && <div style={{position:"absolute",top:8,right:10,
+                      background:B.blue,color:B.white,fontSize:11,fontWeight:700,
+                      fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"14px",borderRadius:2}}>{badge}</div>}
+                    {NAV_ICONS[t.id]}
+                    <span style={{fontSize:15,fontWeight:700,
+                      fontFamily:"'Courier New',monospace",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{t.label}</span>
+                  </>
+                );
+                if (t.href) {
+                  return (
+                    <Link key={t.id} to={user ? "/profile" : "/auth"} onClick={onClose} style={{
+                      ...itemStyle, background:"transparent",
+                      borderLeft:`2px solid transparent`, color:B.gray2,
+                    }}>{label}</Link>
+                  );
+                }
+                return (
+                  <button key={t.id} onClick={()=>{setPage(t.id);onClose();}} style={{
+                    ...itemStyle,
+                    background:active?B.panel:"transparent",
+                    borderLeft:`2px solid ${active?B.blue:"transparent"}`,
+                    cursor:"pointer",color:active?B.blue:B.gray2,
+                  }}>{label}</button>
+                );
+              })}
+            </div>
+          ))}
+          {onRetakeProfile && user && (
+            <div style={{borderTop:`1px solid ${B.border}`,marginTop:8,paddingTop:8}}>
+              <button onClick={()=>{onRetakeProfile();onClose();}} style={{
+                display:"flex",alignItems:"center",gap:8,padding:"9px 12px",
+                background:"transparent",border:`1px solid ${B.borderB}`,borderRadius:4,
+                color:B.gray2,cursor:"pointer",textAlign:"left",width:"100%",boxSizing:"border-box",
+                fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,letterSpacing:"0.03em",
+              }}>
+                ↻ Retake Investor Profile
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -2863,6 +2927,7 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
   const [transactions,setTransactions] = useState<any[]>([]);
   const [refreshing,setRefreshing] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const isMobile = useIsMobile();
 
   // ── PERSISTENCE ─────────────────────────────────────────────────────────
@@ -3235,7 +3300,7 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
     <PhoneShell naturalScroll={mobilePortfolioNaturalScroll}>
       {(time:string) => (
         <>
-          <TopBar time={time} setPage={setPage}/>
+          <TopBar time={time} setPage={setPage} onMenuClick={()=>setMobileNavOpen(true)}/>
           <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"row"}}>
             {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length} onRetakeProfile={onRetakeProfile}/>}
             <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column",minWidth:0}}>
@@ -3250,9 +3315,12 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
                 {page==="learn"      && <LearnPage/>}
               </div>
               <DisclaimerBar/>
-              {isMobile && <BottomNav page={page} setPage={setPage} badge={holdings.length}/>}
             </div>
           </div>
+          {isMobile && mobileNavOpen && (
+            <MobileNavDrawer page={page} setPage={setPage} badge={holdings.length}
+              onRetakeProfile={onRetakeProfile} onClose={()=>setMobileNavOpen(false)}/>
+          )}
           {showDisclaimerModal && <DisclaimerModal onAccept={acceptDisclaimer}/>}
         </>
       )}
