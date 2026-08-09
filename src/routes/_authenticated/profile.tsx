@@ -35,19 +35,19 @@ const cardStyle: any = {
   background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12,
   padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8,
 };
-const labelStyle: any = { fontSize: 12, color: B.gray3, letterSpacing: "0.1em", fontFamily: FONT };
+const labelStyle: any = { fontSize: 11, color: B.gray3, letterSpacing: "0.1em", fontFamily: FONT };
 const inputStyle: any = {
   background: B.panel2, border: `1px solid ${B.border}`, color: B.gray1, borderRadius: 6,
-  padding: "8px 10px", fontSize: 15, fontFamily: FONT, outline: "none",
+  padding: "8px 10px", fontSize: 14, fontFamily: FONT, outline: "none",
 };
 const primaryBtnStyle = (enabled: boolean): any => ({
   background: enabled ? B.blue : B.panel2, color: enabled ? B.white : B.gray3,
-  border: "none", padding: "7px 14px", borderRadius: 6, fontFamily: FONT, fontSize: 13, fontWeight: 700,
+  border: "none", padding: "7px 14px", borderRadius: 6, fontFamily: FONT, fontSize: 12, fontWeight: 700,
   letterSpacing: "0.05em", cursor: enabled ? "pointer" : "not-allowed", whiteSpace: "nowrap",
 });
 const ghostBtnStyle = (color: string): any => ({
   background: "transparent", border: `1px solid ${color}`, color,
-  padding: "5px 10px", borderRadius: 6, fontFamily: FONT, fontSize: 12, fontWeight: 700,
+  padding: "5px 10px", borderRadius: 6, fontFamily: FONT, fontSize: 11, fontWeight: 700,
   letterSpacing: "0.05em", cursor: "pointer", whiteSpace: "nowrap",
 });
 
@@ -87,7 +87,7 @@ function StatItem({ label, value }: { label: string; value: number }) {
   return (
     <div>
       <div style={{ fontSize: 17, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{value}</div>
-      <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, letterSpacing: "0.06em", textTransform: "uppercase" }}>{label}</div>
+      <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, letterSpacing: "0.06em", textTransform: "uppercase" }}>{label}</div>
     </div>
   );
 }
@@ -324,7 +324,7 @@ function ProfilePage() {
   if (loading || !user) {
     return (
       <div style={{ minHeight: "100vh", background: B.bg, color: B.gray2, display: "flex",
-        alignItems: "center", justifyContent: "center", fontFamily: FONT, fontSize: 14 }}>
+        alignItems: "center", justifyContent: "center", fontFamily: FONT, fontSize: 13 }}>
         LOADING…
       </div>
     );
@@ -354,7 +354,7 @@ function ProfilePage() {
             <LogoIcon size={26} />
             <div>
               <div style={{ fontSize: 16, color: B.white, fontWeight: 700, letterSpacing: "0.14em" }}>STRATEGIC MARKETS</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", letterSpacing: "0.08em" }}>USER PROFILE</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.85)", letterSpacing: "0.08em" }}>USER PROFILE</div>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -382,7 +382,7 @@ function ProfilePage() {
                 </svg>
               )}
             </button>
-            <Link to="/terminal" style={{ fontSize: 13, color: B.white, textDecoration: "none", fontWeight: 700, border: `1px solid ${B.white}`, borderRadius: 6, padding: "4px 10px", letterSpacing: "0.06em" }}>
+            <Link to="/terminal" style={{ fontSize: 12, color: B.white, textDecoration: "none", fontWeight: 700, border: `1px solid ${B.white}`, borderRadius: 6, padding: "4px 10px", letterSpacing: "0.06em" }}>
               ← TERMINAL
             </Link>
           </div>
@@ -397,8 +397,8 @@ function ProfilePage() {
                 <Avatar name={avatarName} size={64} />
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 18, color: B.gray1, fontWeight: 700 }}>{displayName}</div>
-                  <div style={{ fontSize: 14, color: B.blue, fontWeight: 700 }}>@{handle}</div>
-                  <div style={{ fontSize: 13, color: B.gray3, marginTop: 4 }}>
+                  <div style={{ fontSize: 13, color: B.blue, fontWeight: 700 }}>@{handle}</div>
+                  <div style={{ fontSize: 12, color: B.gray3, marginTop: 4 }}>
                     {myProfile?.created_at ? `Joined ${fmtJoined(myProfile.created_at)} · ${fmtMemberFor(myProfile.created_at)}` : "…"}
                   </div>
                 </div>
@@ -406,11 +406,11 @@ function ProfilePage() {
               <button onClick={openEditModal} style={ghostBtnStyle(B.blue)}>EDIT PROFILE</button>
             </div>
             {myProfile?.bio ? (
-              <div style={{ fontSize: 15, color: B.gray2, lineHeight: 1.5 }}>{myProfile.bio}</div>
+              <div style={{ fontSize: 14, color: B.gray2, lineHeight: 1.5 }}>{myProfile.bio}</div>
             ) : (
               <button onClick={openEditModal} style={{
                 alignSelf: "flex-start", background: "none", border: "none", color: B.gray3,
-                fontFamily: FONT, fontSize: 14, fontStyle: "italic", cursor: "pointer", padding: 0,
+                fontFamily: FONT, fontSize: 13, fontStyle: "italic", cursor: "pointer", padding: 0,
               }}>+ Add a bio</button>
             )}
           </div>
@@ -436,11 +436,11 @@ function ProfilePage() {
               <div style={cardStyle}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={labelStyle}>ABOUT ME</div>
-                  <button onClick={openEditModal} style={{ background: "none", border: "none", color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 700 }}>
+                  <button onClick={openEditModal} style={{ background: "none", border: "none", color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700 }}>
                     {myProfile?.bio ? "EDIT BIO" : "ADD BIO"}
                   </button>
                 </div>
-                <div style={{ fontSize: 15, color: myProfile?.bio ? B.gray1 : B.gray3, lineHeight: 1.6 }}>
+                <div style={{ fontSize: 14, color: myProfile?.bio ? B.gray1 : B.gray3, lineHeight: 1.6 }}>
                   {myProfile?.bio || "Add a bio to tell the community who you are and what you invest in."}
                 </div>
               </div>
@@ -448,12 +448,12 @@ function ProfilePage() {
               <div style={cardStyle}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={labelStyle}>RECENT ACTIVITY</div>
-                  <button onClick={() => setTab("posts")} style={{ background: "none", border: "none", color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 700 }}>
+                  <button onClick={() => setTab("posts")} style={{ background: "none", border: "none", color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700 }}>
                     VIEW ALL →
                   </button>
                 </div>
                 {recentActivity.length === 0 ? (
-                  <div style={{ fontSize: 14, color: B.gray3 }}>No activity yet — write a post or join a discussion in COMMUNITY.</div>
+                  <div style={{ fontSize: 13, color: B.gray3 }}>No activity yet — write a post or join a discussion in COMMUNITY.</div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {recentActivity.map((a) => (
@@ -467,11 +467,11 @@ function ProfilePage() {
                           background: a.kind === "post" ? B.blue : B.green,
                         }} />
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: 14, color: B.gray1 }}>
+                          <div style={{ fontSize: 13, color: B.gray1 }}>
                             {a.kind === "post" ? "Posted " : "Commented on "}
                             <span style={{ color: B.blue, fontWeight: 700 }}>{a.title}</span>
                           </div>
-                          <div style={{ fontSize: 13, color: B.gray3, marginTop: 2 }}>
+                          <div style={{ fontSize: 12, color: B.gray3, marginTop: 2 }}>
                             {a.channelName ? `${a.channelName} · ` : ""}{fmtAgo(a.date)} · {a.score} pts{a.commentCount != null ? ` · ${a.commentCount} comments` : ""}
                           </div>
                         </div>
@@ -484,7 +484,7 @@ function ProfilePage() {
               <div style={cardStyle}>
                 <div style={labelStyle}>ACCOUNT</div>
                 <div>
-                  <div style={{ fontSize: 13, color: B.gray3, marginBottom: 4 }}>
+                  <div style={{ fontSize: 12, color: B.gray3, marginBottom: 4 }}>
                     Community username — shown as the author on your posts and comments
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -502,10 +502,10 @@ function ProfilePage() {
                       {savingUsername ? "SAVING..." : "SAVE"}
                     </button>
                   </div>
-                  {usernameError && <div style={{ fontSize: 13, color: B.red, marginTop: 4 }}>{usernameError}</div>}
+                  {usernameError && <div style={{ fontSize: 12, color: B.red, marginTop: 4 }}>{usernameError}</div>}
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
-                  <div style={{ fontSize: 13, color: B.gray3 }}>
+                  <div style={{ fontSize: 12, color: B.gray3 }}>
                     Signed in via <span style={{ color: B.green, fontWeight: 700, textTransform: "uppercase" }}>{user.provider}</span>
                   </div>
                   <button onClick={async () => { await logout(); navigate({ to: "/auth" }); }} style={ghostBtnStyle(B.red)}>SIGN OUT</button>
@@ -521,17 +521,17 @@ function ProfilePage() {
                 <button onClick={() => setShowPostForm(true)} style={{
                   display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
                   background: B.panel, border: `1px solid ${B.borderB}`, borderRadius: 10,
-                  padding: "10px 14px", cursor: "pointer", color: B.gray2, fontSize: 15, fontFamily: FONT,
+                  padding: "10px 14px", cursor: "pointer", color: B.gray2, fontSize: 14, fontFamily: FONT,
                 }}>Create a post — goes straight to the Community Home feed, under no topic</button>
               ) : (
                 <div style={{ ...cardStyle }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={labelStyle}>NEW POST · NO TOPIC</div>
-                    <button onClick={() => setShowPostForm(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 700 }}>CANCEL</button>
+                    <button onClick={() => setShowPostForm(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700 }}>CANCEL</button>
                   </div>
                   <input value={postTitle} onChange={(e) => setPostTitle(e.target.value)} placeholder="Title" maxLength={200} style={inputStyle} />
                   <textarea value={postBody} onChange={(e) => setPostBody(e.target.value)} placeholder="Write something..." rows={4} maxLength={8000} style={{ ...inputStyle, resize: "vertical" }} />
-                  {postError && <div style={{ fontSize: 13, color: B.red }}>{postError}</div>}
+                  {postError && <div style={{ fontSize: 12, color: B.red }}>{postError}</div>}
                   <div style={{ display: "flex", justifyContent: "flex-end" }}>
                     <button disabled={!postTitle.trim() || !postBody.trim() || posting} onClick={submitProfilePost} style={primaryBtnStyle(!!postTitle.trim() && !!postBody.trim() && !posting)}>
                       {posting ? "PUBLISHING..." : "PUBLISH"}
@@ -546,8 +546,8 @@ function ProfilePage() {
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 15, color: B.blue, fontWeight: 700 }}>{p.title}</div>
-                      <div style={{ fontSize: 13, color: B.gray3, marginTop: 2 }}>
+                      <div style={{ fontSize: 14, color: B.blue, fontWeight: 700 }}>{p.title}</div>
+                      <div style={{ fontSize: 12, color: B.gray3, marginTop: 2 }}>
                         {p.community_channels?.name || "No topic"} · {p.score} points · {p.comment_count} comments · {new Date(p.created_at).toLocaleDateString()}
                       </div>
                     </div>
@@ -561,7 +561,7 @@ function ProfilePage() {
                 </div>
               ))}
               {myPosts.length === 0 && (
-                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 14 }}>No posts yet</div>
+                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 13 }}>No posts yet</div>
               )}
             </div>
           )}
@@ -576,11 +576,11 @@ function ProfilePage() {
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, color: B.gray3 }}>
+                      <div style={{ fontSize: 12, color: B.gray3 }}>
                         on <span style={{ color: B.blue, fontWeight: 700 }}>{c.community_posts?.title || "a deleted post"}</span>
                       </div>
-                      <div style={{ fontSize: 15, color: B.gray1, marginTop: 4 }}>{c.body}</div>
-                      <div style={{ fontSize: 13, color: B.gray3, marginTop: 4 }}>
+                      <div style={{ fontSize: 14, color: B.gray1, marginTop: 4 }}>{c.body}</div>
+                      <div style={{ fontSize: 12, color: B.gray3, marginTop: 4 }}>
                         {c.score} points · {new Date(c.created_at).toLocaleDateString()}
                       </div>
                     </div>
@@ -594,7 +594,7 @@ function ProfilePage() {
                 </div>
               ))}
               {myComments.length === 0 && (
-                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 14 }}>No comments yet</div>
+                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 13 }}>No comments yet</div>
               )}
             </div>
           )}
@@ -605,8 +605,8 @@ function ProfilePage() {
               {ports.length === 0 ? (
                 <div style={{ padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textAlign: "center" }}>
                   <div style={{ fontSize: 40 }}>💼</div>
-                  <div style={{ fontSize: 15, color: B.gray2, fontWeight: 700 }}>No portfolios yet</div>
-                  <div style={{ fontSize: 14, color: B.gray3, maxWidth: 280, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 14, color: B.gray2, fontWeight: 700 }}>No portfolios yet</div>
+                  <div style={{ fontSize: 13, color: B.gray3, maxWidth: 280, lineHeight: 1.5 }}>
                     Save a portfolio from the terminal to see it here.
                   </div>
                   <button onClick={goToSearch} style={{ ...primaryBtnStyle(true), marginTop: 4 }}>CREATE PORTFOLIO</button>
@@ -614,12 +614,12 @@ function ProfilePage() {
               ) : (
                 ports.map((it: any) => (
                   <div key={it.id} style={{
-                    background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px",
+                    background: B.panel, border: `1px solid ${B.borderB}`, borderRadius: 10, padding: "10px 12px",
                     display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap",
                   }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 15, color: B.blue, fontWeight: 700 }}>{it.name}</div>
-                      <div style={{ fontSize: 13, color: B.gray3, marginTop: 2 }}>
+                      <div style={{ fontSize: 14, color: B.blue, fontWeight: 700 }}>{it.name}</div>
+                      <div style={{ fontSize: 12, color: B.gray3, marginTop: 2 }}>
                         {(it.holdings || []).length} positions · {new Date(it.updated_at).toLocaleDateString()}
                       </div>
                     </div>
@@ -642,8 +642,8 @@ function ProfilePage() {
                   display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap",
                 }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 15, color: B.blue, fontWeight: 700 }}>{it.name || it.symbol || it.title}</div>
-                    <div style={{ fontSize: 13, color: B.gray3, marginTop: 2 }}>
+                    <div style={{ fontSize: 14, color: B.blue, fontWeight: 700 }}>{it.name || it.symbol || it.title}</div>
+                    <div style={{ fontSize: 12, color: B.gray3, marginTop: 2 }}>
                       {tab === "watchlist" && `${it.category || ""} · ${new Date(it.created_at).toLocaleDateString()}${it.target_price != null ? ` · ALERT ${it.direction} ${it.target_price}` : ""}`}
                       {tab === "ai" && `${(it.messages || []).length} messages · ${new Date(it.updated_at).toLocaleDateString()}`}
                     </div>
@@ -685,7 +685,7 @@ function ProfilePage() {
                 </div>
               ))}
               {list.length === 0 && (
-                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 14 }}>
+                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 13 }}>
                   {tab === "watchlist" && "No tickers in your watchlist"}
                   {tab === "ai" && "No saved conversations"}
                 </div>
@@ -697,16 +697,16 @@ function ProfilePage() {
           {tab === "saved" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {savedLoading ? (
-                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 14 }}>LOADING…</div>
+                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 13 }}>LOADING…</div>
               ) : savedPosts.length === 0 ? (
-                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 14 }}>No saved items yet</div>
+                <div style={{ padding: 24, textAlign: "center", color: B.gray3, fontSize: 13 }}>No saved items yet</div>
               ) : (
                 savedPosts.map((p) => (
                   <div key={p.id} onClick={() => openCommunityPost(p.id)} style={{
                     background: B.panel, border: `1px solid ${B.border}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer",
                   }}>
-                    <div style={{ fontSize: 15, color: B.blue, fontWeight: 700 }}>{p.title}</div>
-                    <div style={{ fontSize: 13, color: B.gray3, marginTop: 2 }}>
+                    <div style={{ fontSize: 14, color: B.blue, fontWeight: 700 }}>{p.title}</div>
+                    <div style={{ fontSize: 12, color: B.gray3, marginTop: 2 }}>
                       {p.community_channels?.name || "No topic"} · u/{p.author_name} · {p.score} points · {new Date(p.created_at).toLocaleDateString()}
                     </div>
                   </div>
@@ -718,11 +718,11 @@ function ProfilePage() {
           {/* ── Investor Profile ────────────────────────────────────────── */}
           {tab === "investor" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ fontSize: 14, color: B.gray3, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: B.gray3, lineHeight: 1.5 }}>
                 Self-reported context the AI advisor uses to tailor scenario relevance — never as a basis for personalized advice. Change any answer at any time.
               </div>
               {investorError && (
-                <div style={{ padding: "8px 10px", fontSize: 14, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, fontFamily: FONT }}>
+                <div style={{ padding: "8px 10px", fontSize: 13, color: B.red, border: `1px solid ${B.red}`, borderRadius: 6, fontFamily: FONT }}>
                   {investorError}
                 </div>
               )}
@@ -744,7 +744,7 @@ function ProfilePage() {
                   <button disabled={savingInvestor} onClick={saveInvestor} style={primaryBtnStyle(!savingInvestor)}>
                     {savingInvestor ? "SAVING..." : "SAVE"}
                   </button>
-                  {investorSaved && <div style={{ fontSize: 13, color: B.green }}>Saved.</div>}
+                  {investorSaved && <div style={{ fontSize: 12, color: B.green }}>Saved.</div>}
                 </div>
               </div>
             </div>
@@ -774,9 +774,9 @@ function ProfilePage() {
                 rows={4} maxLength={300} style={{ ...inputStyle, width: "100%", resize: "vertical" }}
               />
             </div>
-            {profileError && <div style={{ fontSize: 13, color: B.red }}>{profileError}</div>}
+            {profileError && <div style={{ fontSize: 12, color: B.red }}>{profileError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button onClick={() => setShowEditModal(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 700 }}>CANCEL</button>
+              <button onClick={() => setShowEditModal(false)} style={{ background: "none", border: "none", color: B.gray3, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700 }}>CANCEL</button>
               <button disabled={savingProfile} onClick={saveProfile} style={primaryBtnStyle(!savingProfile)}>
                 {savingProfile ? "SAVING..." : "SAVE"}
               </button>

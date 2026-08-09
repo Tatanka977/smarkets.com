@@ -78,7 +78,7 @@ function BackRow({ onBack, label }: { onBack: () => void; label: string }) {
   return (
     <button onClick={onBack} style={{
       alignSelf: "flex-start", background: "none", border: "none", color: B.blue, cursor: "pointer",
-      fontFamily: FONT, fontSize: 14, fontWeight: 700, padding: 0, display: "flex", alignItems: "center", gap: 4,
+      fontFamily: FONT, fontSize: 13, fontWeight: 700, padding: 0, display: "flex", alignItems: "center", gap: 4,
     }}>
       ← {label}
     </button>
@@ -105,8 +105,8 @@ function PathNode({ label, sub, state, onClick, icon }: { label: string; sub: st
         {state === "done" ? <IconCheck /> : state === "locked" ? <IconLock /> : icon}
       </div>
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: state === "soon" ? B.gray3 : B.gray1, fontFamily: FONT }}>{label}</div>
-        <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, letterSpacing: "0.05em", marginTop: 1, textTransform: "uppercase" }}>{sub}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: state === "soon" ? B.gray3 : B.gray1, fontFamily: FONT }}>{label}</div>
+        <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, letterSpacing: "0.05em", marginTop: 1, textTransform: "uppercase" }}>{sub}</div>
       </div>
     </button>
   );
@@ -119,8 +119,8 @@ function StreakBanner({ streak }: { streak: LearnStreak }) {
       background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "14px 18px",
     }}>
       <div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>LEARN</div>
-        <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT, marginTop: 2 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>LEARN</div>
+        <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT, marginTop: 2 }}>
           A guided path through investing basics — quiz style, at your own pace.
         </div>
       </div>
@@ -128,7 +128,7 @@ function StreakBanner({ streak }: { streak: LearnStreak }) {
         <span style={{ fontSize: 22, lineHeight: 1 }}>🔥</span>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700, color: B.gray1, fontFamily: FONT, lineHeight: 1 }}>{streak.current_streak}</div>
-          <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, letterSpacing: "0.06em" }}>DAY STREAK</div>
+          <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, letterSpacing: "0.06em" }}>DAY STREAK</div>
         </div>
       </div>
     </div>
@@ -167,10 +167,10 @@ function GroupDetail({ group, groupIndex, groups, completed, onBack, onOpenStep 
       <BackRow onBack={onBack} label="ALL GROUPS" />
       <div>
         <div style={{ fontSize: 16, fontWeight: 700, color: B.blue, fontFamily: FONT }}>{group.title}</div>
-        {group.description && <div style={{ fontSize: 14, color: B.gray3, fontFamily: FONT, marginTop: 4 }}>{group.description}</div>}
+        {group.description && <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT, marginTop: 4 }}>{group.description}</div>}
       </div>
       {gState === "soon" ? (
-        <div style={{ padding: 30, textAlign: "center", color: B.gray3, fontFamily: FONT, fontSize: 15 }}>
+        <div style={{ padding: 30, textAlign: "center", color: B.gray3, fontFamily: FONT, fontSize: 14 }}>
           This group's lessons aren't published yet — check back soon.
         </div>
       ) : (
@@ -220,8 +220,8 @@ function StepDetail({ step, group, completed, onBack, onOpenLesson }: {
                 {done ? <IconCheck size={16} /> : <IconPlay size={13} />}
               </div>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{l.title}</div>
-                <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginTop: 2 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{l.title}</div>
+                <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginTop: 2 }}>
                   {done ? "Completed — tap to review" : "Not started"}
                 </div>
               </div>
@@ -261,13 +261,13 @@ function LessonView({ lesson, onBack, onDone, onNext }: {
         {!revealed ? (
           <button onClick={() => setRevealed(true)} style={{
             marginTop: 18, background: B.blue, border: "none", color: B.white, padding: "10px 22px", borderRadius: 8,
-            fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer",
+            fontFamily: FONT, fontSize: 14, fontWeight: 700, cursor: "pointer",
           }}>
             Continue
           </button>
         ) : (
-          <div style={{ marginTop: 18, borderTop: `1px solid ${B.border}`, paddingTop: 16 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 10 }}>{lesson.question}</div>
+          <div style={{ marginTop: 18, borderTop: `1px solid ${B.borderB}`, paddingTop: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT, marginBottom: 10 }}>{lesson.question}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {lesson.options.map((opt, i) => {
                 const isCorrect = i === lesson.correct_option_index;
@@ -280,7 +280,7 @@ function LessonView({ lesson, onBack, onDone, onNext }: {
                 return (
                   <button key={i} onClick={() => choose(i)} disabled={selected !== null} style={{
                     textAlign: "left", padding: "11px 14px", background: bg, border: `1px solid ${border}`, color,
-                    borderRadius: 8, fontFamily: FONT, fontSize: 15, cursor: selected === null ? "pointer" : "default",
+                    borderRadius: 8, fontFamily: FONT, fontSize: 14, cursor: selected === null ? "pointer" : "default",
                   }}>
                     {opt}
                   </button>
@@ -294,17 +294,17 @@ function LessonView({ lesson, onBack, onDone, onNext }: {
                 background: correct ? "rgba(0,200,120,0.08)" : "rgba(255,51,51,0.08)",
                 border: `1px solid ${correct ? B.green : B.red}`,
               }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: correct ? B.green : B.red, fontFamily: FONT }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: correct ? B.green : B.red, fontFamily: FONT }}>
                   {correct ? "Correct!" : "Not quite."}
                 </div>
                 {!correct && (
-                  <div style={{ fontSize: 14, color: B.gray1, fontFamily: FONT, marginTop: 6, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 13, color: B.gray1, fontFamily: FONT, marginTop: 6, lineHeight: 1.5 }}>
                     The correct answer was: <b>{lesson.options[lesson.correct_option_index]}</b>
                   </div>
                 )}
                 <button onClick={onNext} style={{
                   marginTop: 10, background: correct ? B.green : B.blue, border: "none", color: B.white,
-                  padding: "9px 20px", borderRadius: 8, fontFamily: FONT, fontSize: 14, fontWeight: 700, cursor: "pointer",
+                  padding: "9px 20px", borderRadius: 8, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: "pointer",
                 }}>
                   Continue
                 </button>
@@ -372,12 +372,12 @@ export default function LearnPage() {
   };
 
   if (loading) return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: B.gray3, fontFamily: FONT, fontSize: 15 }}>
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: B.gray3, fontFamily: FONT, fontSize: 14 }}>
       LOADING…
     </div>
   );
   if (error) return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: B.red, fontFamily: FONT, fontSize: 15, padding: 30, textAlign: "center" }}>
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: B.red, fontFamily: FONT, fontSize: 14, padding: 30, textAlign: "center" }}>
       {error}
     </div>
   );

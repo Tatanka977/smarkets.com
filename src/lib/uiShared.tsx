@@ -118,8 +118,8 @@ export const FKey = ({num,label,active,onClick}) => (
     display:"flex", alignItems:"center", gap:4,
     fontFamily:"'Courier New',Courier,monospace", flexShrink:0,
   }}>
-    {num&&<span style={{fontSize:13,color:active?B.white:B.gray2,fontWeight:700}}>{num}</span>}
-    <span style={{fontSize:14,color:active?B.white:B.gray2,fontWeight:700,
+    {num&&<span style={{fontSize:12,color:active?B.white:B.gray2,fontWeight:700}}>{num}</span>}
+    <span style={{fontSize:13,color:active?B.white:B.gray2,fontWeight:700,
       letterSpacing:"0.05em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{label}</span>
   </button>
 );
@@ -128,7 +128,7 @@ export const BPanel = ({title,children,style,accent}:any) => (
   <div style={{border:`1px solid ${accent?B.blue:B.border}`,background:B.panel,borderRadius:12,...style}}>
     {title&&(
       <div style={{padding:"14px 16px 0"}}>
-        <span style={{fontSize:15,fontWeight:700,color:B.blue,
+        <span style={{fontSize:14,fontWeight:700,color:B.blue,
           fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",textTransform:"uppercase"}}>{title}</span>
       </div>
     )}

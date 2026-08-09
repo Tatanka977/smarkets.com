@@ -109,7 +109,7 @@ export default function NotificationBell({ setPage }: { setPage: (p: string) => 
         {unread > 0 && (
           <span style={{
             position: "absolute", top: -3, right: -3, background: B.red, color: "#fff",
-            fontSize: 11, fontWeight: 700, fontFamily: FONT, borderRadius: 8,
+            fontSize: 10, fontWeight: 700, fontFamily: FONT, borderRadius: 8,
             minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px",
           }}>{unread > 9 ? "9+" : unread}</span>
         )}
@@ -122,18 +122,18 @@ export default function NotificationBell({ setPage }: { setPage: (p: string) => 
           boxShadow: "0 8px 24px rgba(0,0,0,0.35)", overflow: "hidden",
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderBottom: `1px solid ${B.border}` }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: B.gray1, letterSpacing: "0.06em", fontFamily: FONT }}>NOTIFICATIONS</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: B.gray1, letterSpacing: "0.06em", fontFamily: FONT }}>NOTIFICATIONS</span>
             {unread > 0 && (
-              <button onClick={markAllRead} style={{ background: "none", border: "none", color: B.blue, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: FONT }}>
+              <button onClick={markAllRead} style={{ background: "none", border: "none", color: B.blue, cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: FONT }}>
                 MARK ALL READ
               </button>
             )}
           </div>
           <div style={{ maxHeight: 360, overflowY: "auto" }}>
             {loading ? (
-              <div style={{ padding: 20, textAlign: "center", color: B.gray3, fontSize: 14, fontFamily: FONT }}>LOADING...</div>
+              <div style={{ padding: 20, textAlign: "center", color: B.gray3, fontSize: 13, fontFamily: FONT }}>LOADING...</div>
             ) : items.length === 0 ? (
-              <div style={{ padding: 20, textAlign: "center", color: B.gray3, fontSize: 14, fontFamily: FONT }}>No notifications yet.</div>
+              <div style={{ padding: 20, textAlign: "center", color: B.gray3, fontSize: 13, fontFamily: FONT }}>No notifications yet.</div>
             ) : (
               items.map((n) => (
                 <div key={n.id} onClick={() => openNotification(n)} style={{
@@ -141,10 +141,10 @@ export default function NotificationBell({ setPage }: { setPage: (p: string) => 
                   background: n.read ? "transparent" : B.panel2,
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: n.read ? B.gray2 : B.gray1, fontFamily: FONT }}>{n.title}</span>
-                    <span style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, flexShrink: 0 }}>{fmtAgo(n.created_at)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: n.read ? B.gray2 : B.gray1, fontFamily: FONT }}>{n.title}</span>
+                    <span style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, flexShrink: 0 }}>{fmtAgo(n.created_at)}</span>
                   </div>
-                  {n.body && <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT, marginTop: 2 }}>{n.body}</div>}
+                  {n.body && <div style={{ fontSize: 12, color: B.gray3, fontFamily: FONT, marginTop: 2 }}>{n.body}</div>}
                 </div>
               ))
             )}
