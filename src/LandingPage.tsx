@@ -68,23 +68,23 @@ const FEATURE_ICONS: Record<string, JSX.Element> = {
 const HIGHLIGHTS: { id: string; label: string; title: string; desc: string; shot: string }[] = [
   {
     id: "highlight-portfolio", label: "Portfolio", shot: "portfolio.png",
-    title: "Build a real portfolio, not a spreadsheet.",
-    desc: "Add real stocks, ETFs, bonds, crypto, REITs and FX at their live price. Import or export via CSV, track cost basis and buy dates, and see multi-currency positions valued correctly.",
+    title: "Build a real portfolio.",
+    desc: "Track stocks, ETFs, bonds, crypto, REITs, and FX at live prices — cost basis and multi-currency handled automatically.",
   },
   {
     id: "highlight-analysis", label: "Analysis", shot: "analysis.png",
     title: "See what's actually driving your risk.",
-    desc: "Sector and geographic allocation with ETF look-through, single-name concentration, Sharpe and Sortino, drawdown, and a What-If simulator for hypothetical trades before you make them.",
+    desc: "Sector, geography, and concentration breakdowns plus risk-adjusted returns, with a What-If simulator for any trade.",
   },
   {
     id: "highlight-ai", label: "AI Advisor", shot: "ai-advisor.png",
-    title: "Ask what a number actually means.",
-    desc: "A chat assistant with live access to your simulated portfolio — explains concentration, volatility, or a metric like Sharpe ratio in plain language. Educational only, never personalized advice.",
+    title: "Understand your portfolio, in plain English.",
+    desc: "A built-in AI assistant explains any metric or risk in plain language — educational only, never personalized advice.",
   },
   {
     id: "highlight-community", label: "Community", shot: "community.png",
-    title: "Compare notes with other portfolios.",
-    desc: "Share a snapshot of your portfolio, get feedback in the comments, and see how your risk score compares to everyone else who's shared theirs.",
+    title: "Share your portfolio, get feedback.",
+    desc: "Post a snapshot and see how your risk score compares to everyone else's.",
   },
 ];
 
