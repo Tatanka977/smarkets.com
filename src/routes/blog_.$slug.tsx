@@ -4,7 +4,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { getBlogPostBySlug } from "@/lib/blog.functions";
 import "../LandingPage.css";
 
-export const Route = createFileRoute("/blog/$slug")({
+export const Route = createFileRoute("/blog_/$slug")({
   loader: async ({ params }) => {
     const post = await getBlogPostBySlug(params.slug);
     if (!post) throw notFound();
