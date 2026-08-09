@@ -59,22 +59,34 @@
   margin-left: calc(50% - 50vw);
 }
 
-/* NAV */
-
+/* NAV — floating pill, detached from the viewport edge rather than a
+   full-bleed bar. `top`/`margin` (not padding on some full-width outer
+   wrapper) are what keep the gap alive through scroll: position: sticky
+   just re-anchors the header's own margin-box at `top` on every scroll
+   frame, so the gap above it never collapses. Uses color-mix() to get a
+   translucent tint of the existing --sm-bg/--sm-border tokens (works in
+   both themes automatically) instead of hardcoding a new dark-only
+   glass palette. */
 .header {
   position: sticky;
-  top: 0;
+  top: 14px;
   z-index: 20;
-  background: var(--sm-bg);
-  border-bottom: 1px solid var(--sm-border);
+  margin: 14px 24px 0;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--sm-bg) 72%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid color-mix(in srgb, var(--sm-border) 70%, transparent);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
 }
 
 .nav {
-  min-height: 68px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 0 8px;
 }
 
 .logo {
@@ -370,6 +382,28 @@
   border-radius: var(--land-radius);
 }
 
+/* Blog post cover image — bleeds to the card's own edges (negative
+   margin cancels .card's 28px padding on the top/sides) so it reads as
+   a real cover rather than an inset thumbnail. Same trick for both the
+   real <img> and the no-image placeholder, so every card in the list
+   keeps the same rhythm regardless of whether a cover was supplied. */
+.blog-card-cover {
+  display: block;
+  width: calc(100% + 56px);
+  margin: -28px -28px 16px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--land-radius) var(--land-radius) 0 0;
+}
+/* Abstract gradient, never a fake photo — just enough visual rhythm to
+   keep image-less cards from feeling broken next to ones with a cover. */
+.blog-card-cover--placeholder {
+  background:
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--sm-cyan) 55%, transparent) 0%, transparent 45%),
+    linear-gradient(135deg, var(--sm-blue) 0%, var(--sm-blueD) 60%, var(--sm-panel2) 100%);
+  opacity: 0.5;
+}
+
 .card h2 {
   font-size: 18px;
   margin: 10px 0 10px;
@@ -510,6 +544,11 @@ footer {
     padding: 10px 16px;
     font-size: 12.5px;
   }
+
+  .header {
+    margin: 10px 10px 0;
+    border-radius: 16px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -558,12 +597,15 @@ footer {
   --glow-blue: var(--sm-blue);
 }
 
-/* Header — transparent, blends into the dark gradient below it. Only
-   applies while the header sits over the dark hero/features (i.e. on
-   Home); other pages keep the plain .header background. */
+/* Header — same floating glass pill as the base .header, but tinted
+   from the home hero's own theme-independent --glow-* tokens rather
+   than --sm-bg: the hero behind it stays a fixed dark gradient
+   regardless of the Aurora/Terminal toggle (see .home-landing above),
+   so the header glass has to stay dark too, or it'd flip pale in
+   Aurora with the (forced-white) --glow-fg text still on top of it. */
 .home-landing .header {
-  background: transparent;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: color-mix(in srgb, var(--glow-bg-from) 60%, transparent);
+  border-color: var(--glow-border);
 }
 .home-landing .logo,
 .home-landing .nav-link {

@@ -54,6 +54,7 @@ function NewPostForm({ onPosted }: { onPosted: () => void }) {
   const [content, setContent] = useState("");
   const [sourceName, setSourceName] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -62,8 +63,13 @@ function NewPostForm({ onPosted }: { onPosted: () => void }) {
     if (!title.trim() || !content.trim()) return;
     setSaving(true); setError("");
     try {
-      await createBlogPost({ title, content, sourceName: sourceName || undefined, sourceUrl: sourceUrl || undefined });
-      setTitle(""); setContent(""); setSourceName(""); setSourceUrl(""); setOpen(false);
+      await createBlogPost({
+        title, content,
+        sourceName: sourceName || undefined,
+        sourceUrl: sourceUrl || undefined,
+        imageUrl: imageUrl || undefined,
+      });
+      setTitle(""); setContent(""); setSourceName(""); setSourceUrl(""); setImageUrl(""); setOpen(false);
       onPosted();
     } catch (e: any) {
       setError(e.message || "Failed to publish.");
@@ -93,6 +99,11 @@ function NewPostForm({ onPosted }: { onPosted: () => void }) {
           placeholder="Write your post... (separate paragraphs with a blank line)"
           rows={8}
           style={{ padding: "10px 12px", fontSize: 15, lineHeight: 1.6, border: "1px solid rgba(128,128,128,0.25)", borderRadius: 8, background: "transparent", color: "inherit", resize: "vertical", fontFamily: "inherit" }}
+        />
+        <input
+          value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="Cover image URL (optional)"
+          style={{ padding: "8px 10px", fontSize: 13, border: "1px solid rgba(128,128,128,0.25)", borderRadius: 8, background: "transparent", color: "inherit" }}
         />
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <input
@@ -183,6 +194,11 @@ function BlogIndexPage() {
                   className="card"
                   style={{ display: "block", textDecoration: "none", color: "inherit", position: "relative" }}
                 >
+                  {post.image_url ? (
+                    <img src={post.image_url} alt="" className="blog-card-cover" />
+                  ) : (
+                    <div className="blog-card-cover blog-card-cover--placeholder" aria-hidden="true" />
+                  )}
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 13, opacity: 0.6 }}>
                       {new Date(post.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
@@ -210,6 +226,9 @@ function BlogIndexPage() {
                   </div>
                   <h3 style={{ margin: "0 0 8px", fontSize: 20 }}>{post.title}</h3>
                   <p style={{ margin: 0, opacity: 0.75, lineHeight: 1.5 }}>{post.excerpt}</p>
+                  <span style={{ display: "inline-block", marginTop: 14, fontSize: 13, fontWeight: 700, color: "#3b82f6" }}>
+                    Read article →
+                  </span>
                 </Link>
               ))
             )}

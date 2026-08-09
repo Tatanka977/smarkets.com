@@ -8,6 +8,7 @@ export interface BlogPost {
   content: string;
   source_name?: string | null;
   source_url?: string | null;
+  image_url?: string | null;
   created_at: string;
 }
 
@@ -47,6 +48,7 @@ export async function createBlogPost(input: {
   excerpt?: string;
   sourceName?: string;
   sourceUrl?: string;
+  imageUrl?: string;
 }): Promise<BlogPost> {
   const excerpt = input.excerpt?.trim() || input.content.trim().split("\n")[0].slice(0, 180);
   const { data, error } = await supabase
@@ -58,6 +60,7 @@ export async function createBlogPost(input: {
       content: input.content.trim(),
       source_name: input.sourceName || null,
       source_url: input.sourceUrl || null,
+      image_url: input.imageUrl || null,
     })
     .select()
     .single();

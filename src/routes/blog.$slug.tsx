@@ -70,6 +70,17 @@ function BlogPostPage() {
             ← Back to blog
           </Link>
 
+          {post.image_url && (
+            <img
+              src={post.image_url}
+              alt=""
+              style={{
+                display: "block", width: "100%", aspectRatio: "16 / 9", objectFit: "cover",
+                borderRadius: "var(--land-radius)", marginTop: 24,
+              }}
+            />
+          )}
+
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 24, marginBottom: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13, opacity: 0.6 }}>
               {new Date(post.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
