@@ -78,7 +78,7 @@ const HIGHLIGHTS: { id: string; label: string; title: string; desc: string; shot
   },
   {
     id: "highlight-ai", label: "AI Advisor", shot: "ai-advisor.png",
-    title: "Understand your portfolio, in plain English.",
+    title: "Understand your portfolio.",
     desc: "A built-in AI assistant explains any metric or risk in plain language — educational only, never personalized advice.",
   },
   {
