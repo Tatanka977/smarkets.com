@@ -1043,7 +1043,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                           onKeyDown={e => e.key === "Enter" && runWhatIf()}
                           onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                          placeholder="SEARCH TICKER..." style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 28px 6px 8px",fontFamily:FONT,fontSize:13,borderRadius:6}} />
+                          placeholder="SEARCH TICKER..." style={{width:"100%",background:B.panel2,border:`1px solid ${B.borderB}`,color:B.gray1,padding:"6px 28px 6px 8px",fontFamily:FONT,fontSize:13,borderRadius:6}} />
                         {whatIfTicker && (
                           <button onClick={clearWhatIfTicker} aria-label="Clear ticker" style={{
                             position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",
@@ -1070,7 +1070,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                       <div style={{fontSize:10,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>Quantity</div>
                       <input value={whatIfQty} onChange={e => setWhatIfQty(e.target.value)}
                         onKeyDown={e => e.key === "Enter" && runWhatIf()}
-                        type="number" step="any" placeholder="SHARES" style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:13,borderRadius:6}} />
+                        type="number" step="any" placeholder="SHARES" style={{width:"100%",background:B.panel2,border:`1px solid ${B.borderB}`,color:B.gray1,padding:"6px 8px",fontFamily:FONT,fontSize:13,borderRadius:6}} />
                     </div>
                     <div style={{display:"flex",alignItems:"flex-end"}}>
                       <button onClick={runWhatIf} disabled={whatIfBusy || !whatIfTicker.trim()} style={{

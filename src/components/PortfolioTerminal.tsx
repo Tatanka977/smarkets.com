@@ -731,6 +731,24 @@ const OVERVIEW_COPY: Record<string, { label: string; fallback: string }> = {
   CASH:      { label: "OVERVIEW",            fallback: "Cash position — no business description applies." },
 };
 
+// Yahoo's longBusinessSummary (and our own fallback copy) comes back as one
+// unbroken block with no paragraph breaks at all — real, but unreadable as
+// a single dense wall of text. Split on existing blank lines if the source
+// ever has them; otherwise group sentences (2 per paragraph) so long
+// descriptions get some visual rhythm instead of running on forever.
+function overviewParagraphs(text: string): string[] {
+  const blocks = text.split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+  return blocks.flatMap(block => {
+    if (block.includes("\n")) return block.split("\n").map(l => l.trim()).filter(Boolean);
+    const sentences = block.match(/[^.!?]+[.!?]+(?:\s+|$)/g) || [block];
+    const paras: string[] = [];
+    for (let i = 0; i < sentences.length; i += 2) {
+      paras.push(sentences.slice(i, i + 2).join("").trim());
+    }
+    return paras;
+  });
+}
+
 function SearchPage({onAdd,portfolio,onWatchlistChange}:any) {
   const isMobile = useIsMobile();
   const [q,setQ] = useState<string>("");
@@ -955,14 +973,14 @@ useEffect(()=>{
         <div style={{background:B.panel,border:`1px solid ${B.yellow}`,borderRadius:12,padding:"12px 16px",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
           <span style={{fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace"}}>NOTIFY ME WHEN {detail.ticker} GOES</span>
           <select value={alertDir} onChange={e=>setAlertDir(e.target.value as any)} style={{
-            background:B.panel2,border:`1px solid ${B.border}`,color:B.yellow,borderRadius:6,padding:"6px 8px",
+            background:B.panel2,border:`1px solid ${B.borderB}`,color:B.yellow,borderRadius:6,padding:"6px 8px",
             fontFamily:"'Courier New',monospace",fontSize:13}}>
             <option value="above">ABOVE</option>
             <option value="below">BELOW</option>
           </select>
           <input value={alertPrice} onChange={e=>setAlertPrice(e.target.value)} type="number" min="0" step="any"
             placeholder={detail.price!=null?detail.price.toFixed(2):"PRICE"}
-            style={{width:100,background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,borderRadius:6,
+            style={{width:100,background:B.panel2,border:`1px solid ${B.borderB}`,color:B.gray1,borderRadius:6,
               padding:"6px 8px",fontSize:13,fontFamily:"'Courier New',monospace",outline:"none"}}/>
           <button onClick={saveAlert} disabled={watchBusy} style={{
             background:B.blue,border:"none",color:B.white,padding:"6px 14px",borderRadius:6,
@@ -1003,7 +1021,8 @@ useEffect(()=>{
             {(OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).label}
           </div>
           <div style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",lineHeight:1.6,maxHeight:260,overflowY:"auto"}}>
-            {detail.description || (OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).fallback}
+            {overviewParagraphs(detail.description || (OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).fallback)
+              .map((para, i) => <p key={i} style={{margin: i === 0 ? 0 : "10px 0 0"}}>{para}</p>)}
           </div>
         </div>
 
@@ -1016,21 +1035,21 @@ useEffect(()=>{
             <div>
               <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>QUANTITY</div>
               <input value={qty} onChange={e=>setQty(e.target.value)} type="number" min="0" step="any"
-                style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,borderRadius:6,
+                style={{width:"100%",background:B.panel2,border:`1px solid ${B.borderB}`,color:B.gray1,borderRadius:6,
                   padding:"6px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
             </div>
             <div>
               <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>BUY PRICE ({detail.currency||"USD"})</div>
               <input value={buyPx} onChange={e=>setBuyPx(e.target.value)} type="number" min="0" step="any"
                 placeholder={detail.price!=null?detail.price.toFixed(2):""}
-                style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,borderRadius:6,
+                style={{width:"100%",background:B.panel2,border:`1px solid ${B.borderB}`,color:B.gray1,borderRadius:6,
                   padding:"6px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
             </div>
             <div>
               <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:2}}>PURCHASE DATE</div>
               <input value={buyDt} onChange={e=>handleDateChange(e.target.value)} type="date" max={todayYmd}
                 data-testid="search-purchase-date"
-                style={{width:"100%",background:B.panel2,border:`1px solid ${histBusy?B.blue:B.border}`,color:B.gray1,borderRadius:6,
+                style={{width:"100%",background:B.panel2,border:`1px solid ${histBusy?B.blue:B.borderB}`,color:B.gray1,borderRadius:6,
                   padding:"6px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
             </div>
           </div>
@@ -1951,7 +1970,7 @@ function SavePromptModal({channels, channelId, onChannelChange, onShare, onSkip}
         <div>
           <div style={{ fontSize:11, color:B.gray3, fontFamily:"'Courier New',monospace", marginBottom:4 }}>TOPIC (OPTIONAL)</div>
           <select value={channelId} onChange={(e:any)=>onChannelChange(e.target.value)} style={{
-            width:"100%", background:B.panel2, border:`1px solid ${B.border}`, color:B.gray1, borderRadius:6,
+            width:"100%", background:B.panel2, border:`1px solid ${B.borderB}`, color:B.gray1, borderRadius:6,
             padding:"8px 10px", fontFamily:"'Courier New',monospace", fontSize:14,
           }}>
             <option value="">No specific channel</option>
@@ -2027,13 +2046,13 @@ function SellModal({holding, onCancel, onConfirm}:any) {
           <div>
             <div style={{fontSize:11,color:B.gray3,marginBottom:2}}>SELL PRICE</div>
             <input value={price} onChange={e=>setPrice(e.target.value)} type="number" min="0" step="any"
-              style={{width:"100%",background:B.panel2,border:`1px solid ${B.border}`,color:B.gray1,borderRadius:6,
+              style={{width:"100%",background:B.panel2,border:`1px solid ${B.borderB}`,color:B.gray1,borderRadius:6,
                 padding:"9px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
           </div>
           <div>
             <div style={{fontSize:11,color:B.gray3,marginBottom:2}}>SALE DATE</div>
             <input value={date} onChange={e=>handleDateChange(e.target.value)} type="date" max={todayYmd}
-              style={{width:"100%",background:B.panel2,border:`1px solid ${histBusy?B.blue:B.border}`,color:B.gray1,borderRadius:6,
+              style={{width:"100%",background:B.panel2,border:`1px solid ${histBusy?B.blue:B.borderB}`,color:B.gray1,borderRadius:6,
                 padding:"9px 8px",fontSize:14,fontFamily:"'Courier New',monospace",outline:"none"}}/>
           </div>
           {histInfo.text && (

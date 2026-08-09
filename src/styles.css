@@ -174,6 +174,16 @@
 /* Default = Terminal (dark). Add [data-theme="aurora"] to opt into the light theme. */
 :root,
 [data-theme="terminal"] {
+  /* Dark is the only theme now — without this, the BROWSER's own native
+     form-control chrome (number input spinner arrows, the date-input
+     calendar icon, checkboxes, scrollbars) stays rendered for a light
+     page by default, regardless of how dark our own CSS makes the
+     input itself. That's the "quantity/price buttons are black and
+     invisible" bug: those spinner arrows are the browser's own icons,
+     not ours, drawn dark-on-dark against our custom dark input
+     backgrounds. This one declaration switches the browser's native
+     widgets to their dark-mode variants everywhere, site-wide. */
+  color-scheme: dark;
   --sm-bg:      #020617;
   --sm-panel:   #0F172A;
   --sm-panel2:  #0B1220;
