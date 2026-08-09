@@ -757,7 +757,7 @@ footer {
 .phone-frame {
   position: relative;
   width: min(300px, 72vw);
-  padding: 9px 9px 0;
+  padding: 5px 5px 0;
   border-radius: 46px 46px 0 0;
   background: linear-gradient(155deg, #3a3a40 0%, #121214 45%, #050506 100%);
   box-shadow:
@@ -770,7 +770,7 @@ footer {
 .phone-screen {
   position: relative;
   width: 100%;
-  border-radius: 38px 38px 0 0;
+  border-radius: 42px 42px 0 0;
   overflow: hidden;
   background: #000;
 }
@@ -789,8 +789,9 @@ footer {
    against the bezel like a notch. */
 .phone-notch {
   position: absolute;
-  /* Centered between the top edge and the "STRATEGIC MARKETS" row. */
-  top: 16px;
+  /* Centered between the top edge and the "STRATEGIC MARKETS" row —
+     shifted up 4px to match the bezel's own 9px -> 5px thinning. */
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   width: 27%;
