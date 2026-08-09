@@ -19,7 +19,7 @@ function AuthPage() {
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-  const fontMono = "'Courier New', Courier, monospace";
+  const pageFont = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
 
   const handleGoogle = async () => {
     setErr("");
@@ -68,7 +68,7 @@ function AuthPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: B.bg, display: "flex",
-      alignItems: "center", justifyContent: "center", padding: 16, fontFamily: fontMono }}>
+      alignItems: "center", justifyContent: "center", padding: 16, fontFamily: pageFont }}>
       <div style={{ width: "100%", maxWidth: 380, background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, overflow: "hidden" }}>
         <div style={{ background: B.blue, padding: "14px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -83,7 +83,7 @@ function AuthPage() {
         <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
           <button data-testid="google-signin-btn" onClick={handleGoogle} disabled={loading} style={{
             background: B.panel2, color: B.gray1, border: `1px solid ${B.border}`, padding: "10px 12px", borderRadius: 8,
-            fontWeight: 700, cursor: "pointer", fontFamily: fontMono, fontSize: 13, letterSpacing: "0.02em",
+            fontWeight: 700, cursor: "pointer", fontFamily: pageFont, fontSize: 13, letterSpacing: "0.02em",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
           }}>
             <svg width="18" height="18" viewBox="0 0 48 48">
@@ -97,7 +97,7 @@ function AuthPage() {
 
           <button data-testid="apple-signin-btn" onClick={handleApple} disabled={loading} style={{
             background: B.panel2, color: B.gray1, border: `1px solid ${B.border}`, padding: "10px 12px", borderRadius: 8,
-            fontWeight: 700, cursor: "pointer", fontFamily: fontMono, fontSize: 13, letterSpacing: "0.02em",
+            fontWeight: 700, cursor: "pointer", fontFamily: pageFont, fontSize: 13, letterSpacing: "0.02em",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
           }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -117,20 +117,20 @@ function AuthPage() {
               <input data-testid="auth-name-input" value={name} onChange={(e) => setName(e.target.value)}
                 placeholder="NAME" required minLength={1}
                 style={{ background: B.bg, border: `1px solid ${B.border}`, color: B.gray1, borderRadius: 6,
-                  padding: "8px 10px", fontSize: 12, fontFamily: fontMono, outline: "none", letterSpacing: "0.04em", textTransform: "uppercase" }} />
+                  padding: "8px 10px", fontSize: 12, fontFamily: pageFont, outline: "none", letterSpacing: "0.04em", textTransform: "uppercase" }} />
             )}
             <input data-testid="auth-email-input" value={email} onChange={(e) => setEmail(e.target.value)}
               type="email" required placeholder="EMAIL"
               style={{ background: B.bg, border: `1px solid ${B.border}`, color: B.gray1, borderRadius: 6,
-                padding: "8px 10px", fontSize: 12, fontFamily: fontMono, outline: "none", letterSpacing: "0.04em", textTransform: "uppercase" }} />
+                padding: "8px 10px", fontSize: 12, fontFamily: pageFont, outline: "none", letterSpacing: "0.04em", textTransform: "uppercase" }} />
             <input data-testid="auth-password-input" value={password} onChange={(e) => setPassword(e.target.value)}
               type="password" required minLength={6} placeholder="PASSWORD (MIN 6)"
               style={{ background: B.bg, border: `1px solid ${B.border}`, color: B.gray1, borderRadius: 6,
-                padding: "8px 10px", fontSize: 12, fontFamily: fontMono, outline: "none", letterSpacing: "0.04em", textTransform: "uppercase" }} />
+                padding: "8px 10px", fontSize: 12, fontFamily: pageFont, outline: "none", letterSpacing: "0.04em", textTransform: "uppercase" }} />
             <button data-testid="auth-submit-btn" type="submit" disabled={loading} style={{
               background: B.blue, color: "#FFFFFF", border: "none", padding: "10px 12px", borderRadius: 8,
               fontWeight: 700, cursor: loading ? "wait" : "pointer",
-              fontFamily: fontMono, fontSize: 13, letterSpacing: "0.1em", opacity: loading ? 0.6 : 1,
+              fontFamily: pageFont, fontSize: 13, letterSpacing: "0.1em", opacity: loading ? 0.6 : 1,
             }}>
               {loading ? "..." : mode === "signin" ? "SIGN IN" : "SIGN UP"}
             </button>
@@ -143,12 +143,12 @@ function AuthPage() {
 
           <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setErr(""); }}
             style={{ background: "none", border: "none", color: B.gray1, fontSize: 11,
-              fontFamily: fontMono, cursor: "pointer", textDecoration: "underline", marginTop: 4 }}>
+              fontFamily: pageFont, cursor: "pointer", textDecoration: "underline", marginTop: 4 }}>
             {mode === "signin" ? "No account? Sign up" : "Already have an account? Sign in"}
           </button>
 
           <Link to="/" style={{ fontSize: 10, color: B.gray2, textAlign: "center",
-            fontFamily: fontMono, textDecoration: "none", marginTop: 4 }}>
+            fontFamily: pageFont, textDecoration: "none", marginTop: 4 }}>
             ← Back to home
           </Link>
         </div>

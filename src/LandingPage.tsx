@@ -11,7 +11,7 @@ import { listBlogPosts, type BlogPost } from "@/lib/blog.functions";
 // tape; kept short since it's rendered twice back-to-back for the marquee loop.
 const LANDING_TICKERS: { ticker: string; label?: string }[] = [
   { ticker: "AAPL" }, { ticker: "MSFT" }, { ticker: "NVDA" }, { ticker: "TSLA" },
-  { ticker: "SPY" }, { ticker: "QQQ" }, { ticker: "JPM" }, { ticker: "BTC-USD", label: "BTC" },
+  { ticker: "SPY" }, { ticker: "QQQ" }, { ticker: "JPM" }, { ticker: "AMZN" },
 ];
 
 // Same 24x24 stroke icons as NAV_ICONS in PortfolioTerminal.tsx (copied
@@ -134,18 +134,6 @@ function PhoneFrame({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-// Stylized upward trend line for the "Real-Time Market Data" floating
-// card — decorative only, no axis/numbers, so it never reads as a claim
-// about real performance.
-function MiniTrendLine() {
-  return (
-    <svg width="34" height="22" viewBox="0 0 60 34" fill="none">
-      <polyline points="2,28 14,20 24,24 36,10 48,14 58,4" stroke="#16A34A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <circle cx="58" cy="4" r="3" fill="#16A34A" />
-    </svg>
-  );
-}
-
 export default function LandingPage() {
   const [theme, , toggleTheme] = useTheme();
   const isAurora = theme === "aurora";
@@ -235,14 +223,16 @@ export default function LandingPage() {
             <div>
               <span className="eyebrow">Portfolio Analytics Terminal</span>
 
-              {/* Line breaks are explicit, not left to natural wrapping, so
-                  the 1-line/2-line split is guaranteed regardless of
-                  viewport width — but desktop and mobile want a different
-                  split, so .hero-br-desktop/.hero-br-mobile toggle via
-                  CSS media query (one real <h1>, not two duplicated ones,
-                  so screen readers/SEO only ever see one heading). */}
+              {/* Line breaks are explicit, not left to natural wrapping.
+                  "Track markets." / "Test strategy." break unconditionally
+                  on every viewport; only the last line's break is
+                  responsive (.hero-br-desktop toggles via CSS media
+                  query — one real <h1>, not two duplicated ones, so
+                  screen readers/SEO only ever see one heading). */}
               <h1 className="home-hero-headline">
-                Track markets.<br className="hero-br-mobile" /> Test strategy.
+                Track markets.
+                <br />
+                Test strategy.
                 <br />
                 Learn what <span className="accent">actually</span><br className="hero-br-desktop" /> drives risk.
               </h1>
@@ -260,25 +250,6 @@ export default function LandingPage() {
             <div className="hero-visual">
               <div className="hero-3d-scene">
                 <PhoneFrame src="/home.jpg" alt="Strategic Markets app — Home screen showing live indices and portfolio overview" />
-
-                {/* Floating glass cards — feature labels only, never a
-                    specific number presented as a real user's data. */}
-                <div className="float-card float-card--1">
-                  <span className="float-card-icon">{FEATURE_ICONS.ai}</span>
-                  <span className="float-card-label">AI-Powered Insights</span>
-                </div>
-                <div className="float-card float-card--2">
-                  <span className="float-card-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="m12 2 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5" /><path d="m3 17 9 5 9-5" />
-                    </svg>
-                  </span>
-                  <span className="float-card-label">7+ Asset Classes</span>
-                </div>
-                <div className="float-card float-card--3">
-                  <MiniTrendLine />
-                  <span className="float-card-label">Real-Time Market Data</span>
-                </div>
               </div>
             </div>
           </div>

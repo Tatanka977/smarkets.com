@@ -14,7 +14,7 @@ export const Route = createFileRoute("/privacy")({
   component: PrivacyPage,
 });
 
-const FONT = "'Courier New', Courier, monospace";
+const FONT = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
 
 const cardStyle: any = {
   background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "16px 18px",

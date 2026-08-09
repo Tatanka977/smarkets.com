@@ -97,11 +97,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         // Marketing-site font (see LandingPage.css) — a single family used
-        // for every piece of text on the site, loaded as a real <link>
-        // rather than a CSS @import: lightningcss (Tailwind v4's CSS
-        // pipeline) resolves @import url(...) as a local file path and
-        // fails the build (ENOENT) on remote URLs.
-        href: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap",
+        // for every piece of public/marketing text on the site (the actual
+        // in-app Terminal keeps its own separate monospace, untouched by
+        // this), loaded as a real <link> rather than a CSS @import:
+        // lightningcss (Tailwind v4's CSS pipeline) resolves
+        // @import url(...) as a local file path and fails the build
+        // (ENOENT) on remote URLs.
+        href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
       },
     ],
   }),
