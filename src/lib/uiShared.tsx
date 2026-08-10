@@ -1,6 +1,9 @@
 // Shared UI helpers used by PortfolioTerminal, HomePage, and AnalysisPage.
 // Kept in its own file (no imports from those three) to avoid circular imports.
 
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+
 export const B = {
   bg:      "var(--sm-bg)",
   panel:   "var(--sm-panel)",
@@ -135,6 +138,86 @@ export const BPanel = ({title,children,style,accent}:any) => (
     {children}
   </div>
 );
+
+// ── Auth gating — one reusable pattern instead of hand-rolling the same
+// "if (!user) ..." check at every gated tab/button across the Terminal.
+// Two shapes, since the two kinds of gate need different UI:
+//   - RequireAuth: swaps a whole tab/page's content for a centered
+//     "Sign in to X" message. `children` is a thunk (not a plain node) so
+//     the real content — and anything it'd otherwise compute/fetch — is
+//     never even evaluated for a signed-out visitor.
+//   - useAuthGuard: for one-off actions (a SAVE/Export/Watchlist button)
+//     that stay visible either way — clicking them anonymously pops a
+//     small modal instead of silently doing nothing or hard-navigating
+//     away from whatever the user was doing.
+// Same copy pattern in both ("Sign in to <reason>") and the same Link
+// target, so the prompt reads as one consistent system everywhere.
+export function SignInPrompt({ reason, style }: { reason: string; style?: any }) {
+  return (
+    <div style={{
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      gap:14, padding:"70px 24px", textAlign:"center", flex:1, ...style,
+    }}>
+      <div style={{fontSize:15,color:B.gray2,fontFamily:"'Courier New',monospace",maxWidth:340,lineHeight:1.6}}>
+        Sign in to {reason}
+      </div>
+      <Link to="/auth" style={{
+        background:B.blue, color:B.white, padding:"10px 22px", borderRadius:6,
+        textDecoration:"none", fontFamily:"'Courier New',monospace", fontWeight:700,
+        fontSize:13, letterSpacing:"0.04em",
+      }}>
+        SIGN IN
+      </Link>
+    </div>
+  );
+}
+
+export function RequireAuth({ user, reason, children }: { user: any; reason: string; children: () => React.ReactNode }) {
+  return user ? <>{children()}</> : <SignInPrompt reason={reason} />;
+}
+
+function AuthGateModal({ reason, onClose }: { reason: string; onClose: () => void }) {
+  return (
+    <div onClick={onClose} style={{
+      position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:300,
+      display:"flex", alignItems:"center", justifyContent:"center", padding:20,
+    }}>
+      <div onClick={(e)=>e.stopPropagation()} style={{
+        background:B.panel, border:`1px solid ${B.borderB}`, borderRadius:12,
+        padding:"28px 24px", maxWidth:320, textAlign:"center",
+        display:"flex", flexDirection:"column", gap:16,
+      }}>
+        <div style={{fontSize:15,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.6}}>
+          Sign in to {reason}
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+          <Link to="/auth" style={{
+            background:B.blue, color:B.white, padding:"9px 18px", borderRadius:6,
+            textDecoration:"none", fontFamily:"'Courier New',monospace", fontWeight:700, fontSize:13,
+          }}>Sign In</Link>
+          <button onClick={onClose} style={{
+            background:"transparent", border:`1px solid ${B.borderB}`, color:B.gray2,
+            borderRadius:6, padding:"9px 18px", cursor:"pointer",
+            fontFamily:"'Courier New',monospace", fontSize:13, fontWeight:700,
+          }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// `guard("save your portfolio", saveFn)` — runs saveFn() if signed in,
+// otherwise pops the modal with that exact reason. `modal` is null when
+// there's nothing to show; render it once anywhere in the page.
+export function useAuthGuard(user: any) {
+  const [reason, setReason] = useState<string | null>(null);
+  const guard = (actionReason: string, fn: () => void) => {
+    if (!user) { setReason(actionReason); return; }
+    fn();
+  };
+  const modal = reason ? <AuthGateModal reason={reason} onClose={() => setReason(null)} /> : null;
+  return { guard, modal };
+}
 
 // Educational risk score (0-100), our own scoring method — not an external
 // credit or risk rating, not a validated quantitative model. Shared here

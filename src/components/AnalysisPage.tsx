@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Legend } from "recharts";
 import {
   B, fmt, fmtM, pCol, pSign, groupBy, groupBySectorLookThrough, computeSingleNameExposure, pMet, PIE_COLS,
-  BPanel, FKey, computeAlerts, computeRiskScore, SEV_STYLE,
+  BPanel, FKey, computeAlerts, computeRiskScore, SEV_STYLE, RequireAuth,
 } from "@/lib/uiShared";
 import { aiChatAsUser } from "@/lib/ai.functions";
 import { getInvestorProfile } from "@/lib/profile.functions";
@@ -11,6 +11,7 @@ import { getCommunityRiskScores } from "@/lib/community.functions";
 import ShareToCommunityModal from "./ShareToCommunityModal";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useUser } from "@/hooks/useUser";
 const FONT = "'Courier New', Courier, monospace";
 
 const BENCHMARKS = [
@@ -542,6 +543,7 @@ function WhatIfTableRow({ row }: { row: WhatIfRowSpec }) {
 }
 
 export default function AnalysisPage({ holdings, setPage }: any) {
+  const { user } = useUser();
   const m = useMemo(() => pMet(holdings), [holdings]);
   const isMobile = useIsMobile();
   const [sub, setSub] = useState<"alloc" | "risk" | "perf">("alloc");
@@ -560,13 +562,17 @@ export default function AnalysisPage({ holdings, setPage }: any) {
   // Real risk scores from every portfolio shared in the community, for the
   // Risk tab's percentile comparison — fetched once, not gated to the Risk
   // sub-tab (cheap, and avoids a hook inside the risk-tab's conditional
-  // IIFE below, which would break the rules of hooks).
+  // IIFE below, which would break the rules of hooks). Skipped entirely
+  // for a signed-out visitor: the Risk tab is gated behind RequireAuth
+  // below anyway, so there's nothing to show it to, and no reason for an
+  // anonymous session to fetch other users' shared risk data at all.
   const [communityScores, setCommunityScores] = useState<number[] | null>(null);
   useEffect(() => {
+    if (!user) { setCommunityScores([]); return; }
     let alive = true;
     getCommunityRiskScores().then((scores) => { if (alive) setCommunityScores(scores); }).catch(() => { if (alive) setCommunityScores([]); });
     return () => { alive = false; };
-  }, []);
+  }, [user]);
   const [showShareModal, setShowShareModal] = useState(false);
 
   const handleTickerInput = (v: string) => {
@@ -763,7 +769,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           </>
         )}
 
-        {sub === "risk" && (() => {
+        {sub === "risk" && <RequireAuth user={user} reason="view Risk analysis">{() => {
           // Single-name risk with ETF look-through (see computeSingleNameExposure
           // in uiShared.tsx): a big ETF position isn't itself concentrated in one
           // stock — it's a basket — so this adds direct stock holdings to each
@@ -1156,9 +1162,9 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
             </BPanel>
           </div>
           );
-        })()}
+        }}</RequireAuth>}
 
-        {sub === "perf" && <PerformanceTab holdings={holdings} m={m}/>}
+        {sub === "perf" && <RequireAuth user={user} reason="view Performance analysis">{() => <PerformanceTab holdings={holdings} m={m}/>}</RequireAuth>}
       </div>
       {showShareModal && (
         <ShareToCommunityModal

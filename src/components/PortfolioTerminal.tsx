@@ -45,7 +45,7 @@ import { usePersistentState } from "@/hooks/usePersistentState";
 import { useTheme } from "@/hooks/useTheme";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
-import { B, PIE_COLS, fmt, fmtM, pCol, pSign, groupBy, pMet, FKey, BPanel, buildPortfolioContext } from "@/lib/uiShared";
+import { B, PIE_COLS, fmt, fmtM, pCol, pSign, groupBy, pMet, FKey, BPanel, buildPortfolioContext, RequireAuth, useAuthGuard } from "@/lib/uiShared";
 
 export { B, PIE_COLS, fmt, fmtM, pCol, pSign, groupBy, pMet, FKey, BPanel };
 
@@ -861,9 +861,9 @@ useEffect(()=>{
       setHistBusy(false);
     }
   }, [detail, todayYmd, setBuyDt, setBuyPx]);
+  const { guard, modal: authModal } = useAuthGuard(user);
   const addWatch = async () => {
     if (!detail) return;
-    if (!user) { window.location.href = "/auth"; return; }
     setWatchBusy(true); setWatchMsg("");
     try {
       await srvAddWatch({ data: { symbol: detail.ticker || detail.symbol, name: detail.shortName, category: detail.category } });
@@ -883,7 +883,6 @@ useEffect(()=>{
   const [alertMsg, setAlertMsg] = useState("");
   const saveAlert = async () => {
     if (!detail) return;
-    if (!user) { window.location.href = "/auth"; return; }
     const target = parseFloat(alertPrice);
     if (!isFinite(target) || target <= 0) { setAlertMsg("Enter a valid price"); return; }
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
@@ -956,12 +955,12 @@ useEffect(()=>{
           </div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button onClick={addWatch} disabled={watchBusy} style={{
+          <button onClick={()=>guard("add to your watchlist", addWatch)} disabled={watchBusy} style={{
             background:"none",border:`1px solid ${B.borderB}`,color:B.blue,padding:"8px 16px",borderRadius:8,
             cursor:watchBusy?"wait":"pointer",fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700}}>
             {watchBusy ? "..." : watchMsg || "ADD TO WATCHLIST"}
           </button>
-          <button onClick={()=>setShowAlertForm(v=>!v)} style={{
+          <button onClick={()=>guard("set a price alert", ()=>setShowAlertForm(v=>!v))} style={{
             background:showAlertForm?B.panel2:"none",border:`1px solid ${B.borderB}`,color:B.yellow,padding:"8px 16px",borderRadius:8,
             cursor:"pointer",fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700}}>
             PRICE ALERT
@@ -1104,6 +1103,7 @@ useEffect(()=>{
           </button>
         </div>
       </div>
+      {authModal}
     </div>
   );
 
@@ -1404,8 +1404,8 @@ function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddC
     srvListChannels().then(setSavePromptChannels).catch(() => setSavePromptChannels([]));
   }, [showSavePrompt]);
 
+  const { guard, modal: authModal } = useAuthGuard(user);
   const handleSave = async () => {
-    if (!user) { window.location.href = "/auth"; return; }
     const name = prompt("Portfolio name:", "Portfolio " + new Date().toLocaleDateString());
     if (!name) return;
     setSaving(true);
@@ -1501,12 +1501,12 @@ const addCash = () => {
       ))}
       </div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-        <button onClick={handleSave} disabled={saving || !holdings.length} style={{
+        <button onClick={()=>guard("save your portfolio", handleSave)} disabled={saving || !holdings.length} style={{
           background:"transparent", border:`1px solid ${B.blue}`, color:holdings.length?B.blue:B.gray3,
           padding:"6px 12px", borderRadius:6, cursor:(saving||!holdings.length)?(saving?"wait":"not-allowed"):"pointer",
           fontFamily:"'Courier New',monospace", fontSize:13, fontWeight:700,
         }}>{saving ? "..." : saveMsg || "SAVE"}</button>
-        <button onClick={()=>{ setShareDefaultChannelId(null); setShowShareModal(true); }} style={{
+        <button onClick={()=>guard("share to the community", ()=>{ setShareDefaultChannelId(null); setShowShareModal(true); })} style={{
           display:"flex", alignItems:"center", gap:6,
           background:"transparent", border:`1px solid ${B.borderB}`, color:B.gray1,
           padding:"6px 12px", borderRadius:6, cursor:"pointer",
@@ -1523,18 +1523,19 @@ const addCash = () => {
           padding:"6px 12px", borderRadius:6, cursor:"pointer",
           fontFamily:"'Courier New',monospace", fontSize:13, fontWeight:700,
         }}>+ ADD CASH</button>
-        <button onClick={()=>exportHoldingsCsv(holdings)} disabled={!holdings.length} style={{
+        <button onClick={()=>guard("export your portfolio", ()=>exportHoldingsCsv(holdings))} disabled={!holdings.length} style={{
           background:"transparent", border:`1px solid ${B.borderB}`, color:holdings.length?B.gray1:B.gray3,
           padding:"6px 12px", borderRadius:6, cursor:holdings.length?"pointer":"not-allowed",
           fontFamily:"'Courier New',monospace", fontSize:13, fontWeight:700,
         }}>↓ EXPORT CSV</button>
-        <button onClick={()=>fileInputRef.current?.click()} style={{
+        <button onClick={()=>guard("import a portfolio", ()=>fileInputRef.current?.click())} style={{
           background:"transparent", border:`1px solid ${B.borderB}`, color:B.gray1,
           padding:"6px 12px", borderRadius:6, cursor:"pointer",
           fontFamily:"'Courier New',monospace", fontSize:13, fontWeight:700,
         }}>↑ IMPORT CSV</button>
         <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileSelected} style={{display:"none"}}/>
       </div>
+      {authModal}
     </div>
   );
 
@@ -3328,10 +3329,10 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
                 {page==="search"     && <SearchPage   onAdd={addToPortfolio} portfolio={displayHoldings} onWatchlistChange={loadWatchlist}/>}
                 {page==="portfolio"  && <PortfolioPage holdings={holdings} onRemove={removeFromPortfolio} onUpdate={updateHolding} onSell={sellFromPortfolio} onLoadPortfolio={setHoldings} onAddCash={addToPortfolio} setPage={setPage}/>}
                 {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage}/>}
-                {page==="ai"         && <AIAdvisorPage holdings={displayHoldings} setPage={setPage}/>}
+                {page==="ai"         && <RequireAuth user={user} reason="use the AI Advisor">{()=><AIAdvisorPage holdings={displayHoldings} setPage={setPage}/>}</RequireAuth>}
                 {page==="news"       && <NewsPage holdings={holdings} setPage={setPage}/>}
-                {page==="community"  && <CommunityPage holdings={displayHoldings}/>}
-                {page==="learn"      && <LearnPage/>}
+                {page==="community"  && <RequireAuth user={user} reason="view the Community">{()=><CommunityPage holdings={displayHoldings}/>}</RequireAuth>}
+                {page==="learn"      && <RequireAuth user={user} reason="use the Learn path">{()=><LearnPage/>}</RequireAuth>}
               </div>
               <DisclaimerBar/>
             </div>

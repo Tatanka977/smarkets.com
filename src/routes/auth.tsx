@@ -21,8 +21,21 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const pageFont = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
 
+  // Set right before any sign-in path completes (or, for OAuth, right
+  // before handing off to the provider — sessionStorage survives that
+  // round-trip since it's the same tab/origin). terminal.tsx reads and
+  // clears this on mount to know "a real sign-in just happened this
+  // session" — the only reliable way to trigger investor-profile
+  // onboarding exactly once right after login, now that /terminal no
+  // longer requires auth and a plain visit with an already-persisted
+  // session must NOT re-trigger it.
+  const markJustAuthed = () => {
+    try { sessionStorage.setItem("sm_just_authed", "1"); } catch {}
+  };
+
   const handleGoogle = async () => {
     setErr("");
+    markJustAuthed();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin + "/terminal" },
@@ -32,6 +45,7 @@ function AuthPage() {
 
   const handleApple = async () => {
     setErr("");
+    markJustAuthed();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "apple",
       options: { redirectTo: window.location.origin + "/terminal" },
@@ -58,6 +72,7 @@ function AuthPage() {
         });
         if (error) throw error;
       }
+      markJustAuthed();
       navigate({ to: "/terminal" });
     } catch (e: any) {
       setErr(e.message || "Authentication error");
