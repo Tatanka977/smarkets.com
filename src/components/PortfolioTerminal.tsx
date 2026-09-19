@@ -652,6 +652,14 @@ const RANGES = [
 function PricePerformancePanel({symbol, currency}:any) {
   const [range, setRange] = useState("1mo");
   const [showBenchmark, setShowBenchmark] = useState(true);
+  // "pct" (default, unchanged behavior) normalizes both series to % change
+  // from their first point so a stock and a benchmark are comparable
+  // regardless of price scale. "price" shows the symbol's actual close
+  // price in its native currency — useful on its own, but not meaningful
+  // to overlay against a different instrument's price (AAPL's ~$200 vs
+  // SPY's ~$600 would just look like two unrelated lines), so the
+  // benchmark line/toggle only shows up in "pct" mode.
+  const [viewMode, setViewMode] = useState<"pct"|"price">("pct");
   const [series, setSeries] = useState<any[]>([]);
   const [benchSeries, setBenchSeries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -672,7 +680,9 @@ function PricePerformancePanel({symbol, currency}:any) {
     return () => { alive = false; };
   }, [symbol, range, showBenchmark]);
 
-  // Normalize both series to % change from their own first point, so they're comparable regardless of price scale
+  // Carries both the normalized % change and the raw close price on every
+  // point, so switching viewMode is instant (no refetch) — just a
+  // different dataKey/formatter on the same series.
   const chartData = useMemo(() => {
     if (!series.length) return [];
     const base = series[0].close;
@@ -681,18 +691,37 @@ function PricePerformancePanel({symbol, currency}:any) {
       t: p.t,
       label: new Date(p.t).toLocaleDateString(undefined, range==="1d"||range==="5d" ? {hour:"2-digit",minute:"2-digit"} : {month:"short",day:"numeric"}),
       value: ((p.close - base) / base) * 100,
+      price: p.close,
       benchmark: benchSeries[i] != null && benchBase != null ? ((benchSeries[i].close - benchBase) / benchBase) * 100 : null,
     }));
   }, [series, benchSeries, range]);
+
+  const ccy = ccySymbol(currency);
+  const isPrice = viewMode === "price";
+  const fmtAxis = (v:number) => isPrice ? `${ccy}${v.toFixed(2)}` : `${v.toFixed(0)}%`;
+  const fmtTooltip = (v:any) => isPrice ? `${ccy}${(+v).toFixed(2)}` : `${(+v).toFixed(2)}%`;
 
   return (
     <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:10}}>
         <span style={{fontSize:14,fontWeight:700,color:B.gray2,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>PRICE PERFORMANCE</span>
-        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace",cursor:"pointer"}}>
-          <input type="checkbox" checked={showBenchmark} onChange={e=>setShowBenchmark(e.target.checked)}/>
-          Compare to S&amp;P 500
-        </label>
+        <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+          <div style={{display:"flex",border:`1px solid ${B.border}`,borderRadius:6,overflow:"hidden"}}>
+            {([{id:"pct",l:"% PERFORMANCE"},{id:"price",l:`PRICE (${currency||"USD"})`}] as const).map(m=>(
+              <button key={m.id} onClick={()=>setViewMode(m.id)} style={{
+                background: viewMode===m.id ? B.blue : "transparent", color: viewMode===m.id ? B.white : B.gray2,
+                border:"none", padding:"4px 10px", cursor:"pointer",
+                fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.03em",
+              }}>{m.l}</button>
+            ))}
+          </div>
+          {!isPrice && (
+            <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace",cursor:"pointer"}}>
+              <input type="checkbox" checked={showBenchmark} onChange={e=>setShowBenchmark(e.target.checked)}/>
+              Compare to S&amp;P 500
+            </label>
+          )}
+        </div>
       </div>
 
       <div style={{display:"flex",gap:2,marginBottom:10,flexWrap:"wrap"}}>
@@ -714,11 +743,11 @@ function PricePerformancePanel({symbol, currency}:any) {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <XAxis dataKey="label" tick={{fontSize:11,fill:B.gray3}} minTickGap={30}/>
-              <YAxis tick={{fontSize:11,fill:B.gray3}} tickFormatter={(v)=>`${v.toFixed(0)}%`}/>
-              <Tooltip formatter={(v:any)=>`${v.toFixed(2)}%`} contentStyle={{fontFamily:"'Courier New',monospace",fontSize:13}}/>
-              <ReferenceLine y={0} stroke={B.border}/>
-              <Line type="monotone" dataKey="value" stroke={B.blue} strokeWidth={2} dot={false} name={symbol}/>
-              {showBenchmark && <Line type="monotone" dataKey="benchmark" stroke={B.gray3} strokeWidth={1.5} dot={false} name="S&P 500"/>}
+              <YAxis tick={{fontSize:11,fill:B.gray3}} tickFormatter={fmtAxis} domain={isPrice ? ["auto","auto"] : undefined}/>
+              <Tooltip formatter={(v:any)=>fmtTooltip(v)} contentStyle={{fontFamily:"'Courier New',monospace",fontSize:13}}/>
+              {!isPrice && <ReferenceLine y={0} stroke={B.border}/>}
+              <Line type="monotone" dataKey={isPrice ? "price" : "value"} stroke={B.blue} strokeWidth={2} dot={false} name={symbol}/>
+              {!isPrice && showBenchmark && <Line type="monotone" dataKey="benchmark" stroke={B.gray3} strokeWidth={1.5} dot={false} name="S&P 500"/>}
             </LineChart>
           </ResponsiveContainer>
         )}
