@@ -368,7 +368,7 @@ function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
       <div style={{padding:"16px 14px",display:"flex",alignItems:"center",gap:10,
         borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
         <LogoIcon size={26}/>
-        <span style={{fontSize:13,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
+        <span style={{fontSize:12,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
           letterSpacing:"0.08em",lineHeight:1.3}}>STRATEGIC<br/>MARKETS</span>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"10px 8px",display:"flex",flexDirection:"column",gap:2}}>
@@ -384,7 +384,7 @@ function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
                 background:B.blue,color:B.white,fontSize:11,fontWeight:700,
                 fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"14px",borderRadius:2}}>{badge}</div>}
               {NAV_ICONS[t.id]}
-              <span style={{fontSize:14,fontWeight:700,
+              <span style={{fontSize:12,fontWeight:700,
                 fontFamily:"'Courier New',monospace",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{t.label}</span>
             </>
           );
@@ -413,7 +413,7 @@ function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
               display:"flex",alignItems:"center",gap:8,padding:"9px 12px",
               background:"transparent",border:`1px solid ${B.borderB}`,borderRadius:4,
               color:B.gray2,cursor:"pointer",textAlign:"left",width:"100%",boxSizing:"border-box",
-              fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,letterSpacing:"0.03em",
+              fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,letterSpacing:"0.03em",
             }}>
               ↻ Retake Investor Profile
             </button>
