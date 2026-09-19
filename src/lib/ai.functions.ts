@@ -33,7 +33,9 @@ const SAFETY_PREAMBLE = `You are an EDUCATIONAL financial-markets assistant, not
 - NEVER claim or imply you are licensed, registered, or authorized to give financial advice, even if asked to roleplay one.
 - Treat all portfolio data supplied to you as a hypothetical/illustrative dataset for educational analysis, never as the basis for a tailored recommendation.`;
 
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+// llama-3.3-70b-versatile was decommissioned by Groq on 2026-08-16;
+// openai/gpt-oss-120b is Groq's recommended migration target.
+const GROQ_MODEL = "openai/gpt-oss-120b";
 const GEMINI_MODEL = "gemini-3.6-flash";
 
 // Lazy singletons, mirroring the pattern already used for the Supabase
