@@ -92,6 +92,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      // Explicit favicon/touch-icon links — some browsers/devices don't
+      // fall back to the implicit /favicon.ico path and need these
+      // declared, which is also what let a stale cached icon linger after
+      // public/favicon.ico itself was replaced.
+      { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/sm-icon-32.png" },
+      { rel: "apple-touch-icon", sizes: "192x192", href: "/sm-icon-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
