@@ -366,18 +366,17 @@ function SidebarNav({page,setPage,badge,onRetakeProfile,collapsed,onToggleCollap
   return (
     <div className="sm-sidebarnav" style={{width: collapsed ? 64 : 200,flexShrink:0,background:B.panel2,borderRight:`1px solid ${B.border}`,
       display:"flex",flexDirection:"column",overflow:"hidden",transition:"width 0.15s ease"}}>
-      <div style={{padding: collapsed ? "16px 10px" : "16px 14px",display:"flex",alignItems:"center",
-        justifyContent: collapsed ? "center" : "space-between",gap:10,
+      <div style={{padding:"12px 10px",display:"flex",alignItems:"center",justifyContent:"center",
         borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
-        {collapsed ? (
-          <LogoIcon size={26}/>
-        ) : (
-          <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
-            <LogoIcon size={26}/>
-            <span style={{fontSize:12,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
-              letterSpacing:"0.08em",lineHeight:1.3}}>STRATEGIC<br/>MARKETS</span>
-          </div>
-        )}
+        <button onClick={onToggleCollapse} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} style={{
+          display:"flex",alignItems:"center",justifyContent:"center",
+          background:"transparent",border:`1px solid ${B.borderB}`,borderRadius:6,
+          color:B.gray1,cursor:"pointer",padding:8,width:"100%",
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
       </div>
       <div style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:"10px 8px",display:"flex",flexDirection:"column",gap:2}}>
         {SIDEBAR_GROUPS.map((group,gi)=>(
@@ -429,18 +428,6 @@ function SidebarNav({page,setPage,badge,onRetakeProfile,collapsed,onToggleCollap
           </div>
         )}
       </div>
-      <button onClick={onToggleCollapse} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} style={{
-        display:"flex",alignItems:"center",justifyContent:"center",gap:6,
-        background:"transparent",border:"none",borderTop:`1px solid ${B.border}`,
-        color:B.gray3,cursor:"pointer",padding:"10px",flexShrink:0,
-        fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,letterSpacing:"0.04em",
-      }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round" style={{transform: collapsed ? "rotate(180deg)" : "none"}}>
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-        {!collapsed && "COLLAPSE"}
-      </button>
     </div>
   );
 }
@@ -1345,6 +1332,17 @@ function ImportCsvModal({rows, onCancel, onConfirm, busy}:any) {
   );
 }
 
+// Fixed per-column widths for the Holdings table below, shared by every
+// category group's <table> (Stocks, ETFs, Crypto, ...). Each category
+// renders its own separate <table> element, so with the default
+// table-layout:auto each one auto-sizes its columns from its own rows'
+// content only — a wider ticker/name in one category shifts that
+// table's columns without affecting the others, so column boundaries
+// stop lining up down the page. table-layout:fixed + an explicit
+// <colgroup> using these exact widths on every instance makes column
+// sizing content-independent, so they always align.
+const HOLDINGS_COL_WIDTHS = [90, 190, 80, 70, 70, 90, 90, 70, 80, 70, 90, 40];
+
 function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddCash,setPage}:any) {
   const isMobile = useIsMobile();
 
@@ -1898,7 +1896,11 @@ const addCash = () => {
               {!isCollapsed && (isMobile ? (
                 <div>{g.holdings.map(renderHoldingCard)}</div>
               ) : (
-                <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"'Courier New',monospace",fontSize:14,minWidth:640}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"'Courier New',monospace",fontSize:14,
+                  minWidth:HOLDINGS_COL_WIDTHS.reduce((a,b)=>a+b,0),tableLayout:"fixed"}}>
+                  <colgroup>
+                    {HOLDINGS_COL_WIDTHS.map((w,i)=><col key={i} style={{width:w}}/>)}
+                  </colgroup>
                   <thead>
                     <tr style={{color:B.gray3,fontSize:12}}>
                       <th style={{textAlign:"left",padding:"6px 8px"}}>TICKER</th>

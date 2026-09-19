@@ -260,8 +260,13 @@
   --sm-letter-spacing: -0.01em;
 }
 
-/* Apply the shared font family everywhere, in both themes. */
-body, input, button, textarea, select, div, span, a, p, h1, h2, h3, h4, h5, h6 {
+/* Apply the shared font family everywhere, in both themes. Includes
+ * table/list tags (table, td, th, label, li, ...) — without them, inline
+ * fontFamily:"'Courier New', monospace" on those elements (holdings
+ * tables, checkboxes labels, etc.) slipped through this override and
+ * rendered in a visibly different font from the rest of the page. */
+body, input, button, textarea, select, div, span, a, p, h1, h2, h3, h4, h5, h6,
+table, thead, tbody, tfoot, tr, td, th, label, ul, ol, li, strong, em, small, code, pre {
   font-family: var(--sm-font) !important;
   letter-spacing: var(--sm-letter-spacing) !important;
 }
