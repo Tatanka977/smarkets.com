@@ -22,6 +22,11 @@ export const B = {
   gray2:   "var(--sm-gray2)",
   gray3:   "var(--sm-gray3)",
   gray4:   "var(--sm-gray4)",
+  blueTint:   "var(--sm-blue-tint)",
+  cyanTint:   "var(--sm-cyan-tint)",
+  greenTint:  "var(--sm-green-tint)",
+  redTint:    "var(--sm-red-tint)",
+  yellowTint: "var(--sm-yellow-tint)",
 };
 
 // Qualitative chart palette (pie/bar segments, per-holding series colors).
@@ -340,9 +345,13 @@ export function computeCagr(startValue: number, endValue: number, days: number) 
   return (Math.pow(endValue / startValue, 1 / years) - 1) * 100;
 }
 
+// Severity badge styling — reuses the shared --sm-* accent tokens (and
+// their pre-tinted dark backgrounds) instead of its own hardcoded neon
+// hexes (#FF3333/#00FFFF/#00FF66/etc, previously), so it stays in sync
+// with any future palette retint instead of drifting back to neon.
 export const SEV_STYLE:any = {
-  HIGH: { border: "#FF3333", bg: "rgba(255,51,51,0.08)", text: "#FF3333", icon: "⚠", label: "HIGH RISK" },
-  MED:  { border: "#FFA500", bg: "rgba(255,165,0,0.08)", text: "#FFA500", icon: "◆", label: "MEDIUM" },
-  LOW:  { border: "#00FFFF", bg: "rgba(0,255,255,0.06)", text: "#00FFFF", icon: "ℹ", label: "INFO" },
-  OK:   { border: "#00FF66", bg: "rgba(0,255,102,0.06)", text: "#00FF66", icon: "✓", label: "OK" },
+  HIGH: { border: "var(--sm-red)",    bg: "var(--sm-red-tint)",    text: "var(--sm-red)",    icon: "⚠", label: "HIGH RISK" },
+  MED:  { border: "var(--sm-yellow)", bg: "var(--sm-yellow-tint)", text: "var(--sm-yellow)", icon: "◆", label: "MEDIUM" },
+  LOW:  { border: "var(--sm-cyan)",   bg: "var(--sm-cyan-tint)",   text: "var(--sm-cyan)",   icon: "ℹ", label: "INFO" },
+  OK:   { border: "var(--sm-green)",  bg: "var(--sm-green-tint)",  text: "var(--sm-green)",  icon: "✓", label: "OK" },
 };

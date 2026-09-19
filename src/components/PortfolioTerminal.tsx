@@ -2959,7 +2959,7 @@ function highlightKeyword(text:string, tokens:string[]) {
   const parts = text.split(re);
   return parts.map((p,i) =>
     re.test(p)
-      ? <mark key={i} style={{background:"#FFFF0033",color:B.yellow,padding:"0 2px"}}>{p}</mark>
+      ? <mark key={i} style={{background:B.yellowTint,color:B.yellow,padding:"0 2px"}}>{p}</mark>
       : <span key={i}>{p}</span>
   );
 }
