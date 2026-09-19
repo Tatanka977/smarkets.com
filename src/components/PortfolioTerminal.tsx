@@ -2923,21 +2923,27 @@ Max 180 words. Respond in ENGLISH.`;
   };
 
   // Full-width hero: image left / text right on desktop, stacked on
-  // mobile. No `n.image` → the image block is skipped entirely (not
-  // replaced by a placeholder) and the text side takes the full width.
+  // mobile. The image box always renders (no empty gap) — it shows the
+  // real article image when there is one, and falls back to the site's
+  // own logo (never a gap, and never an invented photo) when `n.image`
+  // is missing or the image fails to load at runtime. The logo sits
+  // underneath the <img>; on a load error the <img> just hides itself,
+  // revealing the logo already behind it — no extra state needed.
   // No `n.summary` → the excerpt line is skipped rather than invented.
   const renderHero = (n:any) => (
     <a href={n.url && n.url !== "#" ? n.url : undefined} target="_blank" rel="noreferrer noopener" data-testid="news-hero-item"
        style={{display:"flex",flexDirection: isMobile ? "column" : "row",gap:16,textDecoration:"none",
                padding:16,borderRadius:12,background:B.panel,border:`1px solid ${B.border}`,marginBottom:20,
                cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
-      {n.image && (
-        <div style={{flex: isMobile ? "none" : "0 0 42%",width: isMobile ? "100%" : undefined,
-                     aspectRatio:"16/9",borderRadius:10,overflow:"hidden",background:B.panel2,flexShrink:0}}>
-          <img src={n.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
+      <div style={{flex: isMobile ? "none" : "0 0 42%",width: isMobile ? "100%" : undefined,
+                   aspectRatio:"16/9",borderRadius:10,overflow:"hidden",background:B.panel2,flexShrink:0,
+                   position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <LogoIcon size={64}/>
+        {n.image && (
+          <img src={n.image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}
             onError={(e:any)=>{ e.currentTarget.style.display="none"; }}/>
-        </div>
-      )}
+        )}
+      </div>
       <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",justifyContent:"center"}}>
         <div style={{fontSize: isMobile ? 18 : 22,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,lineHeight:1.25,marginBottom:8}}>
           {highlightKeyword(n.headline, kwTokens)}
@@ -2953,17 +2959,19 @@ Max 180 words. Respond in ENGLISH.`;
     </a>
   );
 
-  // The one image-led article at the top of each column. Same "skip, don't
-  // placeholder" rule as the hero if the article has no image.
+  // The one image-led article at the top of each column. Same
+  // always-render-the-box, logo-fallback rule as the hero above.
   const renderColumnFeatured = (n:any) => (
     <a href={n.url && n.url !== "#" ? n.url : undefined} target="_blank" rel="noreferrer noopener" data-testid="news-column-featured"
        style={{display:"block",textDecoration:"none",marginBottom:10,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
-      {n.image && (
-        <div style={{aspectRatio:"16/9",borderRadius:8,overflow:"hidden",background:B.panel2,marginBottom:8}}>
-          <img src={n.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
+      <div style={{aspectRatio:"16/9",borderRadius:8,overflow:"hidden",background:B.panel2,marginBottom:8,
+                   position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <LogoIcon size={48}/>
+        {n.image && (
+          <img src={n.image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}
             onError={(e:any)=>{ e.currentTarget.style.display="none"; }}/>
-        </div>
-      )}
+        )}
+      </div>
       <div style={{fontSize:14,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,lineHeight:1.3}}>
         {highlightKeyword(n.headline, kwTokens)}
       </div>
@@ -2990,7 +2998,11 @@ Max 180 words. Respond in ENGLISH.`;
     if (!col.items.length) return null;
     const [featured, ...rest] = col.items;
     return (
-      <div style={{flex:1,minWidth:0}}>
+      // maxWidth keeps a column a sane width even when it's the only one
+      // of the three with data — without it, flex:1 alone stretches a
+      // lone column to the full row (~1000px+), which turns the featured
+      // item's 16:9 image box into a huge, mostly-empty-looking rectangle.
+      <div style={{flex:"1 1 0",minWidth:0,maxWidth: isMobile ? undefined : 420}}>
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${B.border}`}}>
           <span style={{fontSize:13,fontWeight:700,color:B.gray1,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>{col.label}</span>
           <span style={{color:B.blue,fontSize:14,fontWeight:700}}>›</span>
