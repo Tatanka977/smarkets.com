@@ -2575,6 +2575,7 @@ function AIAdvisorPage({holdings,setPage}:any) {
 }
 
 function NewsPage({holdings,setPage}:any) {
+  const isMobile = useIsMobile();
   const [tab, setTab] = usePersistentState<"market"|"holdings"|"symbol">("news_tab", "market");
   const [marketCat, setMarketCat] = usePersistentState<string>("news_marketCat", "all");
   const [marketNews, setMarketNews] = useState<any[]>([]);
@@ -2668,7 +2669,10 @@ function NewsPage({holdings,setPage}:any) {
   }, [daysForFetch]);
 
   useEffect(() => { loadMarket(marketCat); }, [marketCat, loadMarket]);
-  useEffect(() => { if (tab === "holdings") loadHoldings(); }, [tab, loadHoldings]);
+  // Loaded unconditionally (not just when tab==="holdings") — the Market
+  // tab's magazine layout below also has a "Portfolio" column that reuses
+  // this same data, so it needs to be ready without switching tabs first.
+  useEffect(() => { loadHoldings(); }, [loadHoldings]);
 
   // Re-fetch symbol news when date-range changes (so we ask Finnhub for the new window)
   useEffect(() => {
@@ -2733,30 +2737,98 @@ function NewsPage({holdings,setPage}:any) {
 
   const list = filteredList;
 
-  // Market tab's magazine-style front page: a hero row of the most recent
-  // headlines (image-bearing ones preferred, so the hero doesn't show a
-  // placeholder box), then everything else grouped into sections by topic
-  // (the category each article was fetched/tagged under — General, Forex,
-  // Crypto, Merger). Computed unconditionally (cheap) so hook order stays
-  // stable even though only the "market" tab renders it.
-  const HERO_COUNT = 3;
-  const marketHero = useMemo(() => {
-    const withImage = list.filter((n:any) => n.image);
-    const rest = list.filter((n:any) => !n.image);
-    return [...withImage, ...rest].slice(0, HERO_COUNT);
-  }, [list]);
+  // ── Market tab: Yahoo-Finance-style magazine front page ──────────────────
+  // One hero (most recent headline, image-bearing preferred), then three
+  // columns — Top Stories (general), Markets (forex/crypto/merger), and
+  // Portfolio (the same Marketaux/Finnhub holdings feed the "MY HOLDINGS"
+  // tab uses, via holdNews/loadHoldings above) — each one image-led article
+  // plus a handful of text-only headlines, and a text-only "Popular"
+  // sidebar from whatever's left over. Every section pulls from real,
+  // already-fetched data; nothing here invents an image, a summary, or a
+  // ticker's price move that the underlying article/quote didn't supply.
+  // Single memo (not several sharing mutable state) so a section's item
+  // pool and its "don't repeat an article already used earlier" exclusion
+  // are always computed together, in one pass, from the same snapshot of
+  // `list`/`holdNews` — never at risk of one part memoizing stale while
+  // another recomputes.
+  const magazine = useMemo(() => {
+    const usedIds = new Set<any>();
+    const takeUnused = (pool:any[], n:number) => {
+      const out:any[] = [];
+      for (const item of pool) {
+        if (out.length >= n) break;
+        if (usedIds.has(item.id)) continue;
+        out.push(item);
+        usedIds.add(item.id);
+      }
+      return out;
+    };
 
-  const marketGroups = useMemo(() => {
-    const heroIds = new Set(marketHero.map((n:any) => n.id));
-    const map = new Map<string, any[]>();
-    for (const n of list) {
-      if (heroIds.has(n.id)) continue;
-      const key = String(n.category || "general").toUpperCase();
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(n);
-    }
-    return Array.from(map.entries());
-  }, [list, marketHero]);
+    const withImage = list.filter((n:any) => n.image);
+    const withoutImage = list.filter((n:any) => !n.image);
+    const hero = takeUnused([...withImage, ...withoutImage], 1)[0] || null;
+
+    const generalPool = list.filter((n:any) => String(n.category||"general").toLowerCase() === "general");
+    const marketsPool = list.filter((n:any) => ["forex","crypto","merger"].includes(String(n.category||"").toLowerCase()));
+
+    const topStoriesItems = takeUnused(generalPool, 5);
+    const marketsItems = takeUnused(marketsPool, 5);
+
+    const hasPortfolioNews = holdings.length > 0 && holdNews.length > 0;
+    const portfolioItems = hasPortfolioNews
+      ? holdNews.slice(0, 5)
+      : takeUnused(list, 5); // no holdings/news yet — fall back to more general headlines instead of an empty column
+
+    const popularItems = takeUnused(list, 8);
+
+    return {
+      hero,
+      topStories: { label: "TOP STORIES", items: topStoriesItems },
+      markets: { label: "MARKETS", items: marketsItems },
+      portfolio: { label: hasPortfolioNews ? "PORTFOLIO" : "LATEST", items: portfolioItems },
+      popular: popularItems,
+    };
+  }, [list, holdNews, holdings.length]);
+
+  // Real day-change % for every ticker referenced by a visible article's
+  // `related` field, fetched once per distinct ticker set via the same
+  // batchRefresh() the rest of the terminal uses for live quotes — never
+  // a guessed/static number. Badge is simply omitted for an article whose
+  // ticker isn't resolvable (unknown symbol, quote fetch failed, etc).
+  const [tickerChg, setTickerChg] = useState<Record<string, number|null>>({});
+  const magazineTickersKey = useMemo(() => {
+    const all = [magazine.hero, ...magazine.topStories.items, ...magazine.markets.items,
+      ...magazine.portfolio.items, ...magazine.popular].filter(Boolean);
+    const syms = all.map((n:any) => String(n.related||n._sym||"").split(",")[0].trim().toUpperCase()).filter(Boolean);
+    return Array.from(new Set(syms)).sort().join(",");
+  }, [magazine]);
+
+  useEffect(() => {
+    if (!magazineTickersKey) { setTickerChg({}); return; }
+    let alive = true;
+    batchRefresh(magazineTickersKey.split(",")).then((quotes:any[]) => {
+      if (!alive) return;
+      const map: Record<string, number|null> = {};
+      (quotes||[]).forEach(q => { if (q?.symbol) map[q.symbol.toUpperCase()] = q.dayChangePct ?? null; });
+      setTickerChg(map);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [magazineTickersKey]);
+
+  const tickerBadgeFor = (n:any) => {
+    const sym = String(n.related||n._sym||"").split(",")[0].trim().toUpperCase();
+    if (!sym) return null;
+    const chg = tickerChg[sym];
+    if (chg == null) return null;
+    return { sym, chg };
+  };
+
+  const timeAgo = (datetimeSec:number) => {
+    const diffSec = Math.max(0, Math.floor(Date.now()/1000) - (datetimeSec||0));
+    if (diffSec < 3600) return `${Math.max(1, Math.floor(diffSec/60))}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec/3600)}h ago`;
+    return `${Math.floor(diffSec/86400)}d ago`;
+  };
 
   const runSentiment = async () => {
     if (!list.length) return;
@@ -2821,58 +2893,121 @@ Max 180 words. Respond in ENGLISH.`;
     </div>
   );
 
-  // Large image-forward card for the Market tab's hero row. Missing image
-  // (Finnhub doesn't always supply one) falls back to a plain icon block —
-  // never a broken-image icon or an invented stock photo.
-  const renderHeroCard = (n:any, i:number) => (
-    <a key={"hero_" + (n.id ?? i)} href={n.url && n.url !== "#" ? n.url : undefined}
-       target="_blank" rel="noreferrer noopener" data-testid="news-hero-item"
-       style={{display:"flex",flexDirection:"column",textDecoration:"none",borderRadius:12,overflow:"hidden",
-               background:B.panel,border:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
-      <div style={{aspectRatio:"16/9",background:B.panel2,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-        {n.image ? (
+  // ── Magazine layout building blocks (Market tab only) ─────────────────
+  // Real ticker badge (source/day-change come from tickerChg/batchRefresh
+  // above) — renders nothing at all when the article has no resolvable
+  // ticker or the quote lookup didn't return one, rather than a fake value.
+  const renderTickerBadge = (n:any) => {
+    const b = tickerBadgeFor(n);
+    if (!b) return null;
+    return (
+      <span style={{fontSize:11,fontWeight:700,fontFamily:"'Courier New',monospace",color:pCol(b.chg),
+        display:"inline-flex",alignItems:"center",gap:2,whiteSpace:"nowrap"}}>
+        {b.sym} {b.chg>=0?"▲":"▼"}{Math.abs(b.chg).toFixed(2)}%
+      </span>
+    );
+  };
+
+  // source · relative time · ticker badge — the one meta line every
+  // magazine item (hero, column-featured, text-only, sidebar) shares.
+  const renderArticleMeta = (n:any) => {
+    const badge = renderTickerBadge(n);
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",marginTop:4}}>
+        {n.source && <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{n.source}</span>}
+        <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace"}}>· {timeAgo(n.datetime)}</span>
+        {badge && <span style={{fontSize:11,color:B.gray4}}>·</span>}
+        {badge}
+      </div>
+    );
+  };
+
+  // Full-width hero: image left / text right on desktop, stacked on
+  // mobile. No `n.image` → the image block is skipped entirely (not
+  // replaced by a placeholder) and the text side takes the full width.
+  // No `n.summary` → the excerpt line is skipped rather than invented.
+  const renderHero = (n:any) => (
+    <a href={n.url && n.url !== "#" ? n.url : undefined} target="_blank" rel="noreferrer noopener" data-testid="news-hero-item"
+       style={{display:"flex",flexDirection: isMobile ? "column" : "row",gap:16,textDecoration:"none",
+               padding:16,borderRadius:12,background:B.panel,border:`1px solid ${B.border}`,marginBottom:20,
+               cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
+      {n.image && (
+        <div style={{flex: isMobile ? "none" : "0 0 42%",width: isMobile ? "100%" : undefined,
+                     aspectRatio:"16/9",borderRadius:10,overflow:"hidden",background:B.panel2,flexShrink:0}}>
           <img src={n.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
             onError={(e:any)=>{ e.currentTarget.style.display="none"; }}/>
-        ) : (
-          <span style={{fontSize:28,color:B.gray3}}>📰</span>
-        )}
-      </div>
-      <div style={{padding:"12px 14px"}}>
-        {renderMetaRow(n)}
-        <div style={{fontSize:16,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,lineHeight:1.3}}>
+        </div>
+      )}
+      <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+        <div style={{fontSize: isMobile ? 18 : 22,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,lineHeight:1.25,marginBottom:8}}>
           {highlightKeyword(n.headline, kwTokens)}
         </div>
+        {n.summary && (
+          <div style={{fontSize:14,color:B.gray2,fontFamily:"'Courier New',monospace",lineHeight:1.5,marginBottom:8,
+                       overflow:"hidden",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical"}}>
+            {highlightKeyword(n.summary, kwTokens)}
+          </div>
+        )}
+        {renderArticleMeta(n)}
       </div>
     </a>
   );
 
-  // Compact thumbnail-left row used in the per-topic grids below the hero —
-  // smaller headline, no summary, so a whole section of 6-10 stays scannable.
-  const renderCompactCard = (n:any, i:number) => (
-    <a key={"cmp_" + (n.id ?? i)} href={n.url && n.url !== "#" ? n.url : undefined}
-       target="_blank" rel="noreferrer noopener" data-testid="news-compact-item"
-       style={{display:"flex",gap:10,textDecoration:"none",padding:"8px",borderRadius:10,
-               background:B.panel,border:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
-      <div style={{width:64,height:64,flexShrink:0,borderRadius:8,background:B.panel2,
-                   display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-        {n.image ? (
+  // The one image-led article at the top of each column. Same "skip, don't
+  // placeholder" rule as the hero if the article has no image.
+  const renderColumnFeatured = (n:any) => (
+    <a href={n.url && n.url !== "#" ? n.url : undefined} target="_blank" rel="noreferrer noopener" data-testid="news-column-featured"
+       style={{display:"block",textDecoration:"none",marginBottom:10,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
+      {n.image && (
+        <div style={{aspectRatio:"16/9",borderRadius:8,overflow:"hidden",background:B.panel2,marginBottom:8}}>
           <img src={n.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
             onError={(e:any)=>{ e.currentTarget.style.display="none"; }}/>
-        ) : (
-          <span style={{fontSize:16,color:B.gray3}}>📰</span>
-        )}
-      </div>
-      <div style={{minWidth:0,flex:1}}>
-        <div style={{fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,lineHeight:1.3,
-                     overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
-          {highlightKeyword(n.headline, kwTokens)}
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4,flexWrap:"wrap"}}>
-          {n._sym && <span style={{fontSize:11,color:B.blue,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{n._sym}</span>}
-          <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{formatNewsDate(n)}</span>
-        </div>
+      )}
+      <div style={{fontSize:14,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,lineHeight:1.3}}>
+        {highlightKeyword(n.headline, kwTokens)}
       </div>
+      {renderArticleMeta(n)}
     </a>
+  );
+
+  // Text-only row — used for the rest of each column (never shows an
+  // image even if the article has one, by design/density) and for the
+  // Popular sidebar.
+  const renderTextOnlyItem = (n:any, i:number) => (
+    <a key={"txt_" + (n.id ?? i)} href={n.url && n.url !== "#" ? n.url : undefined}
+       target="_blank" rel="noreferrer noopener" data-testid="news-text-item"
+       style={{display:"block",textDecoration:"none",padding:"8px 0",borderTop:`1px solid ${B.border}`,
+               cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
+      <div style={{fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,lineHeight:1.35}}>
+        {highlightKeyword(n.headline, kwTokens)}
+      </div>
+      {renderArticleMeta(n)}
+    </a>
+  );
+
+  const renderColumn = (col:{label:string, items:any[]}) => {
+    if (!col.items.length) return null;
+    const [featured, ...rest] = col.items;
+    return (
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${B.border}`}}>
+          <span style={{fontSize:13,fontWeight:700,color:B.gray1,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>{col.label}</span>
+          <span style={{color:B.blue,fontSize:14,fontWeight:700}}>›</span>
+        </div>
+        {renderColumnFeatured(featured)}
+        <div>{rest.slice(0,4).map(renderTextOnlyItem)}</div>
+      </div>
+    );
+  };
+
+  const renderPopularSidebar = (items:any[]) => (
+    <div style={{width: isMobile ? "100%" : 260,flexShrink:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${B.border}`}}>
+        <span style={{fontSize:13,fontWeight:700,color:B.gray1,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>POPULAR</span>
+      </div>
+      <div>{items.map(renderTextOnlyItem)}</div>
+    </div>
   );
 
   return (
@@ -3081,23 +3216,17 @@ Max 180 words. Respond in ENGLISH.`;
         )}
 
         {tab === "market" && list.length > 0 ? (
-          <>
-            {marketHero.length > 0 && (
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:10,marginBottom:16}}>
-                {marketHero.map(renderHeroCard)}
+          <div>
+            {magazine.hero && renderHero(magazine.hero)}
+            <div style={{display:"flex",flexDirection: isMobile ? "column" : "row",gap:24}}>
+              <div style={{display:"flex",flexDirection: isMobile ? "column" : "row",gap:24,flex:1,minWidth:0}}>
+                {renderColumn(magazine.topStories)}
+                {renderColumn(magazine.markets)}
+                {renderColumn(magazine.portfolio)}
               </div>
-            )}
-            {marketGroups.map(([cat, items]) => (
-              <div key={cat} style={{marginBottom:16}}>
-                <div style={{fontSize:13,fontWeight:700,color:B.gray2,letterSpacing:"0.06em",marginBottom:8,fontFamily:"'Courier New',monospace"}}>
-                  {cat}
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:8}}>
-                  {items.map(renderCompactCard)}
-                </div>
-              </div>
-            ))}
-          </>
+              {magazine.popular.length > 0 && renderPopularSidebar(magazine.popular)}
+            </div>
+          </div>
         ) : (
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {list.map((n:any, i:number) => (
