@@ -89,8 +89,40 @@ export const fetchMarketNews = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const cat = data.category || "general";
     const res = await fh<NewsItem[]>(`/news?category=${encodeURIComponent(cat)}`);
-    if (res && res.length) return res.slice(0, 30);
+    // Finnhub's /news endpoint already returns up to ~100+ recent items per
+    // category — this used to cut that down to 30 for no real reason, which
+    // is why the Market tab looked so thin. Keep a cap (not "all of them")
+    // so a giant Finnhub payload can't bloat one page load indefinitely.
+    if (res && res.length) return res.slice(0, 100);
     return FALLBACK_MARKET_NEWS;
+  });
+
+const MARKET_CATEGORIES = ["general", "forex", "crypto", "merger"] as const;
+
+// "ALL" view for the Market tab's Yahoo-Finance-style front page — merges
+// every category into one pool so the page can show a hero row plus
+// sections grouped by topic, instead of forcing a single category choice.
+export const fetchAllMarketNews = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const lists = await Promise.all(MARKET_CATEGORIES.map(cat => fh<NewsItem[]>(`/news?category=${cat}`)));
+    const seen = new Set<string | number>();
+    const merged: NewsItem[] = [];
+    MARKET_CATEGORIES.forEach((cat, i) => {
+      const list = lists[i];
+      if (!list) return;
+      for (const n of list) {
+        if (n.id != null && seen.has(n.id)) continue;
+        if (n.id != null) seen.add(n.id);
+        // Finnhub's own `category` field on general-news items is often
+        // absent or inconsistent; falling back to the category we
+        // requested it under guarantees every article groups into a
+        // section on the front page.
+        merged.push({ ...n, category: n.category || cat });
+      }
+    });
+    if (!merged.length) return FALLBACK_MARKET_NEWS;
+    merged.sort((a, b) => (b.datetime || 0) - (a.datetime || 0));
+    return merged.slice(0, 160);
   });
 
 export const fetchCompanyNews = createServerFn({ method: "GET" })

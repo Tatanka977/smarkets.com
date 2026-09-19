@@ -28,6 +28,7 @@ import {
 import { aiChatAsUser } from "@/lib/ai.functions";
 import {
   fetchMarketNews as srvMarketNews,
+  fetchAllMarketNews as srvAllMarketNews,
   fetchCompanyNews as srvCompanyNews,
   fetchPortfolioNews as srvPortfolioNews,
 } from "@/lib/news.functions";
@@ -56,6 +57,7 @@ const batchRefresh = (symbols) => srvBatch({ data: { symbols } });
 const fetchMarketStatus = (exchanges?:string[]) => srvMarketStatus({ data: { exchanges } });
 const fetchHistoricalPrice = (symbol, date) => srvHistorical({ data: { symbol, date } });
 const fetchMarketNews = (category) => srvMarketNews({ data: { category } });
+const fetchAllMarketNews = () => srvAllMarketNews();
 const fetchCompanyNews = (symbol, days=14) => srvCompanyNews({ data: { symbol, days } });
 const fetchPortfolioNews = (tickers:string[]) => srvPortfolioNews({ data: { tickers } });
 
@@ -2545,7 +2547,7 @@ function AIAdvisorPage({holdings,setPage}:any) {
 
 function NewsPage({holdings,setPage}:any) {
   const [tab, setTab] = usePersistentState<"market"|"holdings"|"symbol">("news_tab", "market");
-  const [marketCat, setMarketCat] = usePersistentState<string>("news_marketCat", "general");
+  const [marketCat, setMarketCat] = usePersistentState<string>("news_marketCat", "all");
   const [marketNews, setMarketNews] = useState<any[]>([]);
   const [holdNews, setHoldNews] = useState<any[]>([]);
   const [symInput, setSymInput] = usePersistentState<string>("news_symInput", "");
@@ -2567,7 +2569,7 @@ function NewsPage({holdings,setPage}:any) {
   const loadMarket = useCallback(async (cat: string) => {
     setLoading(true);
     try {
-      const data = await fetchMarketNews(cat);
+      const data = cat === "all" ? await fetchAllMarketNews() : await fetchMarketNews(cat);
       setMarketNews(data || []);
     } catch (e:any) {
       console.error(e);
@@ -2702,6 +2704,31 @@ function NewsPage({holdings,setPage}:any) {
 
   const list = filteredList;
 
+  // Market tab's magazine-style front page: a hero row of the most recent
+  // headlines (image-bearing ones preferred, so the hero doesn't show a
+  // placeholder box), then everything else grouped into sections by topic
+  // (the category each article was fetched/tagged under — General, Forex,
+  // Crypto, Merger). Computed unconditionally (cheap) so hook order stays
+  // stable even though only the "market" tab renders it.
+  const HERO_COUNT = 3;
+  const marketHero = useMemo(() => {
+    const withImage = list.filter((n:any) => n.image);
+    const rest = list.filter((n:any) => !n.image);
+    return [...withImage, ...rest].slice(0, HERO_COUNT);
+  }, [list]);
+
+  const marketGroups = useMemo(() => {
+    const heroIds = new Set(marketHero.map((n:any) => n.id));
+    const map = new Map<string, any[]>();
+    for (const n of list) {
+      if (heroIds.has(n.id)) continue;
+      const key = String(n.category || "general").toUpperCase();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(n);
+    }
+    return Array.from(map.entries());
+  }, [list, marketHero]);
+
   const runSentiment = async () => {
     if (!list.length) return;
     setSentBusy(true); setSentiment("");
@@ -2737,6 +2764,88 @@ Max 180 words. Respond in ENGLISH.`;
   };
   const selectStyle:any = {...inputStyle, color:B.yellow, cursor:"pointer"};
 
+  const kwTokens = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const formatNewsDate = (n:any) => {
+    const dt = new Date((n.datetime || 0) * 1000);
+    return dt.toLocaleString("en-US", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false });
+  };
+
+  // Shared badge row (ticker, sentiment dot, date, source, topic tag) — one
+  // definition reused by the plain list, the hero cards and the compact
+  // per-topic grid, so all three stay visually consistent.
+  const renderMetaRow = (n:any) => (
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+      {n._sym && <span style={{fontSize:14,color:B.blue,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{n._sym}</span>}
+      {n.sentimentScore != null && (
+        <span title={`Marketaux sentiment: ${n.sentimentScore.toFixed(2)}`}
+          style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,
+            color: n.sentimentScore > 0.1 ? B.green : n.sentimentScore < -0.1 ? B.red : B.gray3,
+            fontFamily:"'Courier New',monospace"}}>
+          <span style={{width:8,height:8,borderRadius:"50%",display:"inline-block",
+            background: n.sentimentScore > 0.1 ? B.green : n.sentimentScore < -0.1 ? B.red : B.gray3}}/>
+          {n.sentimentScore.toFixed(2)}
+        </span>
+      )}
+      <span style={{fontSize:12,color:B.cyan,fontFamily:"'Courier New',monospace"}}>{formatNewsDate(n)}</span>
+      {n.source && <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>· {n.source}</span>}
+      {n.category && <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",border:`1px solid ${B.gray4}`,borderRadius:10,padding:"1px 8px",textTransform:"uppercase",marginLeft:"auto"}}>{n.category}</span>}
+    </div>
+  );
+
+  // Large image-forward card for the Market tab's hero row. Missing image
+  // (Finnhub doesn't always supply one) falls back to a plain icon block —
+  // never a broken-image icon or an invented stock photo.
+  const renderHeroCard = (n:any, i:number) => (
+    <a key={"hero_" + (n.id ?? i)} href={n.url && n.url !== "#" ? n.url : undefined}
+       target="_blank" rel="noreferrer noopener" data-testid="news-hero-item"
+       style={{display:"flex",flexDirection:"column",textDecoration:"none",borderRadius:12,overflow:"hidden",
+               background:B.panel,border:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
+      <div style={{aspectRatio:"16/9",background:B.panel2,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+        {n.image ? (
+          <img src={n.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
+            onError={(e:any)=>{ e.currentTarget.style.display="none"; }}/>
+        ) : (
+          <span style={{fontSize:28,color:B.gray3}}>📰</span>
+        )}
+      </div>
+      <div style={{padding:"12px 14px"}}>
+        {renderMetaRow(n)}
+        <div style={{fontSize:16,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,lineHeight:1.3}}>
+          {highlightKeyword(n.headline, kwTokens)}
+        </div>
+      </div>
+    </a>
+  );
+
+  // Compact thumbnail-left row used in the per-topic grids below the hero —
+  // smaller headline, no summary, so a whole section of 6-10 stays scannable.
+  const renderCompactCard = (n:any, i:number) => (
+    <a key={"cmp_" + (n.id ?? i)} href={n.url && n.url !== "#" ? n.url : undefined}
+       target="_blank" rel="noreferrer noopener" data-testid="news-compact-item"
+       style={{display:"flex",gap:10,textDecoration:"none",padding:"8px",borderRadius:10,
+               background:B.panel,border:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
+      <div style={{width:64,height:64,flexShrink:0,borderRadius:8,background:B.panel2,
+                   display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+        {n.image ? (
+          <img src={n.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
+            onError={(e:any)=>{ e.currentTarget.style.display="none"; }}/>
+        ) : (
+          <span style={{fontSize:16,color:B.gray3}}>📰</span>
+        )}
+      </div>
+      <div style={{minWidth:0,flex:1}}>
+        <div style={{fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,lineHeight:1.3,
+                     overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+          {highlightKeyword(n.headline, kwTokens)}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4,flexWrap:"wrap"}}>
+          {n._sym && <span style={{fontSize:11,color:B.blue,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{n._sym}</span>}
+          <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{formatNewsDate(n)}</span>
+        </div>
+      </div>
+    </a>
+  );
+
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{display:"flex",gap:2,padding:"3px 4px",borderBottom:`1px solid ${B.border}`,background:B.panel2,flexShrink:0}}>
@@ -2751,7 +2860,7 @@ Max 180 words. Respond in ENGLISH.`;
 
       {tab === "market" && (
         <div style={{display:"flex",gap:6,padding:"8px 10px",overflowX:"auto",borderBottom:`1px solid ${B.border}`,background:B.panel}}>
-          {["general","forex","crypto","merger"].map(c => (
+          {["all","general","forex","crypto","merger"].map(c => (
             <button key={c} onClick={()=>setMarketCat(c)} style={{
               background: marketCat===c ? B.blue : B.panel2, border:`1px solid ${marketCat===c?B.blue:B.borderB}`,
               color: marketCat===c ? B.white : B.gray1, padding:"5px 14px", cursor:"pointer", borderRadius:20,
@@ -2942,32 +3051,32 @@ Max 180 words. Respond in ENGLISH.`;
           </div>
         )}
 
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {list.map((n:any, i:number) => {
-            const dt = new Date((n.datetime || 0) * 1000);
-            const dateStr = dt.toLocaleString("en-US", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false });
-            const kwTokens = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean);
-            return (
+        {tab === "market" && list.length > 0 ? (
+          <>
+            {marketHero.length > 0 && (
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:10,marginBottom:16}}>
+                {marketHero.map(renderHeroCard)}
+              </div>
+            )}
+            {marketGroups.map(([cat, items]) => (
+              <div key={cat} style={{marginBottom:16}}>
+                <div style={{fontSize:13,fontWeight:700,color:B.gray2,letterSpacing:"0.06em",marginBottom:8,fontFamily:"'Courier New',monospace"}}>
+                  {cat}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:8}}>
+                  {items.map(renderCompactCard)}
+                </div>
+              </div>
+            ))}
+          </>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {list.map((n:any, i:number) => (
               <a key={(n.id || i) + "_" + i} href={n.url && n.url !== "#" ? n.url : undefined}
                  target="_blank" rel="noreferrer noopener" data-testid="news-headline-item"
                  style={{display:"block",textDecoration:"none",padding:"12px 14px",borderRadius:12,
                          background:B.panel,border:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
-                  {n._sym && <span style={{fontSize:14,color:B.blue,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{n._sym}</span>}
-                  {n.sentimentScore != null && (
-                    <span title={`Marketaux sentiment: ${n.sentimentScore.toFixed(2)}`}
-                      style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,
-                        color: n.sentimentScore > 0.1 ? B.green : n.sentimentScore < -0.1 ? B.red : B.gray3,
-                        fontFamily:"'Courier New',monospace"}}>
-                      <span style={{width:8,height:8,borderRadius:"50%",display:"inline-block",
-                        background: n.sentimentScore > 0.1 ? B.green : n.sentimentScore < -0.1 ? B.red : B.gray3}}/>
-                      {n.sentimentScore.toFixed(2)}
-                    </span>
-                  )}
-                  <span style={{fontSize:12,color:B.cyan,fontFamily:"'Courier New',monospace"}}>{dateStr}</span>
-                  {n.source && <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>· {n.source}</span>}
-                  {n.category && <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",border:`1px solid ${B.gray4}`,borderRadius:10,padding:"1px 8px",textTransform:"uppercase",marginLeft:"auto"}}>{n.category}</span>}
-                </div>
+                {renderMetaRow(n)}
                 <div style={{fontSize:15,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,marginBottom:4,lineHeight:1.35}}>
                   {highlightKeyword(n.headline, kwTokens)}
                 </div>
@@ -2978,9 +3087,9 @@ Max 180 words. Respond in ENGLISH.`;
                   </div>
                 )}
               </a>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
