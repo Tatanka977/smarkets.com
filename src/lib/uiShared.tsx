@@ -24,7 +24,12 @@ export const B = {
   gray4:   "var(--sm-gray4)",
 };
 
-const SERIES_COLS = ["#0066FF","#00FF00","#FFFF00","#00FFFF","#FF3333","#FF00FF","#FF8800","#AAAAAA","#66CCFF","#88FF88"];
+// Qualitative chart palette (pie/bar segments, per-holding series colors).
+// Deliberately muted/pastel — enough hue separation to tell 10 segments
+// apart at a glance, without the pure-primary neon (#00FF00/#FFFF00/
+// #00FF00/#FF00FF-style) this used before, which glows against the dark
+// panels and fights with the semantic green/red gain-loss colors elsewhere.
+const SERIES_COLS = ["#7C9CE8","#7FC79A","#E3C574","#7ECFD4","#E58A8A","#B79AE0","#E5A97C","#9DC3EA","#A8DDB0","#A3ADBB"];
 export const PIE_COLS    = SERIES_COLS;
 
 export const fmt    = (n,d=2) => n==null||isNaN(n) ? "N/A" : (+n).toFixed(d);
