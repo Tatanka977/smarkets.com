@@ -12,6 +12,21 @@ export interface NewsItem {
   url: string;
 }
 
+// One Marketaux "entity" — a ticker the article mentions, with Marketaux's
+// own per-symbol sentiment score for that mention (roughly -1..1).
+export interface NewsEntity {
+  symbol: string;
+  sentimentScore: number | null;
+}
+
+export interface PortfolioNewsItem extends NewsItem {
+  entities?: NewsEntity[];
+  // Average sentimentScore across the entities that matched a symbol from
+  // the requesting portfolio (null if Marketaux gave no score for any of
+  // them) — what the UI's colored indicator renders directly.
+  sentimentScore?: number | null;
+}
+
 const BASE = "https://finnhub.io/api/v1";
 
 function getKey(): string | null {
@@ -100,4 +115,113 @@ export const fetchCompanyNews = createServerFn({ method: "GET" })
         url: "#",
       },
     ] as NewsItem[];
+  });
+
+// ── Marketaux — portfolio-holdings news ────────────────────────────────────
+// Second, complementary news source used ONLY for the terminal's "MY
+// HOLDINGS" tab (Market/Symbol tabs stay on Finnhub above). Marketaux's
+// /news/all endpoint accepts a comma-separated symbols list and its
+// per-article `entities` carry a sentiment_score per mentioned ticker,
+// which Finnhub's plain headlines don't provide.
+
+const MARKETAUX_BASE = "https://api.marketaux.com/v1/news/all";
+
+function getMarketauxKey(): string | null {
+  const k = process.env.MARKETAUX_API_KEY;
+  return k && k.trim() ? k : null;
+}
+
+interface MarketauxEntity {
+  symbol?: string;
+  sentiment_score?: number | null;
+}
+interface MarketauxArticle {
+  uuid?: string;
+  title?: string;
+  description?: string;
+  url?: string;
+  source?: string;
+  published_at?: string;
+  entities?: MarketauxEntity[];
+}
+interface MarketauxResponse {
+  data?: MarketauxArticle[];
+}
+
+// Free-tier Marketaux plans allow only ~100 requests/day, so every portfolio
+// (by its exact set of tickers) is cached process-wide for a few minutes —
+// reloading the News tab repeatedly, or several visitors with the same
+// holdings, reuses one call instead of spending quota per page view.
+const PORTFOLIO_NEWS_TTL_MS = 5 * 60 * 1000;
+const portfolioNewsCache = new Map<string, { data: PortfolioNewsItem[]; expiresAt: number }>();
+
+function cacheKeyFor(tickers: string[]): string {
+  return Array.from(new Set(tickers.map(t => t.trim().toUpperCase()).filter(Boolean))).sort().join(",");
+}
+
+// Average sentiment across just the entities that actually match one of the
+// requested portfolio tickers (Marketaux's filter_entities=true already
+// scopes entities to matched symbols, but this stays defensive in case an
+// article's entity list is broader than expected).
+function aggregateSentiment(entities: NewsEntity[], portfolioSet: Set<string>): number | null {
+  const scored = entities.filter(e => portfolioSet.has(e.symbol.toUpperCase()) && e.sentimentScore != null);
+  if (!scored.length) return null;
+  return scored.reduce((s, e) => s + (e.sentimentScore as number), 0) / scored.length;
+}
+
+// Returns null when Marketaux isn't configured or the request failed — the
+// caller's job is to fall back to the existing Finnhub per-symbol news in
+// that case. An empty array is a real, successful "no news for these
+// tickers right now" answer and should be shown as such, not treated as a
+// failure that needs falling back.
+export const fetchPortfolioNews = createServerFn({ method: "GET" })
+  .inputValidator((d: { tickers: string[] }) => d)
+  .handler(async ({ data }): Promise<PortfolioNewsItem[] | null> => {
+    const tickers = Array.from(new Set((data.tickers || []).map(t => (t || "").trim().toUpperCase()).filter(Boolean)));
+    if (!tickers.length) return [];
+
+    const key = getMarketauxKey();
+    if (!key) return null;
+
+    const cacheKey = cacheKeyFor(tickers);
+    const cached = portfolioNewsCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+    const url = `${MARKETAUX_BASE}?symbols=${encodeURIComponent(tickers.join(","))}&filter_entities=true&language=en&api_token=${key}`;
+    let json: MarketauxResponse | null = null;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) {
+        console.warn("[Marketaux news]", r.status);
+        return null;
+      }
+      json = (await r.json()) as MarketauxResponse;
+    } catch (e) {
+      console.warn("[Marketaux news] error", (e as Error).message);
+      return null;
+    }
+
+    const portfolioSet = new Set(tickers);
+    const articles = Array.isArray(json?.data) ? json!.data! : [];
+    const items: PortfolioNewsItem[] = articles.map((a, i) => {
+      const entities: NewsEntity[] = (a.entities || [])
+        .filter(e => !!e.symbol)
+        .map(e => ({ symbol: (e.symbol as string).toUpperCase(), sentimentScore: e.sentiment_score ?? null }));
+      const publishedAt = a.published_at ? Math.floor(new Date(a.published_at).getTime() / 1000) : Math.floor(Date.now() / 1000);
+      const matchedSymbols = entities.map(e => e.symbol).filter(s => portfolioSet.has(s));
+      return {
+        id: a.uuid || `mtx-${i}`,
+        datetime: publishedAt,
+        headline: a.title || "(untitled)",
+        summary: a.description || "",
+        source: a.source || "Marketaux",
+        url: a.url || "#",
+        related: matchedSymbols.join(","),
+        entities,
+        sentimentScore: aggregateSentiment(entities, portfolioSet),
+      };
+    });
+
+    portfolioNewsCache.set(cacheKey, { data: items, expiresAt: Date.now() + PORTFOLIO_NEWS_TTL_MS });
+    return items;
   });

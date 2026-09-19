@@ -29,6 +29,7 @@ import { aiChatAsUser } from "@/lib/ai.functions";
 import {
   fetchMarketNews as srvMarketNews,
   fetchCompanyNews as srvCompanyNews,
+  fetchPortfolioNews as srvPortfolioNews,
 } from "@/lib/news.functions";
 import {
   savePortfolio,
@@ -56,6 +57,7 @@ const fetchMarketStatus = (exchanges?:string[]) => srvMarketStatus({ data: { exc
 const fetchHistoricalPrice = (symbol, date) => srvHistorical({ data: { symbol, date } });
 const fetchMarketNews = (category) => srvMarketNews({ data: { category } });
 const fetchCompanyNews = (symbol, days=14) => srvCompanyNews({ data: { symbol, days } });
+const fetchPortfolioNews = (tickers:string[]) => srvPortfolioNews({ data: { tickers } });
 
 const CATEGORY_TABS = [
   { id: undefined, label: "ALL" },
@@ -2574,17 +2576,41 @@ function NewsPage({holdings,setPage}:any) {
 
   // Stable key from symbols (does NOT change on price refresh) — prevents
   // holdings news from reloading every minute when parent refreshes quotes.
+  // Capped at 6 — used only for the Finnhub fallback path below, which
+  // fires one request per symbol; the primary Marketaux path (allSymbolsKey)
+  // batches every holding into a single call, so it isn't capped.
   const symbolsKey = useMemo(() => (
     Array.from(new Set(
       holdings.map((h:any) => h.asset.ticker || h.asset.symbol).filter(Boolean)
     )).slice(0, 6).join("|")
   ), [holdings]);
 
+  const allSymbolsKey = useMemo(() => (
+    Array.from(new Set(
+      holdings.map((h:any) => h.asset.ticker || h.asset.symbol).filter(Boolean)
+    )).join("|")
+  ), [holdings]);
+
   const loadHoldings = useCallback(async () => {
-    if (!symbolsKey) { setHoldNews([]); return; }
-    const symbols = symbolsKey.split("|");
+    if (!allSymbolsKey) { setHoldNews([]); return; }
+    const allSymbols = allSymbolsKey.split("|");
     setLoading(true);
     try {
+      // Marketaux first — one batched call for every holding, with per-
+      // article sentiment. Falls back to the existing per-symbol Finnhub
+      // loop only when Marketaux isn't configured or the call fails; a
+      // successful-but-empty Marketaux response (no news for these
+      // tickers right now) is a real answer and is shown as-is.
+      const mtx = await fetchPortfolioNews(allSymbols).catch(() => null);
+      if (mtx !== null) {
+        const merged = mtx
+          .map((n:any) => ({...n, _sym: n.related || ""}))
+          .sort((a:any, b:any) => (b.datetime || 0) - (a.datetime || 0));
+        setHoldNews(merged.slice(0, 60));
+        return;
+      }
+
+      const symbols = symbolsKey ? symbolsKey.split("|") : [];
       const lists = await Promise.all(symbols.map(s => fetchCompanyNews(s, 14).catch(() => [])));
       const merged = symbols.flatMap((s:string, i:number) => (lists[i] || []).slice(0, 6).map((n:any) => ({...n, _sym: s})));
       merged.sort((a:any, b:any) => (b.datetime || 0) - (a.datetime || 0));
@@ -2592,7 +2618,7 @@ function NewsPage({holdings,setPage}:any) {
     } catch (e:any) {
       console.error(e);
     } finally { setLoading(false); }
-  }, [symbolsKey]);
+  }, [allSymbolsKey, symbolsKey]);
 
   const daysForFetch = useMemo(() => {
     const map:any = {"24h":1,"3d":3,"7d":7,"14d":14,"30d":30,"all":30,"custom":30};
@@ -2928,6 +2954,16 @@ Max 180 words. Respond in ENGLISH.`;
                          background:B.panel,border:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
                   {n._sym && <span style={{fontSize:14,color:B.blue,fontWeight:700,fontFamily:"'Courier New',monospace"}}>{n._sym}</span>}
+                  {n.sentimentScore != null && (
+                    <span title={`Marketaux sentiment: ${n.sentimentScore.toFixed(2)}`}
+                      style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,
+                        color: n.sentimentScore > 0.1 ? B.green : n.sentimentScore < -0.1 ? B.red : B.gray3,
+                        fontFamily:"'Courier New',monospace"}}>
+                      <span style={{width:8,height:8,borderRadius:"50%",display:"inline-block",
+                        background: n.sentimentScore > 0.1 ? B.green : n.sentimentScore < -0.1 ? B.red : B.gray3}}/>
+                      {n.sentimentScore.toFixed(2)}
+                    </span>
+                  )}
                   <span style={{fontSize:12,color:B.cyan,fontFamily:"'Courier New',monospace"}}>{dateStr}</span>
                   {n.source && <span style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",textTransform:"uppercase"}}>· {n.source}</span>}
                   {n.category && <span style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",border:`1px solid ${B.gray4}`,borderRadius:10,padding:"1px 8px",textTransform:"uppercase",marginLeft:"auto"}}>{n.category}</span>}
