@@ -162,7 +162,7 @@ function KeyIndices() {
           const chg = q?.dayChangePct;
           return (
             <div key={it.sym} style={{ ...CARD, padding: "10px 12px" }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: B.blue, fontFamily: FONT }}>{it.sym}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{it.sym}</div>
               <div style={{ fontSize: 11, color: B.gray3, marginBottom: 6, fontFamily: FONT }}>{it.label}</div>
               <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
                 {q?.price != null ? q.price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "…"}
@@ -204,7 +204,7 @@ function PortfolioOverview({ holdings, transactions, m }: any) {
   return (
     <div style={{ ...CARD, padding: "16px 18px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasForeignCcy ? 4 : 16 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>PORTFOLIO OVERVIEW</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", fontFamily: FONT }}>PORTFOLIO OVERVIEW</span>
       </div>
       {hasForeignCcy && (
         <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 12 }}>
@@ -305,7 +305,7 @@ function PerformancePanel({ holdings }: any) {
   return (
     <div style={{ ...CARD, padding: "16px 18px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>PERFORMANCE</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", fontFamily: FONT }}>PERFORMANCE</span>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 2 }}>
             {BENCHMARKS.map(b => (
@@ -398,7 +398,7 @@ function CommunityCallout({ setPage }: any) {
   return (
     <div style={{ ...CARD, padding: "16px 18px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: B.blue, letterSpacing: "0.06em", fontFamily: FONT }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", fontFamily: FONT }}>
           {followingMode ? "FROM TOPICS YOU FOLLOW" : "COMMUNITY"}
         </span>
         <button onClick={() => setPage("community")} style={{

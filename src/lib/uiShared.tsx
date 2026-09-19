@@ -131,7 +131,7 @@ export const BPanel = ({title,children,style,accent}:any) => (
   <div style={{border:`1px solid ${accent?B.blue:B.border}`,background:B.panel,borderRadius:12,...style}}>
     {title&&(
       <div style={{padding:"14px 16px 0"}}>
-        <span style={{fontSize:14,fontWeight:700,color:B.blue,
+        <span style={{fontSize:14,fontWeight:700,color:accent?B.blue:B.gray2,
           fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",textTransform:"uppercase"}}>{title}</span>
       </div>
     )}

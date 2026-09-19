@@ -200,7 +200,7 @@ function TopBar({time,setPage,onMenuClick}:any) {
   useTheme(); // dark-only now, no toggle — this just ensures data-theme="terminal" is set
   const isMobile = useIsMobile();
   return (
-    <div className="sm-topbar" style={{background:B.blue,display:"flex",alignItems:"center",
+    <div className="sm-topbar" style={{background:B.panel2,borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",
       justifyContent:"space-between",padding:"6px 12px",flexShrink:0,gap:8,flexWrap:"wrap",
       position:"sticky",top:0,zIndex:50}}>
       <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
@@ -211,31 +211,31 @@ function TopBar({time,setPage,onMenuClick}:any) {
             background:"none",border:"none",cursor:"pointer",padding:4,
             display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,
           }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.gray1} strokeWidth="2" strokeLinecap="round">
               <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
         )}
-        <img src="/sm-icon.png" alt="" style={{height:22,width:"auto",filter:"brightness(0) invert(1)"}} />
-        <span style={{fontSize:16,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
+        <img src="/sm-icon.png" alt="" style={{height:22,width:"auto"}} />
+        <span style={{fontSize:16,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
           letterSpacing:"0.14em",whiteSpace:"nowrap"}}>STRATEGIC MARKETS</span>
-        <span className="sm-tagline" style={{fontSize:13,color:"rgba(255,255,255,0.75)",
+        <span className="sm-tagline" style={{fontSize:13,color:B.gray3,
           fontFamily:"'Courier New',monospace",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>
           PORTFOLIO TERMINAL
         </span>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-        <span style={{fontSize:13,color:B.yellow,fontFamily:"'Courier New',monospace",
+        <span style={{fontSize:13,color:B.green,fontFamily:"'Courier New',monospace",
           fontWeight:700,letterSpacing:"0.06em"}}>● LIVE</span>
-        <span style={{fontSize:13,color:B.white,fontFamily:"'Courier New',monospace",opacity:0.85}}>{time}</span>
+        <span style={{fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace"}}>{time}</span>
         <NotificationBell setPage={setPage}/>
         {/* On desktop this now lives in the sidebar's Profile section
             (bottom group) — kept here only on mobile, where there's no
             sidebar and this is the only way to reach it. */}
         {isMobile && (
           <Link to={user ? "/profile" : "/auth"} style={{
-            fontSize:13,fontWeight:700,color:B.white,fontFamily:"'Courier New',monospace",
-            textDecoration:"none",background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.4)",
+            fontSize:13,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
+            textDecoration:"none",background:B.panel,border:`1px solid ${B.borderB}`,
             padding:"4px 10px",letterSpacing:"0.08em",whiteSpace:"nowrap"}}>
             {user ? "◉ PROFILE" : "▸ SIGN IN"}
           </Link>
@@ -676,7 +676,7 @@ function PricePerformancePanel({symbol, currency}:any) {
   return (
     <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:10}}>
-        <span style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>PRICE PERFORMANCE</span>
+        <span style={{fontSize:14,fontWeight:700,color:B.gray2,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>PRICE PERFORMANCE</span>
         <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace",cursor:"pointer"}}>
           <input type="checkbox" checked={showBenchmark} onChange={e=>setShowBenchmark(e.target.checked)}/>
           Compare to S&amp;P 500
