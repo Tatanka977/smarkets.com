@@ -355,23 +355,31 @@ const SIDEBAR_GROUPS = [
   ],
 ];
 
-function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
+function SidebarNav({page,setPage,badge,onRetakeProfile,collapsed,onToggleCollapse}:any) {
   const { user } = useUser();
   const itemStyle:any = {
-    display:"flex",alignItems:"center",gap:10,padding:"9px 12px",
+    display:"flex",alignItems:"center",gap:10,padding: collapsed ? "9px" : "9px 12px",
+    justifyContent: collapsed ? "center" : "flex-start",
     border:"none",borderRadius:4,position:"relative",
     textAlign:"left",width:"100%",textDecoration:"none",boxSizing:"border-box",
   };
   return (
-    <div className="sm-sidebarnav" style={{width:200,flexShrink:0,background:B.panel2,borderRight:`1px solid ${B.border}`,
-      display:"flex",flexDirection:"column",overflow:"hidden"}}>
-      <div style={{padding:"16px 14px",display:"flex",alignItems:"center",gap:10,
+    <div className="sm-sidebarnav" style={{width: collapsed ? 64 : 200,flexShrink:0,background:B.panel2,borderRight:`1px solid ${B.border}`,
+      display:"flex",flexDirection:"column",overflow:"hidden",transition:"width 0.15s ease"}}>
+      <div style={{padding: collapsed ? "16px 10px" : "16px 14px",display:"flex",alignItems:"center",
+        justifyContent: collapsed ? "center" : "space-between",gap:10,
         borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
-        <LogoIcon size={26}/>
-        <span style={{fontSize:12,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
-          letterSpacing:"0.08em",lineHeight:1.3}}>STRATEGIC<br/>MARKETS</span>
+        {collapsed ? (
+          <LogoIcon size={26}/>
+        ) : (
+          <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+            <LogoIcon size={26}/>
+            <span style={{fontSize:12,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",
+              letterSpacing:"0.08em",lineHeight:1.3}}>STRATEGIC<br/>MARKETS</span>
+          </div>
+        )}
       </div>
-      <div style={{flex:1,overflowY:"auto",padding:"10px 8px",display:"flex",flexDirection:"column",gap:2}}>
+      <div style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:"10px 8px",display:"flex",flexDirection:"column",gap:2}}>
         {SIDEBAR_GROUPS.map((group,gi)=>(
           <div key={gi} style={{display:"flex",flexDirection:"column",gap:2,
             borderTop: gi>0 ? `1px solid ${B.border}` : "none",
@@ -380,24 +388,24 @@ function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
           const active=page===t.id;
           const label = (
             <>
-              {t.badgeKey && badge>0 && <div style={{position:"absolute",top:6,right:8,
+              {t.badgeKey && badge>0 && <div style={{position:"absolute",top:6,right: collapsed ? 4 : 8,
                 background:B.blue,color:B.white,fontSize:11,fontWeight:700,
                 fontFamily:"'Courier New',monospace",padding:"0 4px",lineHeight:"14px",borderRadius:2}}>{badge}</div>}
               {NAV_ICONS[t.id]}
-              <span style={{fontSize:12,fontWeight:700,
-                fontFamily:"'Courier New',monospace",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{t.label}</span>
+              {!collapsed && <span style={{fontSize:12,fontWeight:700,
+                fontFamily:"'Courier New',monospace",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{t.label}</span>}
             </>
           );
           if (t.href) {
             return (
-              <Link key={t.id} to={user ? "/profile" : "/auth"} style={{
+              <Link key={t.id} to={user ? "/profile" : "/auth"} title={collapsed ? t.label : undefined} style={{
                 ...itemStyle, background:"transparent",
                 borderLeft:`2px solid transparent`, color:B.gray2,
               }}>{label}</Link>
             );
           }
           return (
-            <button key={t.id} onClick={()=>setPage(t.id)} style={{
+            <button key={t.id} onClick={()=>setPage(t.id)} title={collapsed ? t.label : undefined} style={{
               ...itemStyle,
               background:active?B.panel:"transparent",
               borderLeft:`2px solid ${active?B.blue:"transparent"}`,
@@ -409,17 +417,30 @@ function SidebarNav({page,setPage,badge,onRetakeProfile}:any) {
         ))}
         {onRetakeProfile && user && (
           <div style={{borderTop:`1px solid ${B.border}`,marginTop:8,paddingTop:8}}>
-            <button onClick={onRetakeProfile} style={{
-              display:"flex",alignItems:"center",gap:8,padding:"9px 12px",
+            <button onClick={onRetakeProfile} title={collapsed ? "Retake Investor Profile" : undefined} style={{
+              display:"flex",alignItems:"center",justifyContent: collapsed ? "center" : "flex-start",gap:8,
+              padding: collapsed ? "9px" : "9px 12px",
               background:"transparent",border:`1px solid ${B.borderB}`,borderRadius:4,
               color:B.gray2,cursor:"pointer",textAlign:"left",width:"100%",boxSizing:"border-box",
               fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,letterSpacing:"0.03em",
             }}>
-              ↻ Retake Investor Profile
+              {collapsed ? "↻" : "↻ Retake Investor Profile"}
             </button>
           </div>
         )}
       </div>
+      <button onClick={onToggleCollapse} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} style={{
+        display:"flex",alignItems:"center",justifyContent:"center",gap:6,
+        background:"transparent",border:"none",borderTop:`1px solid ${B.border}`,
+        color:B.gray3,cursor:"pointer",padding:"10px",flexShrink:0,
+        fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,letterSpacing:"0.04em",
+      }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" style={{transform: collapsed ? "rotate(180deg)" : "none"}}>
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+        {!collapsed && "COLLAPSE"}
+      </button>
     </div>
   );
 }
@@ -2948,6 +2969,7 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
   const [refreshing,setRefreshing] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = usePersistentState<boolean>("sidebar_collapsed", false);
   const isMobile = useIsMobile();
 
   // ── PERSISTENCE ─────────────────────────────────────────────────────────
@@ -3322,7 +3344,8 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
         <>
           <TopBar time={time} setPage={setPage} onMenuClick={()=>setMobileNavOpen(true)}/>
           <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"row"}}>
-            {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length} onRetakeProfile={onRetakeProfile}/>}
+            {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length} onRetakeProfile={onRetakeProfile}
+              collapsed={sidebarCollapsed} onToggleCollapse={()=>setSidebarCollapsed(c=>!c)}/>}
             <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column",minWidth:0}}>
               <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column"}}>
                 {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing}/>}
