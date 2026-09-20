@@ -2578,6 +2578,10 @@ function NewsPage({holdings,setPage}:any) {
   const isMobile = useIsMobile();
   const [tab, setTab] = usePersistentState<"market"|"holdings"|"symbol">("news_tab", "market");
   const [marketCat, setMarketCat] = usePersistentState<string>("news_marketCat", "all");
+  // Which topic's dedicated full-list view is open (null = the magazine
+  // overview). Clicking a column/sidebar header, or picking the topic
+  // dropdown, sets this; a Back control clears it.
+  const [newsTopicView, setNewsTopicView] = usePersistentState<string|null>("news_topicView", null);
   const [marketNews, setMarketNews] = useState<any[]>([]);
   const [holdNews, setHoldNews] = useState<any[]>([]);
   const [symInput, setSymInput] = usePersistentState<string>("news_symInput", "");
@@ -2790,6 +2794,22 @@ function NewsPage({holdings,setPage}:any) {
     };
   }, [list, holdNews, holdings.length]);
 
+  // Full (uncapped) pool for whichever topic's dedicated page is open —
+  // the magazine columns above only ever show 4-5 items each; this is
+  // "see everything" for one topic, opened by clicking that topic's
+  // header or picking it from the dropdown.
+  const topicFullList = useMemo(() => {
+    if (!newsTopicView) return [];
+    if (newsTopicView === "topStories") return list.filter((n:any) => String(n.category||"general").toLowerCase() === "general");
+    if (newsTopicView === "markets") return list.filter((n:any) => ["forex","crypto","merger"].includes(String(n.category||"").toLowerCase()));
+    if (newsTopicView === "portfolio") return (holdings.length > 0 && holdNews.length > 0) ? holdNews : list;
+    if (newsTopicView === "popular") return list;
+    return [];
+  }, [newsTopicView, list, holdNews, holdings.length]);
+
+  const topicLabel = (key:string) => key === "topStories" ? "TOP STORIES" : key === "markets" ? "MARKETS"
+    : key === "portfolio" ? magazine.portfolio.label : key === "popular" ? "POPULAR" : "";
+
   // Real day-change % for every ticker referenced by a visible article's
   // `related` field, fetched once per distinct ticker set via the same
   // batchRefresh() the rest of the terminal uses for live quotes — never
@@ -2798,10 +2818,10 @@ function NewsPage({holdings,setPage}:any) {
   const [tickerChg, setTickerChg] = useState<Record<string, number|null>>({});
   const magazineTickersKey = useMemo(() => {
     const all = [magazine.hero, ...magazine.topStories.items, ...magazine.markets.items,
-      ...magazine.portfolio.items, ...magazine.popular].filter(Boolean);
+      ...magazine.portfolio.items, ...magazine.popular, ...topicFullList].filter(Boolean);
     const syms = all.map((n:any) => String(n.related||n._sym||"").split(",")[0].trim().toUpperCase()).filter(Boolean);
     return Array.from(new Set(syms)).sort().join(",");
-  }, [magazine]);
+  }, [magazine, topicFullList]);
 
   useEffect(() => {
     if (!magazineTickersKey) { setTickerChg({}); return; }
@@ -3000,7 +3020,47 @@ Max 180 words. Respond in ENGLISH.`;
     </a>
   );
 
-  const renderColumn = (col:{label:string, items:any[]}) => {
+  // Card used on a topic's dedicated full-list page — richer than
+  // renderTextOnlyItem (shows an image/logo per item, not just for one
+  // "featured" pick) since a whole page of nothing but text rows would
+  // waste the width the topic view now has to work with.
+  const renderTopicCard = (n:any, i:number) => (
+    <a key={"topic_" + (n.id ?? i)} href={n.url && n.url !== "#" ? n.url : undefined}
+       target="_blank" rel="noreferrer noopener" data-testid="news-topic-card"
+       style={{display:"block",textDecoration:"none",borderRadius:10,overflow:"hidden",
+               background:B.panel,border:`1px solid ${B.border}`,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
+      <div style={{height:160,background:B.panel2,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <LogoIcon size={40}/>
+        {n.image && (
+          <img src={n.image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}
+            onError={(e:any)=>{ e.currentTarget.style.display="none"; }}/>
+        )}
+      </div>
+      <div style={{padding:"10px 12px"}}>
+        <div style={{fontSize:14,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700,lineHeight:1.3,marginBottom:4}}>
+          {highlightKeyword(n.headline, kwTokens)}
+        </div>
+        {renderArticleMeta(n)}
+      </div>
+    </a>
+  );
+
+  // Shared clickable section header — opens that topic's dedicated
+  // full-list page (setNewsTopicView), same control everywhere: column
+  // headers, the Popular sidebar, and (via topicLabel) the page you land
+  // on after clicking it.
+  const renderSectionHeader = (label:string, topicKey:string) => (
+    <button onClick={()=>setNewsTopicView(topicKey)} data-testid={`news-topic-header-${topicKey}`} style={{
+      display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,width:"100%",
+      borderBottom:`2px solid ${B.border}`,background:"none",border:"none",borderBottomWidth:2,borderBottomStyle:"solid",
+      borderBottomColor:B.border,cursor:"pointer",textAlign:"left",
+    }}>
+      <span style={{fontSize:13,fontWeight:700,color:B.gray1,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>{label}</span>
+      <span style={{color:B.blue,fontSize:14,fontWeight:700}}>›</span>
+    </button>
+  );
+
+  const renderColumn = (col:{label:string, items:any[]}, topicKey:string) => {
     if (!col.items.length) return null;
     const [featured, ...rest] = col.items;
     return (
@@ -3016,10 +3076,7 @@ Max 180 words. Respond in ENGLISH.`;
       // real width evenly among however many columns actually render),
       // so no per-column cap is needed on top of it.
       <div style={{minWidth:0}}>
-        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${B.border}`}}>
-          <span style={{fontSize:13,fontWeight:700,color:B.gray1,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>{col.label}</span>
-          <span style={{color:B.blue,fontSize:14,fontWeight:700}}>›</span>
-        </div>
+        {renderSectionHeader(col.label, topicKey)}
         {renderColumnFeatured(featured)}
         <div>{rest.slice(0,4).map(renderTextOnlyItem)}</div>
       </div>
@@ -3034,9 +3091,7 @@ Max 180 words. Respond in ENGLISH.`;
   // a fluid (not artificially capped) column area.
   const renderPopularSidebar = (items:any[]) => (
     <div style={{width: isMobile ? "100%" : 300,flexShrink:0}}>
-      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${B.border}`}}>
-        <span style={{fontSize:13,fontWeight:700,color:B.gray1,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>POPULAR</span>
-      </div>
+      {renderSectionHeader("POPULAR", "popular")}
       <div>{items.map(renderTextOnlyItem)}</div>
     </div>
   );
@@ -3049,20 +3104,33 @@ Max 180 words. Respond in ENGLISH.`;
           {id:"holdings", l:`MY HOLDINGS (${holdings.length})`},
           {id:"symbol", l:"SYMBOL"},
         ].map((t:any) => (
-          <FKey key={t.id} label={t.l} active={tab===t.id} onClick={()=>setTab(t.id)}/>
+          <FKey key={t.id} label={t.l} active={tab===t.id} onClick={()=>{setTab(t.id); setNewsTopicView(null);}}/>
         ))}
       </div>
 
       {tab === "market" && (
-        <div style={{display:"flex",gap:6,padding:"8px 10px",overflowX:"auto",borderBottom:`1px solid ${B.border}`,background:B.panel}}>
+        <div style={{display:"flex",gap:10,padding:"8px 10px",overflowX:"auto",borderBottom:`1px solid ${B.border}`,background:B.panel,alignItems:"center"}}>
           {["all","general","forex","crypto","merger"].map(c => (
-            <button key={c} onClick={()=>setMarketCat(c)} style={{
+            <button key={c} onClick={()=>{setMarketCat(c); setNewsTopicView(null);}} style={{
               background: marketCat===c ? B.blue : B.panel2, border:`1px solid ${marketCat===c?B.blue:B.borderB}`,
               color: marketCat===c ? B.white : B.gray1, padding:"5px 14px", cursor:"pointer", borderRadius:20,
               fontFamily:"'Courier New',monospace", fontSize:13, fontWeight:700, letterSpacing:"0.06em",
               whiteSpace:"nowrap", textTransform:"uppercase", flexShrink:0,
             }}>{c}</button>
           ))}
+          {/* Jump straight to a topic's full-list page — same destination
+              a column/sidebar header click opens. */}
+          <select data-testid="news-topic-select" value={newsTopicView || ""}
+            onChange={e => setNewsTopicView(e.target.value || null)}
+            style={{marginLeft:"auto",background:B.panel2,border:`1px solid ${B.borderB}`,color:B.gray1,
+              borderRadius:8,padding:"5px 10px",fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,
+              cursor:"pointer",flexShrink:0}}>
+            <option value="">TOPICS ▾</option>
+            <option value="topStories">Top Stories</option>
+            <option value="markets">Markets</option>
+            <option value="portfolio">{magazine.portfolio.label === "PORTFOLIO" ? "Portfolio" : "Latest"}</option>
+            <option value="popular">Popular</option>
+          </select>
         </div>
       )}
 
@@ -3246,7 +3314,28 @@ Max 180 words. Respond in ENGLISH.`;
           </div>
         )}
 
-        {tab === "market" && list.length > 0 ? (
+        {tab === "market" && newsTopicView ? (
+          <div>
+            <button onClick={()=>setNewsTopicView(null)} data-testid="news-topic-back" style={{
+              display:"flex",alignItems:"center",gap:6,marginBottom:14,background:"none",border:"none",
+              color:B.blue,cursor:"pointer",padding:0,fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,letterSpacing:"0.04em",
+            }}>
+              ‹ BACK TO NEWS
+            </button>
+            <div style={{fontSize:20,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace",letterSpacing:"0.04em",marginBottom:16}}>
+              {topicLabel(newsTopicView)}
+            </div>
+            {topicFullList.length === 0 ? (
+              <div style={{padding:"20px 14px",borderRadius:12,border:`1px solid ${B.border}`,background:B.panel,fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
+                No headlines in this topic right now.
+              </div>
+            ) : (
+              <div style={{display:"grid",gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))",gap:16}}>
+                {topicFullList.map(renderTopicCard)}
+              </div>
+            )}
+          </div>
+        ) : tab === "market" && list.length > 0 ? (
           <div>
             {magazine.hero && renderHero(magazine.hero)}
             <div style={{display:"flex",flexDirection: isMobile ? "column" : "row",gap:24}}>
@@ -3259,9 +3348,9 @@ Max 180 words. Respond in ENGLISH.`;
                   the right of a narrower fixed-width block. */}
               <div style={{display: isMobile ? "flex" : "grid",flexDirection: isMobile ? "column" : undefined,
                 gridTemplateColumns: isMobile ? undefined : "repeat(auto-fit, minmax(280px, 1fr))",gap:24,flex:1,minWidth:0}}>
-                {renderColumn(magazine.topStories)}
-                {renderColumn(magazine.markets)}
-                {renderColumn(magazine.portfolio)}
+                {renderColumn(magazine.topStories, "topStories")}
+                {renderColumn(magazine.markets, "markets")}
+                {renderColumn(magazine.portfolio, "portfolio")}
               </div>
               {magazine.popular.length > 0 && renderPopularSidebar(magazine.popular)}
             </div>
