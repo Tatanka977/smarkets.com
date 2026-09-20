@@ -208,7 +208,7 @@ function PhoneShell({children,naturalScroll}:any) {
   );
 }
 
-function TopBar({time,setPage,onMenuClick}:any) {
+function TopBar({time,setPage,onMenuClick,baseCcy,setBaseCcy}:any) {
   const { user } = useUser();
   useTheme(); // dark-only now, no toggle — this just ensures data-theme="terminal" is set
   const isMobile = useIsMobile();
@@ -238,6 +238,21 @@ function TopBar({time,setPage,onMenuClick}:any) {
         </span>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        {/* Single global base-currency toggle — every page that shows
+            aggregate portfolio amounts (Home, Portfolio, Analysis, AI
+            Advisor) reads this same value, so switching it here changes
+            the whole terminal at once. */}
+        {setBaseCcy && (
+          <div style={{display:"flex",border:`1px solid ${B.borderB}`,borderRadius:6,overflow:"hidden"}} title="Base display currency">
+            {(["USD","EUR"] as const).map(c=>(
+              <button key={c} onClick={()=>setBaseCcy(c)} style={{
+                background:baseCcy===c?B.blue:"transparent",color:baseCcy===c?B.white:B.gray2,
+                border:"none",padding:"4px 9px",cursor:"pointer",
+                fontFamily:"'Courier New',monospace",fontSize:12,fontWeight:700,letterSpacing:"0.03em",
+              }}>{c}</button>
+            ))}
+          </div>
+        )}
         <span style={{fontSize:13,color:B.green,fontFamily:"'Courier New',monospace",
           fontWeight:700,letterSpacing:"0.06em"}}>● LIVE</span>
         <span style={{fontSize:13,color:B.gray2,fontFamily:"'Courier New',monospace"}}>{time}</span>
@@ -1396,6 +1411,21 @@ function StockScanPage({ holdings }: { holdings: any[] }) {
     setDetail(null); setError(""); setAiReport(""); setAiError("");
   };
 
+  // Handoff from Home's Watchlist "SCAN →" button: it stashes the ticker in
+  // localStorage before navigating here (same cross-page pattern as
+  // CommunityCallout's pending-post handoff) since Scan owns its own
+  // search/detail state with no external control otherwise.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("moneta_scan_pending_symbol");
+      if (!raw) return;
+      localStorage.removeItem("moneta_scan_pending_symbol");
+      const symbol = JSON.parse(raw);
+      if (symbol) { setQ(symbol); runScan({ symbol }); }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // SEC fundamentals, analyst consensus and the quote itself all load
   // independently — a slow/unavailable source (e.g. a non-US ticker with no
   // SEC filings) should never hold up the others.
@@ -1638,28 +1668,62 @@ ${lines}`;
               </div>
             </div>
 
-            {/* Verdict strip — the real, external Wall Street consensus is
-                the headline of this page (never this app's own opinion,
-                which the AI section below is explicitly barred from
-                giving — see SAFETY_PREAMBLE in ai.functions.ts). */}
-            <div style={{background:B.panel,border:`1px solid ${
-              consensus?.available ? (consensus.label==="Buy"?B.green:consensus.label==="Sell"?B.red:B.yellow) : B.border
-            }`,borderRadius:12,padding:"14px 18px",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-              <div>
-                <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",letterSpacing:"0.06em"}}>Wall Street Analyst Consensus</div>
-                <div style={{fontSize:30,fontWeight:700,fontFamily:FONT,
-                  color: consensusLoading ? B.gray3 : consensus?.available ? (consensus.label==="Buy"?B.green:consensus.label==="Sell"?B.red:B.yellow) : B.gray3}}>
-                  {consensusLoading ? "…" : consensus?.available ? consensus.label!.toUpperCase() : "N/A"}
-                </div>
+            {/* Wall Street Analyst Consensus — the real, external verdict
+                (never this app's own opinion, which the AI section below is
+                explicitly barred from giving — see SAFETY_PREAMBLE in
+                ai.functions.ts), with its full breakdown in the same place
+                as the headline label instead of split across two panels. */}
+            <BPanel title="WALL STREET ANALYST CONSENSUS" accent={consensus?.available}>
+              <div style={{padding:"10px 18px 16px"}}>
+                {consensusLoading ? (
+                  <div style={{padding:"18px 0",textAlign:"center",color:B.gray3,fontFamily:FONT,fontSize:13}}>LOADING ANALYST DATA...</div>
+                ) : !consensus?.available ? (
+                  <div style={{padding:"6px 0 4px",color:B.gray3,fontFamily:FONT,fontSize:13,lineHeight:1.6}}>
+                    {consensus?.reason || "Analyst consensus not available for this ticker."}
+                  </div>
+                ) : (() => {
+                  const segs = [
+                    {k:"strongSell", label:"Strong Sell", v:consensus.counts.strongSell, color:B.red, op:1},
+                    {k:"sell", label:"Sell", v:consensus.counts.sell, color:B.red, op:0.55},
+                    {k:"hold", label:"Hold", v:consensus.counts.hold, color:B.gray3, op:1},
+                    {k:"buy", label:"Buy", v:consensus.counts.buy, color:B.green, op:0.55},
+                    {k:"strongBuy", label:"Strong Buy", v:consensus.counts.strongBuy, color:B.green, op:1},
+                  ];
+                  const total = segs.reduce((s,x)=>s+x.v,0);
+                  const verdictColor = consensus.label==="Buy"?B.green:consensus.label==="Sell"?B.red:B.yellow;
+                  return (
+                    <>
+                      <div style={{display:"flex",alignItems:"baseline",gap:14,marginBottom:14,flexWrap:"wrap"}}>
+                        <span style={{fontSize:32,fontWeight:700,fontFamily:FONT,color:verdictColor}}>
+                          {consensus.label!.toUpperCase()}
+                        </span>
+                        <span style={{fontSize:13,color:B.gray3,fontFamily:FONT,lineHeight:1.5}}>
+                          Based on {total} analyst ratings for {consensus.period} — Wall Street's own view, not Strategic Markets'.
+                        </span>
+                      </div>
+                      <div style={{display:"flex",height:16,borderRadius:6,overflow:"hidden",marginBottom:10,background:B.panel2}}>
+                        {segs.map(s => s.v>0 && (
+                          <div key={s.k} title={`${s.label}: ${s.v}`} style={{flex:s.v, background:s.color, opacity:s.op}}/>
+                        ))}
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(5, 1fr)",gap:6}}>
+                        {segs.map(s=>(
+                          <div key={s.k} style={{textAlign:"center"}}>
+                            <div style={{fontSize:16,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{s.v}</div>
+                            <div style={{fontSize:10,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{s.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <p style={{fontSize:11,color:B.gray3,marginTop:12,fontStyle:"italic",fontFamily:FONT}}>
+                        Source: Finnhub aggregated Wall Street analyst ratings — real third-party opinions, not
+                        Strategic Markets' own view. Price targets aren't shown here (that endpoint requires a paid
+                        Finnhub plan not enabled on this deployment).
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
-              <div style={{fontSize:13,color:B.gray3,fontFamily:FONT,lineHeight:1.5,flex:1,minWidth:200}}>
-                {consensusLoading
-                  ? "Loading analyst data..."
-                  : consensus?.available
-                    ? `Based on ${consensus.counts.strongBuy+consensus.counts.buy+consensus.counts.hold+consensus.counts.sell+consensus.counts.strongSell} analyst ratings for ${consensus.period}. Full breakdown below — this is Wall Street's own view, not Strategic Markets'.`
-                    : (consensus?.reason || "Analyst consensus not available for this ticker.")}
-              </div>
-            </div>
+            </BPanel>
 
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:14}}>
               <PricePerformancePanel symbol={detail.ticker} currency={detail.currency}/>
@@ -1780,50 +1844,6 @@ ${lines}`;
                     </p>
                   </>
                 )}
-              </div>
-            </BPanel>
-
-            {/* Wall Street Analyst Consensus — full breakdown behind the
-                headline verdict strip above. */}
-            <BPanel title="ANALYST CONSENSUS BREAKDOWN">
-              <div style={{padding:"10px 18px 16px"}}>
-                {consensusLoading ? (
-                  <div style={{padding:"18px 0",textAlign:"center",color:B.gray3,fontFamily:FONT,fontSize:13}}>LOADING ANALYST DATA...</div>
-                ) : !consensus?.available ? (
-                  <div style={{padding:"6px 0 4px",color:B.gray3,fontFamily:FONT,fontSize:13,lineHeight:1.6}}>
-                    {consensus?.reason || "Analyst consensus not available for this ticker."}
-                  </div>
-                ) : (() => {
-                  const segs = [
-                    {k:"strongSell", label:"Strong Sell", v:consensus.counts.strongSell, color:B.red, op:1},
-                    {k:"sell", label:"Sell", v:consensus.counts.sell, color:B.red, op:0.55},
-                    {k:"hold", label:"Hold", v:consensus.counts.hold, color:B.gray3, op:1},
-                    {k:"buy", label:"Buy", v:consensus.counts.buy, color:B.green, op:0.55},
-                    {k:"strongBuy", label:"Strong Buy", v:consensus.counts.strongBuy, color:B.green, op:1},
-                  ];
-                  return (
-                    <>
-                      <div style={{display:"flex",height:16,borderRadius:6,overflow:"hidden",marginBottom:10,background:B.panel2}}>
-                        {segs.map(s => s.v>0 && (
-                          <div key={s.k} title={`${s.label}: ${s.v}`} style={{flex:s.v, background:s.color, opacity:s.op}}/>
-                        ))}
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(5, 1fr)",gap:6}}>
-                        {segs.map(s=>(
-                          <div key={s.k} style={{textAlign:"center"}}>
-                            <div style={{fontSize:16,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{s.v}</div>
-                            <div style={{fontSize:10,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{s.label}</div>
-                          </div>
-                        ))}
-                      </div>
-                      <p style={{fontSize:11,color:B.gray3,marginTop:12,fontStyle:"italic",fontFamily:FONT}}>
-                        Source: Finnhub aggregated Wall Street analyst ratings — real third-party opinions, not
-                        Strategic Markets' own view. Price targets aren't shown here (that endpoint requires a paid
-                        Finnhub plan not enabled on this deployment).
-                      </p>
-                    </>
-                  );
-                })()}
               </div>
             </BPanel>
 
@@ -2133,38 +2153,16 @@ function ImportCsvModal({rows, onCancel, onConfirm, busy}:any) {
 // sizing content-independent, so they always align.
 const HOLDINGS_COL_WIDTHS = [90, 190, 80, 70, 70, 90, 90, 70, 80, 70, 90, 40];
 
-function PortfolioPage({holdings,onRemove,onUpdate,onSell,onLoadPortfolio,onAddCash,setPage}:any) {
+function PortfolioPage({holdings,kpiHoldings,baseCcy,setBaseCcy,onRemove,onUpdate,onSell,onLoadPortfolio,onAddCash,setPage}:any) {
   const isMobile = useIsMobile();
 
-  // View-currency toggle, local to this page: converts only the KPI row
-  // totals below (not the per-row table/cards, which stay in each
-  // holding's own native currency with its currency badge — so inline
-  // editing never has to reason about FX rates, and this page's own "$"/"€"
-  // label always matches what it's actually showing, independent of the
-  // rest of the app which stays USD-only).
-  const [baseCcy, setBaseCcy] = usePersistentState<"USD"|"EUR">("portfolio_base_ccy", "USD");
+  // Base-display-currency conversion (kpiHoldings) now lives one level up in
+  // PortfolioTerminal, shared by every page — the toggle itself moved to
+  // TopBar so it changes the whole terminal at once, not just this page.
+  // Only the KPI row/table VALUE-PNL cells below use the converted
+  // `kpiHoldings`; per-row editing still uses raw `holdings` (native
+  // currency), so inline edits never have to reason about FX rates.
   const ccySym = baseCcy === "EUR" ? "€" : "$";
-  const kpiForeignCurrencies = useMemo(() => Array.from(new Set(
-    holdings.map((h:any) => h.asset.currency).filter((c:string) => c && c !== baseCcy)
-  )), [holdings, baseCcy]);
-  const [kpiFxRates, setKpiFxRates] = useState<Record<string,number>>({});
-  useEffect(() => {
-    if (!kpiForeignCurrencies.length) { setKpiFxRates({}); return; }
-    let alive = true;
-    srvFx({ data: { base: baseCcy, currencies: kpiForeignCurrencies } })
-      .then((r:any) => { if (alive) setKpiFxRates(r?.rates || {}); })
-      .catch(() => {});
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kpiForeignCurrencies.join("|"), baseCcy]);
-  const kpiHoldings = useMemo(() => {
-    if (!kpiForeignCurrencies.length) return holdings;
-    return holdings.map((h:any) => {
-      const rate = kpiFxRates[h.asset.currency] ?? (h.asset.currency === baseCcy ? 1 : null);
-      if (rate == null || rate === 1) return h;
-      return { ...h, value: h.value*rate, costBasis: h.costBasis*rate, costPrice: h.costPrice*rate };
-    });
-  }, [holdings, kpiFxRates, kpiForeignCurrencies, baseCcy]);
   const dm=useMemo(()=>pMet(kpiHoldings),[kpiHoldings]);
   const { user } = useUser();
   const [view, setView] = useState<"positions"|"saved">("positions");
@@ -3095,7 +3093,7 @@ function AIWelcomeScreen({name, input, setInput, onSend, loading}:any) {
   );
 }
 
-function AIAdvisorPage({holdings,setPage}:any) {
+function AIAdvisorPage({holdings,setPage,ccySym="$"}:any) {
   const [msgs,setMsgs]=useState<any[]>([{role:"assistant",content:"**STRATEGIC MARKETS AI TERMINAL ONLINE**\n\nThis is an EDUCATIONAL analytics terminal with access to your simulated portfolio data (stocks, bonds, ETFs, commodities, crypto, REITs, FX).\n\nI can provide quantitative observations on diversification, risk metrics, sector exposure, performance attribution and hypothetical allocation scenarios.\n\n**I do not provide personalized investment recommendations** nor financial advice under MiFID II. All analyses are for educational and informational purposes only.\n\nSMKT>_"}]);
   // No real exchange yet (no user-authored message) — shows the welcome
   // hero below instead of this initial assistant bubble. Becomes false the
@@ -3140,7 +3138,7 @@ function AIAdvisorPage({holdings,setPage}:any) {
   const bottomRef=useRef<any>(null);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
 
-  const portCtx=useCallback(()=>buildPortfolioContext(holdings),[holdings]);
+  const portCtx=useCallback(()=>buildPortfolioContext(holdings,ccySym),[holdings,ccySym]);
 
   // Contextual "share this with the community" suggestion — offered at most
   // once per session, right under the first assistant reply that actually
@@ -4494,36 +4492,39 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
 
   // ── MULTI-CURRENCY DISPLAY LAYER ────────────────────────────────────────
   // Holdings' `value`/`costBasis`/`costPrice` are stored in each asset's
-  // native currency. FX rates convert them to a single base (USD) for
-  // display/aggregation only — `holdings` itself (canonical state, lot math,
-  // persistence) always stays in native currency. This feeds Home/Analysis/
-  // AI/Community, which all label amounts with a hardcoded "$" — always USD
-  // here regardless of the Portfolio page's own USD/EUR toggle (below),
-  // which converts independently just for that page so its "$"/"€" label
-  // always matches what it's actually showing.
-  const BASE_CCY = "USD";
+  // native currency. FX rates convert them to a single, user-selected base
+  // currency for display/aggregation only — `holdings` itself (canonical
+  // state, lot math, persistence) always stays in native currency.
+  // `baseCcy` is the ONE source of truth for this app's USD/EUR toggle (the
+  // control lives in TopBar, always visible) — every page that shows
+  // aggregate portfolio amounts (Home, Analysis, Portfolio, AI Advisor) is
+  // fed `displayHoldings`/`ccySym` derived from it, so switching the toggle
+  // changes the whole terminal at once instead of only the page that used
+  // to own this state locally.
+  const [baseCcy, setBaseCcy] = usePersistentState<"USD"|"EUR">("portfolio_base_ccy", "USD");
+  const ccySym = baseCcy === "EUR" ? "€" : "$";
   const foreignCurrencies = useMemo(() => Array.from(new Set(
-    holdings.map((h:any) => h.asset.currency).filter((c:string) => c && c !== BASE_CCY)
-  )), [holdings]);
+    holdings.map((h:any) => h.asset.currency).filter((c:string) => c && c !== baseCcy)
+  )), [holdings, baseCcy]);
   const [fxRates, setFxRates] = useState<Record<string,number>>({});
   useEffect(() => {
-    if (!foreignCurrencies.length) return;
+    if (!foreignCurrencies.length) { setFxRates({}); return; }
     let alive = true;
-    srvFx({ data: { base: BASE_CCY, currencies: foreignCurrencies } })
+    srvFx({ data: { base: baseCcy, currencies: foreignCurrencies } })
       .then((r:any) => { if (alive) setFxRates(r?.rates || {}); })
       .catch(() => {});
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [foreignCurrencies.join("|")]);
+  }, [foreignCurrencies.join("|"), baseCcy]);
 
   const displayHoldings = useMemo(() => {
     if (!foreignCurrencies.length) return holdings;
     return holdings.map((h:any) => {
-      const rate = fxRates[h.asset.currency] ?? (h.asset.currency === BASE_CCY ? 1 : null);
+      const rate = fxRates[h.asset.currency] ?? (h.asset.currency === baseCcy ? 1 : null);
       if (rate == null || rate === 1) return h;
       return { ...h, value: h.value*rate, costBasis: h.costBasis*rate, costPrice: h.costPrice*rate };
     });
-  }, [holdings, fxRates, foreignCurrencies]);
+  }, [holdings, fxRates, foreignCurrencies, baseCcy]);
 
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   useEffect(() => {
@@ -4551,18 +4552,18 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
     <PhoneShell naturalScroll={mobilePortfolioNaturalScroll}>
       {(time:string) => (
         <>
-          <TopBar time={time} setPage={setPage} onMenuClick={()=>setMobileNavOpen(true)}/>
+          <TopBar time={time} setPage={setPage} onMenuClick={()=>setMobileNavOpen(true)} baseCcy={baseCcy} setBaseCcy={setBaseCcy}/>
           <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"row"}}>
             {!isMobile && <SidebarNav page={page} setPage={setPage} badge={holdings.length} onRetakeProfile={onRetakeProfile}
               collapsed={sidebarCollapsed} onToggleCollapse={()=>setSidebarCollapsed(c=>!c)}/>}
             <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column",minWidth:0}}>
               <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column"}}>
-                {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing}/>}
+                {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing} watchlist={watchlist} ccySym={ccySym} baseCcy={baseCcy}/>}
                 {page==="search"     && <SearchPage   onAdd={addToPortfolio} portfolio={displayHoldings} onWatchlistChange={loadWatchlist}/>}
                 {page==="scan"       && <RequireAuth user={user} reason="run a Stock Scan">{()=><StockScanPage holdings={displayHoldings}/>}</RequireAuth>}
-                {page==="portfolio"  && <PortfolioPage holdings={holdings} onRemove={removeFromPortfolio} onUpdate={updateHolding} onSell={sellFromPortfolio} onLoadPortfolio={setHoldings} onAddCash={addToPortfolio} setPage={setPage}/>}
-                {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage}/>}
-                {page==="ai"         && <RequireAuth user={user} reason="use the AI Advisor">{()=><AIAdvisorPage holdings={displayHoldings} setPage={setPage}/>}</RequireAuth>}
+                {page==="portfolio"  && <PortfolioPage holdings={holdings} kpiHoldings={displayHoldings} baseCcy={baseCcy} setBaseCcy={setBaseCcy} onRemove={removeFromPortfolio} onUpdate={updateHolding} onSell={sellFromPortfolio} onLoadPortfolio={setHoldings} onAddCash={addToPortfolio} setPage={setPage}/>}
+                {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage} ccySym={ccySym}/>}
+                {page==="ai"         && <RequireAuth user={user} reason="use the AI Advisor">{()=><AIAdvisorPage holdings={displayHoldings} setPage={setPage} ccySym={ccySym}/>}</RequireAuth>}
                 {page==="news"       && <NewsPage holdings={holdings} setPage={setPage}/>}
                 {page==="community"  && <RequireAuth user={user} reason="view the Community">{()=><CommunityPage holdings={displayHoldings}/>}</RequireAuth>}
                 {page==="learn"      && <RequireAuth user={user} reason="use the Learn path">{()=><LearnPage/>}</RequireAuth>}

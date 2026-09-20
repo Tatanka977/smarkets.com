@@ -420,12 +420,12 @@ export function computeAlerts(holdings:any[], m:any) {
 
 // Plain-text portfolio snapshot fed to the AI as context — shared by the AI
 // advisor chat and the home-page daily summary card.
-export function buildPortfolioContext(holdings:any[]) {
+export function buildPortfolioContext(holdings:any[], ccySym:string="$") {
   if (!holdings.length) return "NO PORTFOLIO LOADED.";
   const m = pMet(holdings)!;
   return [
     `LIVE PORTFOLIO SNAPSHOT (${holdings.length} SECURITIES — LIVE MARKET DATA):`,
-    `MKT VALUE: $${fmtM(m.total)} | EXP RET: ${fmt(m.wRet,2)}% | VOL: ${fmt(m.wVol,2)}% | SHARPE: ${fmt(m.sharpe,2)} | BETA: ${fmt(m.wBeta,2)} | DIV YIELD: ${fmt(m.wDiv,2)}%`,
+    `MKT VALUE: ${ccySym}${fmtM(m.total)} | EXP RET: ${fmt(m.wRet,2)}% | VOL: ${fmt(m.wVol,2)}% | SHARPE: ${fmt(m.sharpe,2)} | BETA: ${fmt(m.wBeta,2)} | DIV YIELD: ${fmt(m.wDiv,2)}%`,
     `SECTORS: ${m.sectors} | GEO REGIONS: ${m.geos} | HHI: ${fmt(m.hhi,0)}`,
     "POSITIONS: "+holdings.map((h:any)=>`${h.asset.ticker}(WT:${(h.value/m.total*100).toFixed(0)}%,VOL:${h.asset.vol??'N/A'}%,BETA:${h.asset.beta??'N/A'},YTD:${h.asset.ytd??'N/A'}%,1D:${h.asset.dayChangePct??'N/A'}%,SECT:${h.asset.sector||'N/A'})`).join(" | "),
   ].join("\n");

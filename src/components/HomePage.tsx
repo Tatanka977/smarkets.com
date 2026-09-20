@@ -5,6 +5,7 @@ import {
 } from "@/lib/uiShared";
 import { fetchPriceHistory as srvPriceHistory } from "@/lib/finance.functions";
 import { fetchMarketStatus as srvMarketStatus, batchRefresh as srvBatchRefresh } from "@/lib/finance.functions";
+import { fetchCalendarEvents as srvCalendarEvents, fetchAnalystConsensus as srvAnalystConsensus } from "@/lib/finance.functions";
 import { listFollowedPosts, listAllCommunityPosts } from "@/lib/community.functions";
 
 const FONT = "'Courier New', Courier, monospace";
@@ -14,15 +15,6 @@ const EXCHANGES = [
   { code: "US", label: "NYSE / NASDAQ", indexSymbol: "SPY" },
   { code: "L",  label: "LONDON", indexSymbol: "^FTSE" },
   { code: "MI", label: "MILAN", indexSymbol: "FTSEMIB.MI" },
-];
-
-const INDICES = [
-  { sym: "SPY", label: "S&P 500 ETF" },
-  { sym: "QQQ", label: "NASDAQ 100" },
-  { sym: "DIA", label: "DOW JONES" },
-  { sym: "IWM", label: "RUSSELL 2000" },
-  { sym: "VIX", label: "VOLATILITY" },
-  { sym: "TLT", label: "20YR TREASURY" },
 ];
 
 const BENCHMARKS = [
@@ -141,39 +133,107 @@ function GlobalMarketStatus() {
   );
 }
 
-function KeyIndices() {
+// Replaces the old static "Key Indices Snapshot" with something the user
+// actually acts on: every ticker they've watchlisted, with its live price,
+// next earnings date, next ex-dividend date and the real Wall Street
+// analyst consensus (Finnhub, same source as the Scan page) — never
+// invented, each item degrading to "—" independently if that particular
+// data point isn't available for that ticker, instead of hiding the whole
+// row or showing a generic error.
+function WatchlistPanel({ watchlist, setPage }: any) {
   const [quotes, setQuotes] = useState<Record<string, any>>({});
+  const [calendars, setCalendars] = useState<Record<string, any>>({});
+  const [consensuses, setConsensuses] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+
+  const symbols = useMemo(() => (watchlist || []).map((w: any) => w.symbol), [watchlist]);
+
   useEffect(() => {
+    if (!symbols.length) { setLoading(false); return; }
     let alive = true;
-    srvBatchRefresh({ data: { symbols: INDICES.map(i => i.sym) } }).then((list: any) => {
-      if (alive) setQuotes(Object.fromEntries((list || []).map((q: any) => [q.symbol, q])));
-    }).catch(() => {});
+    setLoading(true);
+    Promise.all([
+      srvBatchRefresh({ data: { symbols } }).catch(() => []),
+      Promise.all(symbols.map((s: string) => srvCalendarEvents({ data: { symbol: s } }).catch(() => ({ available: false })))),
+      Promise.all(symbols.map((s: string) => srvAnalystConsensus({ data: { symbol: s } }).catch(() => ({ available: false })))),
+    ]).then(([quoteList, cals, cons]: any) => {
+      if (!alive) return;
+      setQuotes(Object.fromEntries((quoteList || []).map((q: any) => [q.symbol, q])));
+      setCalendars(Object.fromEntries(symbols.map((s: string, i: number) => [s, cals[i]])));
+      setConsensuses(Object.fromEntries(symbols.map((s: string, i: number) => [s, cons[i]])));
+      setLoading(false);
+    }).catch(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbols.join(",")]);
+
+  const goScan = (symbol: string) => {
+    try { window.localStorage.setItem("moneta_scan_pending_symbol", JSON.stringify(symbol)); } catch {}
+    setPage("scan");
+  };
 
   return (
-    <div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", marginBottom: 8, fontFamily: FONT }}>
-        KEY INDICES — SNAPSHOT
+    <div style={{ ...CARD, padding: "16px 18px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: B.gray2, letterSpacing: "0.06em", fontFamily: FONT }}>WATCHLIST</span>
+        <button onClick={() => setPage("search")} style={{
+          background: "none", border: "none", color: B.blue, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: 700,
+        }}>+ ADD →</button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
-        {INDICES.map((it) => {
-          const q = quotes[it.sym];
-          const chg = q?.dayChangePct;
-          return (
-            <div key={it.sym} style={{ ...CARD, padding: "10px 12px" }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{it.sym}</div>
-              <div style={{ fontSize: 11, color: B.gray3, marginBottom: 6, fontFamily: FONT }}>{it.label}</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>
-                {q?.price != null ? q.price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "…"}
+
+      {!watchlist?.length ? (
+        <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT, padding: "10px 0", lineHeight: 1.6 }}>
+          Your watchlist is empty — add tickers from Search or Scan to track their price, upcoming earnings/dividends
+          and Wall Street analyst consensus here.
+        </div>
+      ) : loading ? (
+        <div style={{ fontSize: 13, color: B.gray3, fontFamily: FONT, padding: "10px 0" }}>LOADING…</div>
+      ) : (
+        <div>
+          {watchlist.map((w: any) => {
+            const q = quotes[w.symbol];
+            const cal = calendars[w.symbol];
+            const cons = consensuses[w.symbol];
+            return (
+              <div key={w.id} onClick={() => goScan(w.symbol)} style={{
+                display: "flex", flexWrap: "wrap", alignItems: "center", gap: 18,
+                padding: "10px 0", borderTop: `1px solid ${B.border}`, cursor: "pointer",
+              }}>
+                <div style={{ minWidth: 120 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: B.blue, fontFamily: FONT }}>{w.symbol}</div>
+                  <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 160 }}>{w.name || ""}</div>
+                </div>
+                <div style={{ minWidth: 80 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{q?.price != null ? q.price.toFixed(2) : "—"}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: pCol(q?.dayChangePct), fontFamily: FONT }}>{q?.dayChangePct != null ? `${pSign(fmt(q.dayChangePct, 2))}%` : "—"}</div>
+                </div>
+                <div style={{ minWidth: 100 }}>
+                  <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>Next Earnings</div>
+                  <div style={{ fontSize: 12, color: B.gray1, fontFamily: FONT }}>{cal?.nextEarningsDate || "—"}</div>
+                </div>
+                <div style={{ minWidth: 100 }}>
+                  <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>Ex-Dividend</div>
+                  <div style={{ fontSize: 12, color: B.gray1, fontFamily: FONT }}>{cal?.exDividendDate || "—"}</div>
+                </div>
+                <div style={{ minWidth: 90 }}>
+                  <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>Analyst View</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, fontFamily: FONT,
+                    color: cons?.available ? (cons.label === "Buy" ? B.green : cons.label === "Sell" ? B.red : B.yellow) : B.gray3 }}>
+                    {cons?.available ? cons.label.toUpperCase() : "N/A"}
+                  </div>
+                </div>
+                {w.target_price != null && (
+                  <div style={{ minWidth: 90 }}>
+                    <div style={{ fontSize: 10, color: B.gray3, fontFamily: FONT, textTransform: "uppercase" }}>Price Alert</div>
+                    <div style={{ fontSize: 12, color: B.yellow, fontFamily: FONT }}>{w.direction === "above" ? "↑" : "↓"} {w.target_price}</div>
+                  </div>
+                )}
+                <span style={{ marginLeft: "auto", fontSize: 11, color: B.gray3, fontFamily: FONT, whiteSpace: "nowrap" }}>SCAN →</span>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: pCol(chg), fontFamily: FONT }}>
-                {chg != null ? `${pSign(fmt(chg, 2))}%` : "—"}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -188,7 +248,7 @@ function StatField({ label, value, sub, color }: any) {
   );
 }
 
-function PortfolioOverview({ holdings, transactions, m }: any) {
+function PortfolioOverview({ holdings, transactions, m, ccySym, baseCcy }: any) {
   const hasHoldings = holdings.length > 0;
   const totalCost = holdings.reduce((s: number, h: any) => s + (h.costBasis ?? (h.costPrice || 0) * h.qty), 0);
   const totalPL = holdings.reduce((s: number, h: any) => s + (h.value - (h.costBasis ?? (h.costPrice || 0) * h.qty)), 0);
@@ -199,7 +259,7 @@ function PortfolioOverview({ holdings, transactions, m }: any) {
     .filter((t: any) => t.type === "SELL" && t.realizedPnl != null && new Date(t.date).getFullYear() === thisYear)
     .reduce((s: number, t: any) => s + t.realizedPnl, 0);
   const hasSells = (transactions || []).some((t: any) => t.type === "SELL");
-  const hasForeignCcy = holdings.some((h: any) => h.asset.currency && h.asset.currency !== "USD");
+  const hasForeignCcy = holdings.some((h: any) => h.asset.currency && h.asset.currency !== baseCcy);
 
   return (
     <div style={{ ...CARD, padding: "16px 18px" }}>
@@ -208,20 +268,20 @@ function PortfolioOverview({ holdings, transactions, m }: any) {
       </div>
       {hasForeignCcy && (
         <div style={{ fontSize: 11, color: B.gray3, fontFamily: FONT, marginBottom: 12 }}>
-          Base currency: USD — non-USD holdings converted using live FX rates.
+          Base currency: {baseCcy} — non-{baseCcy} holdings converted using live FX rates.
         </div>
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 14 }}>
-        <StatField label="Total Portfolio Value" value={hasHoldings ? `$${fmtM(m.total)}` : "—"} />
+        <StatField label="Total Portfolio Value" value={hasHoldings ? `${ccySym}${fmtM(m.total)}` : "—"} />
         <StatField label="Portfolio Return (Exp.)" value={hasHoldings ? `${pSign(fmt(m.wRet,1))}%` : "—"} color={hasHoldings ? pCol(m.wRet) : undefined} />
         <StatField label="Day Change" value={hasHoldings ? `${pSign(fmt(m.wDay,2))}%` : "—"} color={hasHoldings ? pCol(m.wDay) : undefined} />
-        <StatField label="Cash" value={cash > 0 ? `$${fmtM(cash)}` : "—"} sub={cash > 0 ? undefined : "No cash added yet"} />
+        <StatField label="Cash" value={cash > 0 ? `${ccySym}${fmtM(cash)}` : "—"} sub={cash > 0 ? undefined : "No cash added yet"} />
       </div>
 
       <div style={{ borderTop: `1px solid ${B.border}`, paddingTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16 }}>
-        <StatField label="Unrealized P/L" value={hasHoldings ? `${totalPL>=0?"+":"−"}$${fmtM(Math.abs(totalPL))}` : "—"} sub={hasHoldings ? `(${pSign(fmt(totalPLPct,1))}%)` : undefined} color={hasHoldings ? pCol(totalPL) : undefined} />
-        <StatField label="Realized P/L (YTD)" value={hasSells ? `${realizedYtd>=0?"+":"−"}$${fmtM(Math.abs(realizedYtd))}` : "—"} sub={hasSells ? undefined : "No sales yet"} color={hasSells ? pCol(realizedYtd) : undefined} />
+        <StatField label="Unrealized P/L" value={hasHoldings ? `${totalPL>=0?"+":"−"}${ccySym}${fmtM(Math.abs(totalPL))}` : "—"} sub={hasHoldings ? `(${pSign(fmt(totalPLPct,1))}%)` : undefined} color={hasHoldings ? pCol(totalPL) : undefined} />
+        <StatField label="Realized P/L (YTD)" value={hasSells ? `${realizedYtd>=0?"+":"−"}${ccySym}${fmtM(Math.abs(realizedYtd))}` : "—"} sub={hasSells ? undefined : "No sales yet"} color={hasSells ? pCol(realizedYtd) : undefined} />
         <StatField label="Buying Power" value="—" sub="Not tracked yet" />
         <StatField label="Portfolio Status" value={hasHoldings ? <span style={{ color: B.green }}>● Active</span> : <span style={{ color: B.gray3 }}>— Empty</span>} />
       </div>
@@ -423,16 +483,16 @@ function CommunityCallout({ setPage }: any) {
   );
 }
 
-export default function HomePage({ holdings, transactions, setPage, onRefresh, refreshing }: any) {
+export default function HomePage({ holdings, transactions, setPage, onRefresh, refreshing, watchlist, ccySym, baseCcy }: any) {
   const m = useMemo(() => pMet(holdings), [holdings]);
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 14, background: B.bg }}>
       <GlobalMarketStatus />
-      <KeyIndices />
+      <WatchlistPanel watchlist={watchlist} setPage={setPage} />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 14 }}>
-        <PortfolioOverview holdings={holdings} transactions={transactions} m={m} />
+        <PortfolioOverview holdings={holdings} transactions={transactions} m={m} ccySym={ccySym || "$"} baseCcy={baseCcy || "USD"} />
         <CommunityCallout setPage={setPage} />
       </div>
 

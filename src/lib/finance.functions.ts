@@ -841,6 +841,83 @@ async function applyYahooProfile(q: Quote, symbol: string): Promise<void> {
   }
   if (profile.description) q.description = profile.description;
 }
+
+// ---------------------------------------------------------------------------
+// Corporate calendar events (next earnings date, ex-dividend/dividend
+// payment dates) — Yahoo's quoteSummary `calendarEvents` module, same
+// crumb+cookie auth as fetchYahooProfile above. Used by the Home page's
+// Watchlist panel.
+// ---------------------------------------------------------------------------
+export interface CalendarEvents {
+  available: boolean;
+  reason?: string;                 // set whenever `available` is false
+  nextEarningsDate?: string;       // YYYY-MM-DD
+  exDividendDate?: string;
+  dividendDate?: string;
+  fetchedAt: number;
+}
+
+interface YahooCalendarEventsResult {
+  quoteSummary?: {
+    result?: Array<{
+      calendarEvents?: {
+        earnings?: { earningsDate?: Array<{ raw?: number }> };
+        exDividendDate?: { raw?: number };
+        dividendDate?: { raw?: number };
+      };
+    }>;
+  };
+}
+
+// These dates rarely change within a day — cached per symbol like the SEC/
+// analyst-consensus lookups elsewhere in this file.
+const calendarEventsCache = new Map<string, { result: CalendarEvents; fetchedAt: number }>();
+const CALENDAR_EVENTS_TTL_MS = 12 * 60 * 60 * 1000;
+
+export const fetchCalendarEvents = createServerFn({ method: "GET" })
+  .inputValidator((d: { symbol: string }) => d)
+  .handler(async ({ data }): Promise<CalendarEvents> => {
+    const symbol = (data.symbol || "").trim().toUpperCase();
+    if (!symbol) return { available: false, reason: "No symbol provided.", fetchedAt: Date.now() };
+
+    const cached = calendarEventsCache.get(symbol);
+    if (cached && Date.now() - cached.fetchedAt < CALENDAR_EVENTS_TTL_MS) {
+      return cached.result;
+    }
+
+    const auth = await getYahooCrumb();
+    if (!auth) {
+      return { available: false, reason: "Calendar data temporarily unavailable.", fetchedAt: Date.now() };
+    }
+
+    try {
+      const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=calendarEvents&crumb=${encodeURIComponent(auth.crumb)}`;
+      const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 (StrategicMarkets)", cookie: auth.cookie } });
+      if (!r.ok) {
+        if (r.status === 401) yahooCrumbCache = null; // crumb expired server-side; refetch next call
+        return { available: false, reason: `Calendar lookup failed (HTTP ${r.status}).`, fetchedAt: Date.now() };
+      }
+      const j = (await r.json()) as YahooCalendarEventsResult;
+      const ce = j.quoteSummary?.result?.[0]?.calendarEvents;
+      const toDate = (raw?: number) => raw ? new Date(raw * 1000).toISOString().slice(0, 10) : undefined;
+      const nextEarningsDate = toDate(ce?.earnings?.earningsDate?.[0]?.raw);
+      const exDividendDate = toDate(ce?.exDividendDate?.raw);
+      const dividendDate = toDate(ce?.dividendDate?.raw);
+      const hasAny = !!(nextEarningsDate || exDividendDate || dividendDate);
+      const result: CalendarEvents = {
+        available: hasAny,
+        reason: hasAny ? undefined : "No upcoming calendar events found for this ticker.",
+        nextEarningsDate, exDividendDate, dividendDate,
+        fetchedAt: Date.now(),
+      };
+      calendarEventsCache.set(symbol, { result, fetchedAt: Date.now() });
+      return result;
+    } catch (e) {
+      console.warn("[Calendar events]", symbol, (e as Error).message);
+      return { available: false, reason: "Calendar lookup failed — please try again later.", fetchedAt: Date.now() };
+    }
+  });
+
 /** Convert 'YYYY-MM-DD' → unix seconds at 00:00 UTC. */
 function ymdToUnix(ymd: string): number {
   const [y, m, d] = ymd.split("-").map(Number);

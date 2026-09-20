@@ -75,7 +75,7 @@ function AllocationPanel({ title, data }: { title: string; data: { name: string;
     </BPanel>
   );
 }
-function PerformanceTab({ holdings, m }: any) {
+function PerformanceTab({ holdings, m, ccySym = "$" }: any) {
   const [range, setRange] = useState<"1M"|"3M"|"6M"|"YTD"|"1Y"|"3Y"|"5Y"|"ALL">("YTD");
   const [view, setView] = useState<"return"|"value"|"drawdown">("return");
   const [benchmark, setBenchmark] = useState("SPY");
@@ -234,7 +234,7 @@ function PerformanceTab({ holdings, m }: any) {
           {l:"Portfolio Return", v:`${pSign(fmt(stats.portfolioReturn,1))}%`, sub:range, col:pCol(stats.portfolioReturn)},
           {l:"Benchmark Return", v:`${pSign(fmt(stats.benchmarkReturn,1))}%`, sub:benchmarkLabel, col:B.gray1},
           {l:"Alpha", v:`${pSign(fmt(stats.alpha,1))}%`, sub:range, col:pCol(stats.alpha)},
-          {l:"Total Gain", v:`${stats.totalGain>=0?"+":"−"}$${fmtM(Math.abs(stats.totalGain))}`, sub:range, col:pCol(stats.totalGain)},
+          {l:"Total Gain", v:`${stats.totalGain>=0?"+":"−"}${ccySym}${fmtM(Math.abs(stats.totalGain))}`, sub:range, col:pCol(stats.totalGain)},
           {l:"Best Performer", v:best?.ticker||"—", sub:best?`${pSign(fmt(best.pct,1))}%`:"", col:B.green},
           {l:"Worst Performer", v:worst?.ticker||"—", sub:worst?`${pSign(fmt(worst.pct,1))}%`:"", col:B.red},
         ].map((k,i)=>(
@@ -283,8 +283,8 @@ function PerformanceTab({ holdings, m }: any) {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={filtered} margin={{top:8,right:16,bottom:8,left:0}}>
                   <XAxis dataKey="label" tick={{fontSize:11,fill:B.gray3}} minTickGap={50} tickLine={false}/>
-                  <YAxis tick={{fontSize:11,fill:B.gray3}} tickFormatter={(v)=>view==="value"?`$${fmtM(v)}`:`${v.toFixed(0)}%`} axisLine={false} tickLine={false} width={50}/>
-                  <Tooltip formatter={(v:any)=>view==="value"?`$${fmtM(v)}`:`${v?.toFixed?.(2)}%`} contentStyle={{fontFamily:FONT,fontSize:13,borderRadius:8}}/>
+                  <YAxis tick={{fontSize:11,fill:B.gray3}} tickFormatter={(v)=>view==="value"?`${ccySym}${fmtM(v)}`:`${v.toFixed(0)}%`} axisLine={false} tickLine={false} width={50}/>
+                  <Tooltip formatter={(v:any)=>view==="value"?`${ccySym}${fmtM(v)}`:`${v?.toFixed?.(2)}%`} contentStyle={{fontFamily:FONT,fontSize:13,borderRadius:8}}/>
                   <ReferenceLine y={0} stroke={B.border}/>
                   {view==="value" ? (
                     <Line type="monotone" dataKey="value" stroke={B.blue} strokeWidth={2.5} dot={false} name="Portfolio Value"/>
@@ -532,7 +532,7 @@ function WhatIfTableRow({ row }: { row: WhatIfRowSpec }) {
   );
 }
 
-export default function AnalysisPage({ holdings, setPage }: any) {
+export default function AnalysisPage({ holdings, setPage, ccySym = "$" }: any) {
   const { user } = useUser();
   const m = useMemo(() => pMet(holdings), [holdings]);
   const isMobile = useIsMobile();
@@ -735,7 +735,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                       <tr key={h.asset.ticker} style={{ borderTop: `1px solid ${B.border}` }}>
                         <td style={{ padding: "6px 10px", color: B.blue, fontWeight: 700 }}>{h.asset.ticker}</td>
                         <td style={{ padding: "6px 10px", textAlign: "right", color: B.gray1 }}>{((h.value/m.total)*100).toFixed(1)}%</td>
-                        <td style={{ padding: "6px 10px", textAlign: "right", color: B.gray1 }}>${fmtM(h.value)}</td>
+                        <td style={{ padding: "6px 10px", textAlign: "right", color: B.gray1 }}>{ccySym}{fmtM(h.value)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -800,7 +800,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                               <td colSpan={4} style={{ padding: "8px 16px 12px" }}>
                                 <div style={{ fontSize: 12, color: B.gray2, marginBottom: 4 }}>
                                   {r.sources.map((s: any) => (
-                                    <div key={s.label}>{s.label === "Direct" ? "Direct holding" : `via ${s.label}`}: {s.pct.toFixed(1)}% (${fmtM(s.value)})</div>
+                                    <div key={s.label}>{s.label === "Direct" ? "Direct holding" : `via ${s.label}`}: {s.pct.toFixed(1)}% ({ccySym}{fmtM(s.value)})</div>
                                   ))}
                                 </div>
                                 <div style={{ fontSize: 11, color: B.gray3, fontStyle: "italic" }}>
@@ -1230,7 +1230,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           );
         }}</RequireAuth>}
 
-        {sub === "perf" && <RequireAuth user={user} reason="view Performance analysis">{() => <PerformanceTab holdings={holdings} m={m}/>}</RequireAuth>}
+        {sub === "perf" && <RequireAuth user={user} reason="view Performance analysis">{() => <PerformanceTab holdings={holdings} m={m} ccySym={ccySym}/>}</RequireAuth>}
       </div>
       {showShareModal && (
         <ShareToCommunityModal
