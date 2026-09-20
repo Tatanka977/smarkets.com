@@ -1911,7 +1911,7 @@ const addCash = () => {
       </div>
 
       {/* Holdings, grouped by instrument type */}
-      <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:isMobile?"14px 0":"16px 20px",overflowX:isMobile?"hidden":"auto"}}>
+      <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:isMobile?"14px 0":"16px 20px"}}>
         <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:12,padding:isMobile?"0 14px":0}}>
           HOLDINGS
         </div>
@@ -1938,6 +1938,15 @@ const addCash = () => {
               {!isCollapsed && (isMobile ? (
                 <div>{g.holdings.map(renderHoldingCard)}</div>
               ) : (
+                // Dedicated scroll container per table (not the shared
+                // panel-level overflow this used to rely on) — the SELL/✕
+                // action column is intentionally kept narrow (40px) for
+                // alignment with every other category's table, so its
+                // buttons overflow that column on purpose; this wrapper
+                // guarantees that overflow is reachable by scrolling right,
+                // rather than depending on ambient overflow further up
+                // that also had the section title/header inside it.
+                <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"'Courier New',monospace",fontSize:14,
                   minWidth:HOLDINGS_COL_WIDTHS.reduce((a,b)=>a+b,0),tableLayout:"fixed"}}>
                   <colgroup>
@@ -1963,6 +1972,7 @@ const addCash = () => {
                     {g.holdings.map(renderHoldingRow)}
                   </tbody>
                 </table>
+                </div>
               ))}
             </div>
           );
