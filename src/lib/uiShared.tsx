@@ -109,12 +109,12 @@ export const computeSingleNameExposure = (holdings, total) => {
   return Object.entries(m).map(([ticker,value])=>({ticker,value,pct:+(value/total*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
 };
 
-// "Overlap Checker" / True Exposure — unlike computeSingleNameExposure
-// above (which just gives one combined number per ticker), this keeps
-// direct vs. indirect exposure separate, and indirect broken down per
-// fund, since the whole point of this feature is showing the user WHERE
-// their hidden exposure to a name is coming from (e.g. "you think you
-// hold 3% AAPL, you actually hold 9% once VOO and QQQ are counted").
+// "Overlap Checker" / True Exposure — flags any underlying name that shows
+// up in more than one of the portfolio's own instruments (held directly
+// and/or inside one or more funds' look-through holdings), regardless of
+// what kind of instrument each source is (ETF, stock, fund, ...). A name
+// coming from only a single source — direct-only, or inside exactly one
+// fund — is not an overlap and is left out entirely.
 //
 // Honesty constraints (do not weaken these without re-reading the spec
 // this was built against):
@@ -161,21 +161,21 @@ export const computeOverlapExposure = (holdings, total) => {
           .map(([fundTicker, value]) => ({ fundTicker, value, pct: total > 0 ? value / total * 100 : 0 }))
           .sort((a, b) => b.value - a.value)
       : [];
-    const indirectValue = viaFunds.reduce((s, f) => s + f.value, 0);
-    const totalValue = directValue + indirectValue;
+    // Every place this name comes from, direct holding included — this is
+    // what "overlap" actually means: the same name reachable through more
+    // than one of your own instruments.
+    const sources = [
+      ...(directValue > 0 ? [{ label: "Direct", value: directValue, pct: total > 0 ? directValue / total * 100 : 0 }] : []),
+      ...viaFunds.map(f => ({ label: f.fundTicker, value: f.value, pct: f.pct })),
+    ].sort((a, b) => b.value - a.value);
+    const totalValue = directValue + viaFunds.reduce((s, f) => s + f.value, 0);
     return {
       ticker,
-      directValue, directPct: total > 0 ? directValue / total * 100 : 0,
-      indirectValue, indirectPct: total > 0 ? indirectValue / total * 100 : 0,
+      sources,
       totalValue, totalPct: total > 0 ? totalValue / total * 100 : 0,
-      viaFunds,
-      // Only meaningful when there's a visible direct position to compare
-      // against — a purely-indirect name (0% direct, fully hidden inside
-      // funds) has no "apparent weight" to multiply from at all.
-      multiplier: directValue > 0 ? totalValue / directValue : null,
     };
   })
-    .filter(r => r.indirectValue > 0) // no hidden exposure to reveal otherwise
+    .filter(r => r.sources.length >= 2) // held through only one source isn't an overlap
     .sort((a, b) => b.totalValue - a.totalValue);
 
   return { rows, unavailableFundTickers: Array.from(new Set(unavailableFundTickers)) };

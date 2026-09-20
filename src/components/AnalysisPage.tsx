@@ -720,7 +720,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
               <AllocationPanel title="ASSET ALLOCATION" data={tD} />
             </div>
 
-            <BPanel title="TOP HOLDINGS">
+            <BPanel title="TOP HOLDINGS" style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, flexWrap: "wrap" }}>
                 <table style={{ flex: 1, minWidth: 220, borderCollapse: "collapse", fontFamily: FONT, fontSize: 13 }}>
                   <thead>
@@ -750,93 +750,78 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
               </div>
             </BPanel>
 
-            <BPanel title="OVERLAP CHECKER — TRUE EXPOSURE">
-            <div style={{ padding: 12 }}>
-              <p style={{ fontSize: 13, color: B.gray2, lineHeight: 1.5, margin: "0 0 12px" }}>
-                Shows how much of your real exposure to a single name is hidden inside the ETFs you hold, on top of
-                anything you own directly — a stock can be your #1 position without a single direct share.
-              </p>
+            {overlapData.rows.length > 0 && (
+              <BPanel title="OVERLAP CHECKER — TRUE EXPOSURE">
+              <div style={{ padding: 12 }}>
+                <p style={{ fontSize: 13, color: B.gray2, lineHeight: 1.5, margin: "0 0 12px" }}>
+                  These names show up in more than one of your instruments — held directly and/or inside one or more
+                  funds you own — so your real combined exposure is higher than any single line in your portfolio shows.
+                </p>
 
-              {overlapData.unavailableFundTickers.length > 0 && (
-                <div style={{ background: B.yellowTint, border: `1px solid ${B.yellow}`, borderRadius: 8,
-                  padding: "10px 12px", marginBottom: 12, fontSize: 13, color: B.gray1, lineHeight: 1.5 }}>
-                  <strong style={{ color: B.yellow }}>Partial — based on available data.</strong> Holdings data unavailable
-                  for: {overlapData.unavailableFundTickers.join(", ")}. These funds are excluded from the totals below —
-                  your true exposure may be higher than shown.
-                </div>
-              )}
+                {overlapData.unavailableFundTickers.length > 0 && (
+                  <div style={{ background: B.yellowTint, border: `1px solid ${B.yellow}`, borderRadius: 8,
+                    padding: "10px 12px", marginBottom: 12, fontSize: 13, color: B.gray1, lineHeight: 1.5 }}>
+                    <strong style={{ color: B.yellow }}>Partial — based on available data.</strong> Holdings data unavailable
+                    for: {overlapData.unavailableFundTickers.join(", ")}. These funds are excluded from the check above —
+                    your true exposure may be higher than shown.
+                  </div>
+                )}
 
-              {overlapData.rows.length === 0 ? (
-                <div style={{ padding: "24px 12px", textAlign: "center", color: B.gray3, fontSize: 14 }}>
-                  No significant overlap detected between your ETFs and individual holdings.
-                </div>
-              ) : (
-                <>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ color: B.gray3 }}>
-                        <th style={{ textAlign: "left", padding: "6px 10px", fontWeight: 400 }}>SYMBOL</th>
-                        <th style={{ textAlign: "right", padding: "6px 10px", fontWeight: 400 }}>DIRECT</th>
-                        <th style={{ textAlign: "right", padding: "6px 10px", fontWeight: 400 }}>INDIRECT (VIA ETFS)</th>
-                        <th style={{ textAlign: "right", padding: "6px 10px", fontWeight: 400 }}>TRUE COMBINED</th>
-                        <th style={{ textAlign: "center", padding: "6px 10px", fontWeight: 400 }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {overlapData.rows.map((r: any) => {
-                        const isExpanded = expandedOverlapTicker === r.ticker;
-                        // Flagged when the fund-driven exposure meaningfully changes the
-                        // picture: either a purely-indirect name (nothing visible to compare
-                        // against — 0% apparent, 100% hidden) or a direct position that's at
-                        // least 1.5x bigger once funds are counted.
-                        const isSignificant = r.multiplier == null || r.multiplier >= 1.5;
-                        return (
-                          <Fragment key={r.ticker}>
-                            <tr onClick={() => setExpandedOverlapTicker(isExpanded ? null : r.ticker)}
-                              style={{ borderTop: `1px solid ${B.border}`, cursor: "pointer" }}>
-                              <td style={{ padding: "8px 10px", color: B.blue, fontWeight: 700 }}>
-                                {r.ticker}
-                                {isSignificant && <span title="True exposure is significantly higher than what you'd see from direct holdings alone"
-                                  style={{ marginLeft: 6, color: B.yellow }}>⚠</span>}
+                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ color: B.gray3 }}>
+                      <th style={{ textAlign: "left", padding: "6px 10px", fontWeight: 400 }}>SYMBOL</th>
+                      <th style={{ textAlign: "left", padding: "6px 10px", fontWeight: 400 }}>INCLUDED IN</th>
+                      <th style={{ textAlign: "right", padding: "6px 10px", fontWeight: 400 }}>TRUE EXPOSURE</th>
+                      <th style={{ textAlign: "center", padding: "6px 10px", fontWeight: 400 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {overlapData.rows.map((r: any) => {
+                      const isExpanded = expandedOverlapTicker === r.ticker;
+                      return (
+                        <Fragment key={r.ticker}>
+                          <tr onClick={() => setExpandedOverlapTicker(isExpanded ? null : r.ticker)}
+                            style={{ borderTop: `1px solid ${B.border}`, cursor: "pointer" }}>
+                            <td style={{ padding: "8px 10px", color: B.blue, fontWeight: 700 }}>
+                              <span title="This name is contained in more than one of your instruments" style={{ marginRight: 6, color: B.yellow }}>⚠</span>
+                              {r.ticker}
+                            </td>
+                            <td style={{ padding: "8px 10px", color: B.gray1 }}>
+                              {r.sources.map((s: any) => s.label).join(", ")}
+                            </td>
+                            <td style={{ padding: "8px 10px", textAlign: "right", color: B.yellow, fontWeight: 700 }}>
+                              {r.totalPct.toFixed(1)}%
+                            </td>
+                            <td style={{ padding: "8px 10px", textAlign: "center", color: B.gray3 }}>{isExpanded ? "▾" : "▸"}</td>
+                          </tr>
+                          {isExpanded && (
+                            <tr style={{ background: B.panel2 }}>
+                              <td colSpan={4} style={{ padding: "8px 16px 12px" }}>
+                                <div style={{ fontSize: 12, color: B.gray2, marginBottom: 4 }}>
+                                  {r.sources.map((s: any) => (
+                                    <div key={s.label}>{s.label === "Direct" ? "Direct holding" : `via ${s.label}`}: {s.pct.toFixed(1)}% (${fmtM(s.value)})</div>
+                                  ))}
+                                </div>
+                                <div style={{ fontSize: 11, color: B.gray3, fontStyle: "italic" }}>
+                                  Overlap not fully verifiable — only top holdings are available for each fund, so a fund
+                                  could hold more {r.ticker} than shown here (or hold it despite not appearing above at all).
+                                </div>
                               </td>
-                              <td style={{ padding: "8px 10px", textAlign: "right", color: B.gray1 }}>
-                                {r.directValue > 0 ? `${r.directPct.toFixed(1)}%` : "—"}
-                              </td>
-                              <td style={{ padding: "8px 10px", textAlign: "right", color: B.gray1 }}>{r.indirectPct.toFixed(1)}%</td>
-                              <td style={{ padding: "8px 10px", textAlign: "right", color: isSignificant ? B.yellow : B.gray1, fontWeight: 700 }}>
-                                {r.totalPct.toFixed(1)}%
-                              </td>
-                              <td style={{ padding: "8px 10px", textAlign: "center", color: B.gray3 }}>{isExpanded ? "▾" : "▸"}</td>
                             </tr>
-                            {isExpanded && (
-                              <tr style={{ background: B.panel2 }}>
-                                <td colSpan={5} style={{ padding: "8px 16px 12px" }}>
-                                  <div style={{ fontSize: 12, color: B.gray2, marginBottom: 4 }}>
-                                    {r.directValue > 0 && <div>Direct holding: {r.directPct.toFixed(1)}% (${fmtM(r.directValue)})</div>}
-                                    {r.viaFunds.map((f: any) => (
-                                      <div key={f.fundTicker}>via {f.fundTicker}: {f.pct.toFixed(1)}% (${fmtM(f.value)})</div>
-                                    ))}
-                                  </div>
-                                  <div style={{ fontSize: 11, color: B.gray3, fontStyle: "italic" }}>
-                                    Overlap not fully verifiable — only top holdings are available for each fund, so a fund
-                                    could hold more {r.ticker} than shown here (or hold it despite not appearing above at all).
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  <p style={{ fontSize: 11, color: B.gray3, marginTop: 10, fontStyle: "italic" }}>
-                    Fund holdings reflect Yahoo's published top ~10 constituents per fund, not the full portfolio — a name
-                    absent from a fund's breakdown may still be held by that fund outside its visible top holdings.
-                  </p>
-                </>
-              )}
-            </div>
-            </BPanel>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <p style={{ fontSize: 11, color: B.gray3, marginTop: 10, fontStyle: "italic" }}>
+                  Fund holdings reflect Yahoo's published top ~10 constituents per fund, not the full portfolio — a name
+                  absent from a fund's breakdown may still be held by that fund outside its visible top holdings.
+                </p>
+              </div>
+              </BPanel>
+            )}
           </>
         )}
 
