@@ -285,6 +285,12 @@ const NAV_ICONS: Record<string, JSX.Element> = {
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
   ),
+  scan: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" />
+    </svg>
+  ),
   portfolio: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="7" width="20" height="14" rx="2" />
@@ -345,6 +351,7 @@ const SIDEBAR_GROUPS = [
   ],
   [
     {id:"search",   label:"SEARCH"},
+    {id:"scan",     label:"SCAN"},
     {id:"portfolio",label:"PORTFOLIO",badgeKey:true},
     {id:"analysis", label:"ANALYSIS"},
     {id:"ai",       label:"AI ADVISOR"},
@@ -1206,6 +1213,325 @@ useEffect(()=>{
         {!searching&&q.trim()&&results.length===0&&(
           <div style={{padding:"14px 10px",fontSize:14,color:B.gray3,fontFamily:"'Courier New',monospace",textAlign:"center"}}>
             NO RESULTS FOR "{q.toUpperCase()}"
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// "Stock Scan" — a dedicated, read-only research view for one security at
+// a time (as opposed to SearchPage, which is built around "find something
+// to add to my portfolio"). Every non-AI panel is real data this app
+// already fetches elsewhere (fetchQuote, PricePerformancePanel, Yahoo
+// look-through via holdingWeights/sectorWeights) — nothing here is
+// invented. The one AI step on top is a short educational synthesis of
+// that same real data, gated behind sign-in at the page-switch level (see
+// the `page==="scan"` render) since it spends real Groq/Gemini tokens.
+function StockScanPage() {
+  const isMobile = useIsMobile();
+  const [q, setQ] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [detail, setDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const debounce = useRef<any>(null);
+
+  const [aiReport, setAiReport] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState("");
+
+  const doSearch = useCallback(async (val: string) => {
+    if (!val.trim()) { setSuggestions([]); return; }
+    try {
+      const data = await searchSecurities(val, undefined);
+      setSuggestions(data || []);
+    } catch { setSuggestions([]); }
+  }, []);
+
+  const handleInput = (v: string) => {
+    setQ(v);
+    setShowSuggestions(true);
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => doSearch(v), 350);
+  };
+
+  const runScan = async (r: any) => {
+    setShowSuggestions(false);
+    setLoading(true); setError(""); setDetail(null); setAiReport(""); setAiError("");
+    try {
+      const sym = r.symbol;
+      const d: any = await fetchQuote(sym, r.isin);
+      // Same precedence rule as SearchPage.selectSecurity: the search
+      // result's own classification comes from real exchange/type data and
+      // should win over the quote's category default.
+      d.category = r.category || d.category;
+      d.sector   = d.sector   || r.sector   || d.industry || r.industry || "OTHER";
+      d.industry = d.industry || r.industry || "OTHER";
+      d.geo      = d.geo      || r.geo      || "OTHER";
+      d.ticker   = d.ticker   || sym;
+      setDetail(d);
+      setQ(d.ticker);
+    } catch (e: any) {
+      setError(`SCAN ERROR: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearScan = () => {
+    clearTimeout(debounce.current);
+    setQ(""); setSuggestions([]); setShowSuggestions(false);
+    setDetail(null); setError(""); setAiReport(""); setAiError("");
+  };
+
+  const sortedHoldings = detail?.holdingWeights
+    ? Object.entries(detail.holdingWeights).sort((a: any, b: any) => b[1] - a[1])
+    : [];
+  const sortedSectors = detail?.sectorWeights
+    ? Object.entries(detail.sectorWeights).sort((a: any, b: any) => b[1] - a[1])
+    : [];
+
+  const runAiScan = async () => {
+    if (!detail) return;
+    setAiBusy(true); setAiError(""); setAiReport("");
+    try {
+      const topHoldings = sortedHoldings.length
+        ? sortedHoldings.slice(0, 10).map(([t, w]: any) => `${t} ${(w * 100).toFixed(1)}%`).join(", ")
+        : null;
+      const topSectors = sortedSectors.length
+        ? sortedSectors.slice(0, 8).map(([s, w]: any) => `${s} ${(w * 100).toFixed(1)}%`).join(", ")
+        : null;
+      const lines = [
+        `TICKER: ${detail.ticker} — ${detail.shortName}`,
+        `Category: ${detail.category || "—"} | Sector/Industry: ${detail.sector || detail.industry || "—"} | Geography: ${detail.geo || "—"} | Exchange: ${detail.exchange || "—"} | Currency: ${detail.currency || "—"}`,
+        `Price: ${detail.price ?? "—"} | Day change: ${detail.dayChangePct != null ? detail.dayChangePct + "%" : "—"} | YTD return: ${detail.ytd != null ? detail.ytd + "%" : "—"}`,
+        `Market Cap: ${detail.marketCap ?? "—"} | P/E (TTM): ${detail.pe ?? "—"} | Dividend Yield: ${detail.dividendYield != null ? detail.dividendYield + "%" : "—"} | Beta (vs market): ${detail.beta ?? "—"} | Ann. Volatility (proxy): ${detail.vol != null ? detail.vol + "%" : "—"}`,
+        topSectors ? `Look-through sector breakdown (fund basket): ${topSectors}` : null,
+        topHoldings ? `Look-through top holdings (fund basket, Yahoo top ~10 only — may be incomplete): ${topHoldings}` : null,
+      ].filter(Boolean).join("\n");
+
+      const system = `You are generating a "Stock Scan" educational report for one single security inside a portfolio-analytics terminal. You are given a fixed block of REAL data below — this is the ONLY data you have access to. Never invent, estimate, or guess any number not present in it (no price targets, no analyst ratings, no earnings/balance-sheet figures, no peer comps). If something a full research report would normally cover isn't in this data, say plainly that it isn't available here.
+
+Structure the reply in these four short sections, plain text with the header in capitals followed by a colon (no markdown tables, no bullet characters):
+OVERVIEW: what kind of instrument this is and its basic profile, in plain language.
+VALUATION CONTEXT: what the available multiples (P/E, dividend yield, market cap) suggest, only qualitatively — never a price target or fair-value estimate.
+RISK & VOLATILITY: read on beta/volatility, and — only if this is a fund with look-through data above — what its visible sector/holdings breakdown says about concentration.
+WHAT THIS SCAN DOESN'T COVER: name what a full research report would normally include that isn't available here (earnings history, analyst estimates, balance sheet/cash flow, DCF, peer comparables).
+
+Keep the whole reply under 220 words, dense and concrete. This is never a recommendation to buy, sell or hold.
+
+DATA:
+${lines}`;
+
+      const { reply } = await aiChatAsUser({
+        messages: [{ role: "user", content: `Produce the Stock Scan report for ${detail.ticker}.` }],
+        system,
+      });
+      setAiReport(reply);
+    } catch (e: any) {
+      setAiError("AI error: " + e.message);
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  return (
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{padding:"6px",borderBottom:`1px solid ${B.border}`,background:B.panel2,flexShrink:0}}>
+        <div style={{display:"flex",gap:6}}>
+        <div style={{position:"relative",flex:1}}>
+          <input value={q} onChange={e=>handleInput(e.target.value)}
+            onKeyDown={e=>{
+              if (e.key !== "Enter") return;
+              // Prefer a resolved suggestion (carries real exchange/category/
+              // ISIN data), but fall back to scanning the typed symbol
+              // directly — fetchQuote has its own offline-safe fallback, so
+              // a stock scan shouldn't be blocked just because the live
+              // Yahoo search endpoint didn't answer in time.
+              if (suggestions[0]) runScan(suggestions[0]);
+              else if (q.trim()) runScan({ symbol: q.trim().toUpperCase() });
+            }}
+            onFocus={()=>suggestions.length>0 && setShowSuggestions(true)}
+            onBlur={()=>setTimeout(()=>setShowSuggestions(false),150)}
+            placeholder="ENTER TICKER, ISIN OR NAME TO SCAN..."
+            style={{width:"100%",background:B.bg,border:`1px solid ${B.blue}`,color:B.yellow,
+              padding:"8px 34px 8px 10px",fontSize:16,fontFamily:"'Courier New',monospace",outline:"none",
+              letterSpacing:"0.04em",textTransform:"uppercase"}}/>
+          {q && (
+            <button onClick={clearScan} aria-label="Clear scan" style={{
+              position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",
+              background:"none",border:"none",color:B.gray3,cursor:"pointer",
+              fontSize:16,fontWeight:700,padding:6,lineHeight:1,
+            }}>✕</button>
+          )}
+          {showSuggestions && suggestions.length>0 && (
+            <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:20,
+              background:B.panel,border:`1px solid ${B.borderB}`,borderRadius:6,marginTop:2,maxHeight:260,overflowY:"auto"}}>
+              {suggestions.slice(0,10).map((r:any)=>(
+                <div key={r.symbol} onClick={()=>runScan(r)} style={{
+                  display:"grid",gridTemplateColumns:"72px 1fr 70px",
+                  padding:"8px 10px",cursor:"pointer",borderBottom:`1px solid ${B.border}`,alignItems:"center",gap:6,
+                }}>
+                  <span style={{fontSize:14,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>{r.symbol}</span>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.shortName}</div>
+                    <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{r.exchange}</div>
+                  </div>
+                  <span style={{fontSize:11,color:B.yellow,fontFamily:"'Courier New',monospace",textAlign:"right",fontWeight:700}}>{r.category||r.type}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button onClick={()=>{ if (suggestions[0]) runScan(suggestions[0]); else if (q.trim()) runScan({ symbol: q.trim().toUpperCase() }); }}
+          disabled={!q.trim()||loading} style={{
+          background:B.blue,border:"none",color:B.white,padding:"0 18px",borderRadius:6,
+          cursor:(!q.trim()||loading)?"not-allowed":"pointer",opacity:(!q.trim()||loading)?0.5:1,
+          fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700,letterSpacing:"0.04em"}}>
+          SCAN
+        </button>
+        </div>
+      </div>
+
+      {error && <ErrMsg msg={error}/>}
+      {loading && <Spinner text="SCANNING..."/>}
+
+      <div style={{flex:1,overflowY:"auto",padding:14,paddingBottom:80}}>
+        {!detail && !loading && (
+          <div style={{padding:"60px 20px",textAlign:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:14,lineHeight:1.6}}>
+            Search a ticker, ISIN or name above to run a full scan — real fundamentals, price history, volatility and
+            (if applicable) fund look-through data, plus an optional AI-generated educational synthesis of that data.
+          </div>
+        )}
+
+        {detail && (
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {/* Header */}
+            <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px",
+              display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"center",gap:12}}>
+              <div>
+                <div style={{display:"flex",alignItems:"baseline",gap:10}}>
+                  <span style={{fontSize:24,fontWeight:700,color:B.blue,fontFamily:"'Courier New',monospace"}}>{detail.ticker}</span>
+                  <span style={{fontSize:16,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{detail.shortName}</span>
+                </div>
+                <div style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",marginTop:2}}>
+                  {detail.exchange || "—"} · {detail.sector || detail.industry || "—"} · {detail.category || "—"} · {detail.currency || "USD"}
+                </div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:26,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>
+                  {detail.price!=null?detail.price.toFixed(2):"---"}
+                </div>
+                <div style={{fontSize:14,fontWeight:700,color:pCol(detail.dayChangePct),fontFamily:"'Courier New',monospace"}}>
+                  {detail.dayChangePct!=null?`${pSign(fmt(detail.dayChangePct,2))}%`:"---"}
+                </div>
+              </div>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:14}}>
+              <PricePerformancePanel symbol={detail.ticker} currency={detail.currency}/>
+
+              <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
+                  <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
+                    KEY METRICS
+                  </div>
+                  {[
+                    {l:"Market Cap", v: detail.marketCap!=null ? `$${fmtM(detail.marketCap)}` : "—"},
+                    {l:"P/E (TTM)", v: detail.pe!=null ? `${fmt(detail.pe,1)}x` : "—"},
+                    {l:"Dividend Yield", v: detail.dividendYield!=null ? `${fmt(detail.dividendYield,2)}%` : "—"},
+                  ].map((k,i,arr)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",
+                      borderBottom: i<arr.length-1?`1px solid ${B.border}`:"none"}}>
+                      <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{k.l}</span>
+                      <span style={{fontSize:14,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{k.v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
+                  <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
+                    RISK &amp; RETURN
+                  </div>
+                  {[
+                    {l:"Ann. Volatility", v: detail.vol!=null ? `${fmt(detail.vol,1)}%` : "—"},
+                    {l:"Beta (vs market)", v: detail.beta!=null ? fmt(detail.beta,2) : "—"},
+                    {l:"YTD Return", v: detail.ytd!=null ? `${pSign(fmt(detail.ytd,1))}%` : "—", color: detail.ytd!=null?pCol(detail.ytd):undefined},
+                  ].map((k:any,i,arr)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",
+                      borderBottom: i<arr.length-1?`1px solid ${B.border}`:"none"}}>
+                      <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{k.l}</span>
+                      <span style={{fontSize:14,fontWeight:700,color:k.color||B.gray1,fontFamily:"'Courier New',monospace"}}>{k.v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Overview — company/fund/instrument description, same copy source as SearchPage */}
+            <BPanel title={(OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).label}>
+              <div style={{padding:"10px 18px 16px",fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",lineHeight:1.6,maxHeight:260,overflowY:"auto"}}>
+                {overviewParagraphs(detail.description || (OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).fallback)
+                  .map((para,i)=><p key={i} style={{margin: i===0 ? 0 : "10px 0 0"}}>{para}</p>)}
+              </div>
+            </BPanel>
+
+            {/* Fund composition — only rendered when Yahoo actually returned look-through data */}
+            {(sortedSectors.length>0 || sortedHoldings.length>0) && (
+              <BPanel title="FUND COMPOSITION — LOOK-THROUGH">
+                <div style={{padding:12,display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16}}>
+                  {sortedSectors.length>0 && (
+                    <div>
+                      <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:6,textTransform:"uppercase"}}>Sector Breakdown</div>
+                      {sortedSectors.map(([s,w]:any)=>(
+                        <div key={s} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${B.border}`}}>
+                          <span style={{fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{s}</span>
+                          <span style={{fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700}}>{(w*100).toFixed(1)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {sortedHoldings.length>0 && (
+                    <div>
+                      <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:6,textTransform:"uppercase"}}>Top Holdings</div>
+                      {sortedHoldings.map(([t,w]:any)=>(
+                        <div key={t} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${B.border}`}}>
+                          <span style={{fontSize:13,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>{t}</span>
+                          <span style={{fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700}}>{(w*100).toFixed(1)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{padding:"0 12px 12px",fontSize:11,color:B.gray3,fontStyle:"italic",fontFamily:"'Courier New',monospace"}}>
+                  Reflects Yahoo's published top ~10 constituents/sectors — not the fund's full portfolio, so it may understate real diversification or concentration.
+                </div>
+              </BPanel>
+            )}
+
+            {/* AI Educational Scan */}
+            <BPanel title="AI EDUCATIONAL SCAN" accent>
+              <div style={{padding:"10px 18px 16px"}}>
+                <p style={{fontSize:13,color:B.gray2,lineHeight:1.5,margin:"0 0 12px"}}>
+                  Generates a short educational synthesis of the real data shown above — never a buy/sell/hold call,
+                  a price target, or a number that isn't already on this page.
+                </p>
+                <button onClick={runAiScan} disabled={aiBusy} style={{
+                  background:B.blue,border:"none",color:B.white,padding:"9px 18px",borderRadius:8,
+                  cursor:aiBusy?"wait":"pointer",fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700,marginBottom:12}}>
+                  {aiBusy ? "ANALYZING..." : aiReport ? "REGENERATE AI SCAN" : "RUN AI SCAN"}
+                </button>
+                {aiError && <div style={{color:B.red,fontSize:13,fontFamily:"'Courier New',monospace",marginBottom:12}}>{aiError}</div>}
+                {aiReport && (
+                  <div style={{background:B.panel2,border:`1px solid ${B.border}`,borderRadius:8,padding:"12px 14px",
+                    fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.6,whiteSpace:"pre-wrap"}}>
+                    {aiReport}
+                  </div>
+                )}
+              </div>
+            </BPanel>
           </div>
         )}
       </div>
@@ -3802,6 +4128,7 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
               <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column"}}>
                 {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing}/>}
                 {page==="search"     && <SearchPage   onAdd={addToPortfolio} portfolio={displayHoldings} onWatchlistChange={loadWatchlist}/>}
+                {page==="scan"       && <RequireAuth user={user} reason="run a Stock Scan">{()=><StockScanPage/>}</RequireAuth>}
                 {page==="portfolio"  && <PortfolioPage holdings={holdings} onRemove={removeFromPortfolio} onUpdate={updateHolding} onSell={sellFromPortfolio} onLoadPortfolio={setHoldings} onAddCash={addToPortfolio} setPage={setPage}/>}
                 {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage}/>}
                 {page==="ai"         && <RequireAuth user={user} reason="use the AI Advisor">{()=><AIAdvisorPage holdings={displayHoldings} setPage={setPage}/>}</RequireAuth>}
