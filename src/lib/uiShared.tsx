@@ -109,6 +109,78 @@ export const computeSingleNameExposure = (holdings, total) => {
   return Object.entries(m).map(([ticker,value])=>({ticker,value,pct:+(value/total*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
 };
 
+// "Overlap Checker" / True Exposure — unlike computeSingleNameExposure
+// above (which just gives one combined number per ticker), this keeps
+// direct vs. indirect exposure separate, and indirect broken down per
+// fund, since the whole point of this feature is showing the user WHERE
+// their hidden exposure to a name is coming from (e.g. "you think you
+// hold 3% AAPL, you actually hold 9% once VOO and QQQ are counted").
+//
+// Honesty constraints (do not weaken these without re-reading the spec
+// this was built against):
+//   - A fund only ever contributes to `unavailableFundTickers` when it's
+//     categorized ETF and has NO holdingWeights at all — that's Yahoo's
+//     topHoldings module returning nothing for it (fetch failure or no
+//     data), and the caller must surface that as "data unavailable",
+//     never silently treat it as "0% overlap".
+//   - Every fund that DOES have holdingWeights only ever reflects Yahoo's
+//     top ~10 constituents — a name absent from a fund's holdingWeights
+//     is NOT proof that fund doesn't hold it, just that it isn't in the
+//     visible top 10. The caller must caveat this globally, not claim a
+//     verified zero for any absent name.
+export const computeOverlapExposure = (holdings, total) => {
+  const directByTicker = new Map();
+  const indirectByTicker = new Map(); // ticker -> Map(fundTicker -> value)
+  const unavailableFundTickers = [];
+
+  holdings.forEach(h => {
+    const ticker = h.asset.ticker || h.asset.symbol || "OTHER";
+    const isFund = h.asset.category === "ETF";
+    const weights = h.asset.holdingWeights;
+    if (isFund) {
+      if (weights && Object.keys(weights).length) {
+        Object.entries(weights).forEach(([underlying, w]) => {
+          if (!indirectByTicker.has(underlying)) indirectByTicker.set(underlying, new Map());
+          const perFund = indirectByTicker.get(underlying);
+          perFund.set(ticker, (perFund.get(ticker) || 0) + h.value * w);
+        });
+      } else {
+        unavailableFundTickers.push(ticker);
+      }
+    } else {
+      directByTicker.set(ticker, (directByTicker.get(ticker) || 0) + h.value);
+    }
+  });
+
+  const allTickers = new Set([...directByTicker.keys(), ...indirectByTicker.keys()]);
+  const rows = Array.from(allTickers).map(ticker => {
+    const directValue = directByTicker.get(ticker) || 0;
+    const perFund = indirectByTicker.get(ticker);
+    const viaFunds = perFund
+      ? Array.from(perFund.entries())
+          .map(([fundTicker, value]) => ({ fundTicker, value, pct: total > 0 ? value / total * 100 : 0 }))
+          .sort((a, b) => b.value - a.value)
+      : [];
+    const indirectValue = viaFunds.reduce((s, f) => s + f.value, 0);
+    const totalValue = directValue + indirectValue;
+    return {
+      ticker,
+      directValue, directPct: total > 0 ? directValue / total * 100 : 0,
+      indirectValue, indirectPct: total > 0 ? indirectValue / total * 100 : 0,
+      totalValue, totalPct: total > 0 ? totalValue / total * 100 : 0,
+      viaFunds,
+      // Only meaningful when there's a visible direct position to compare
+      // against — a purely-indirect name (0% direct, fully hidden inside
+      // funds) has no "apparent weight" to multiply from at all.
+      multiplier: directValue > 0 ? totalValue / directValue : null,
+    };
+  })
+    .filter(r => r.indirectValue > 0) // no hidden exposure to reveal otherwise
+    .sort((a, b) => b.totalValue - a.totalValue);
+
+  return { rows, unavailableFundTickers: Array.from(new Set(unavailableFundTickers)) };
+};
+
 export const pMet = (hs) => {
   if (!hs.length) return null;
   const total = hs.reduce((s,h)=>s+h.value,0);
