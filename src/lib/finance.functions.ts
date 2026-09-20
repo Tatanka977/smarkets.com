@@ -1037,6 +1037,12 @@ export interface SecLineItem {
   annualPrior: SecFundamentalPoint | null;
   quarterly: SecFundamentalPoint | null;
   quarterlyPrior: SecFundamentalPoint | null;
+  // Same data as annual/quarterly above, just further back — ascending by
+  // period end (oldest first) so a caller can feed it straight into a chart
+  // x-axis. Capped at a handful of points; never invented/interpolated —
+  // just whatever distinct periods the company's own filings contain.
+  annualHistory: SecFundamentalPoint[];
+  quarterlyHistory: SecFundamentalPoint[];
 }
 
 export interface SecFundamentalsResult {
@@ -1127,26 +1133,23 @@ function findSecConceptSeries(
   return null;
 }
 
-// Picks the latest and second-latest DISTINCT reporting periods for a given
-// form ("10-K" for annual, "10-Q" for quarterly). Companies often report the
-// same period end multiple times (originally filed, then restated in a later
-// filing) — grouping by `end` and keeping the entry with the latest `filed`
-// date per group ensures the most recently reported figure wins, and that
-// "latest" vs "prior" are genuinely two different periods, not the same
-// period filed twice.
-function pickSecPeriods(entries: any[], form: string): { latest: any | null; prior: any | null } {
+// Picks up to `limit` most-recent DISTINCT reporting periods for a given
+// form ("10-K" for annual, "10-Q" for quarterly), newest first. Companies
+// often report the same period end multiple times (originally filed, then
+// restated in a later filing) — grouping by `end` and keeping the entry
+// with the latest `filed` date per group ensures the most recently reported
+// figure wins, and that consecutive entries are genuinely different
+// periods, not the same period filed twice.
+function pickSecHistory(entries: any[], form: string, limit: number): any[] {
   const filtered = entries.filter((e) => e?.form === form && typeof e?.val === "number" && e?.end);
-  if (!filtered.length) return { latest: null, prior: null };
+  if (!filtered.length) return [];
   const byEnd = new Map<string, any>();
   for (const e of filtered) {
     const cur = byEnd.get(e.end);
     if (!cur || (e.filed || "") > (cur.filed || "")) byEnd.set(e.end, e);
   }
-  const distinctEnds = Array.from(byEnd.keys()).sort().reverse(); // ISO dates sort lexicographically
-  return {
-    latest: distinctEnds[0] ? byEnd.get(distinctEnds[0]) : null,
-    prior: distinctEnds[1] ? byEnd.get(distinctEnds[1]) : null,
-  };
+  const distinctEnds = Array.from(byEnd.keys()).sort().reverse(); // ISO dates sort lexicographically, newest first
+  return distinctEnds.slice(0, limit).map((end) => byEnd.get(end));
 }
 
 function toSecPoint(e: any): SecFundamentalPoint | null {
@@ -1224,18 +1227,23 @@ export const fetchSecFundamentals = createServerFn({ method: "GET" })
           // This specific line item isn't in the company's facts under any
           // candidate tag — leave it null so the UI shows "—", but every
           // other item found still comes back normally.
-          items[field] = { label: SEC_LABELS[field], concept: null, annual: null, annualPrior: null, quarterly: null, quarterlyPrior: null };
+          items[field] = { label: SEC_LABELS[field], concept: null, annual: null, annualPrior: null, quarterly: null, quarterlyPrior: null, annualHistory: [], quarterlyHistory: [] };
           continue;
         }
-        const annualPick = pickSecPeriods(series.entries, "10-K");
-        const quarterlyPick = pickSecPeriods(series.entries, "10-Q");
+        // Up to 6 fiscal years / 8 quarters — enough for a real trend chart
+        // without pulling in a company's entire multi-decade filing history.
+        const annualHistory = pickSecHistory(series.entries, "10-K", 6);
+        const quarterlyHistory = pickSecHistory(series.entries, "10-Q", 8);
         items[field] = {
           label: SEC_LABELS[field],
           concept: series.concept,
-          annual: toSecPoint(annualPick.latest),
-          annualPrior: toSecPoint(annualPick.prior),
-          quarterly: toSecPoint(quarterlyPick.latest),
-          quarterlyPrior: toSecPoint(quarterlyPick.prior),
+          annual: toSecPoint(annualHistory[0] ?? null),
+          annualPrior: toSecPoint(annualHistory[1] ?? null),
+          quarterly: toSecPoint(quarterlyHistory[0] ?? null),
+          quarterlyPrior: toSecPoint(quarterlyHistory[1] ?? null),
+          // Reversed to ascending (oldest→newest) for chart x-axes.
+          annualHistory: annualHistory.slice().reverse().map(toSecPoint) as SecFundamentalPoint[],
+          quarterlyHistory: quarterlyHistory.slice().reverse().map(toSecPoint) as SecFundamentalPoint[],
         };
       }
 
@@ -1251,5 +1259,97 @@ export const fetchSecFundamentals = createServerFn({ method: "GET" })
     } catch (e) {
       console.warn("[SEC fundamentals]", symbol, (e as Error).message);
       return { available: false, cik, reason: "SEC EDGAR request failed — please try again later.", fetchedAt: Date.now() };
+    }
+  });
+
+// ---------------------------------------------------------------------------
+// Analyst consensus — Finnhub's /stock/recommendation endpoint (free tier).
+// Note: Finnhub's price-target endpoint is Premium-only on the current plan
+// and is deliberately NOT wired up here; if the plan is ever upgraded, that
+// would be a separate fetchAnalystPriceTarget() alongside this one, not a
+// field bolted onto it.
+// ---------------------------------------------------------------------------
+export interface AnalystConsensus {
+  available: boolean;
+  reason?: string;                      // set whenever `available` is false
+  period?: string;                      // the month this consensus covers, e.g. "2024-05-01"
+  counts?: { strongBuy: number; buy: number; hold: number; sell: number; strongSell: number };
+  label?: "Buy" | "Hold" | "Sell";
+  fetchedAt: number;
+}
+
+interface FhRecommendation {
+  symbol: string;
+  period: string;
+  buy: number;
+  hold: number;
+  sell: number;
+  strongBuy: number;
+  strongSell: number;
+}
+
+// Analyst counts only change as new research notes come in — cached the
+// same length of time as the SEC fundamentals above.
+const analystConsensusCache = new Map<string, { result: AnalystConsensus; fetchedAt: number }>();
+const ANALYST_CONSENSUS_TTL_MS = 4 * 60 * 60 * 1000;
+
+export const fetchAnalystConsensus = createServerFn({ method: "GET" })
+  .inputValidator((d: { symbol: string }) => d)
+  .handler(async ({ data }): Promise<AnalystConsensus> => {
+    const symbol = (data.symbol || "").trim().toUpperCase();
+    if (!symbol) return { available: false, reason: "No symbol provided.", fetchedAt: Date.now() };
+
+    const cached = analystConsensusCache.get(symbol);
+    if (cached && Date.now() - cached.fetchedAt < ANALYST_CONSENSUS_TTL_MS) {
+      return cached.result;
+    }
+
+    if (!hasFinnhub()) {
+      return { available: false, reason: "Analyst consensus requires Finnhub market data access, which isn't configured on this deployment.", fetchedAt: Date.now() };
+    }
+
+    try {
+      const arr = await fh<FhRecommendation[]>(`/stock/recommendation?symbol=${encodeURIComponent(symbol)}`);
+      // Empty array is Finnhub's normal response for a ticker it has no
+      // analyst coverage for at all (common for non-US listings, small
+      // caps, etc.) — not an error, just "nothing to show".
+      if (!Array.isArray(arr) || !arr.length) {
+        const result: AnalystConsensus = { available: false, reason: "Analyst consensus not available for this ticker.", fetchedAt: Date.now() };
+        analystConsensusCache.set(symbol, { result, fetchedAt: Date.now() });
+        return result;
+      }
+
+      // Finnhub returns most-recent month first.
+      const latest = arr[0];
+      const counts = {
+        strongBuy: latest.strongBuy || 0,
+        buy: latest.buy || 0,
+        hold: latest.hold || 0,
+        sell: latest.sell || 0,
+        strongSell: latest.strongSell || 0,
+      };
+      const total = counts.strongBuy + counts.buy + counts.hold + counts.sell + counts.strongSell;
+      if (total === 0) {
+        const result: AnalystConsensus = { available: false, reason: "Analyst consensus not available for this ticker.", fetchedAt: Date.now() };
+        analystConsensusCache.set(symbol, { result, fetchedAt: Date.now() });
+        return result;
+      }
+
+      // Aggregate label: "Buy" only when the bullish camp (strongBuy+buy) is
+      // an outright majority (>50%) of all responses; "Sell" only when the
+      // bearish camp (sell+strongSell) is an outright majority. Anything
+      // else — including a near-even split, or hold-heavy coverage — reads
+      // as "Hold", since that's the honest description of no clear majority
+      // either way, not a coin-flip toward whichever side is nominally larger.
+      const bullish = counts.strongBuy + counts.buy;
+      const bearish = counts.sell + counts.strongSell;
+      const label: AnalystConsensus["label"] = bullish > total / 2 ? "Buy" : bearish > total / 2 ? "Sell" : "Hold";
+
+      const result: AnalystConsensus = { available: true, period: latest.period, counts, label, fetchedAt: Date.now() };
+      analystConsensusCache.set(symbol, { result, fetchedAt: Date.now() });
+      return result;
+    } catch (e) {
+      console.warn("[Analyst consensus]", symbol, (e as Error).message);
+      return { available: false, reason: "Analyst consensus request failed — please try again later.", fetchedAt: Date.now() };
     }
   });

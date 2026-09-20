@@ -25,6 +25,7 @@ import {
   fetchFxRates as srvFx,
   fetchPriceHistory as srvPriceHistory,
   fetchSecFundamentals as srvSecFundamentals,
+  fetchAnalystConsensus as srvAnalystConsensus,
 } from "@/lib/finance.functions";
 import { aiChatAsUser } from "@/lib/ai.functions";
 import {
@@ -48,7 +49,7 @@ import { usePersistentState } from "@/hooks/usePersistentState";
 import { useTheme } from "@/hooks/useTheme";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
-import { B, PIE_COLS, fmt, fmtM, pCol, pSign, groupBy, pMet, FKey, BPanel, buildPortfolioContext, RequireAuth, useAuthGuard } from "@/lib/uiShared";
+import { B, PIE_COLS, fmt, fmtM, pCol, pSign, groupBy, groupBySectorLookThrough, pMet, computeRiskScore, FKey, BPanel, buildPortfolioContext, RequireAuth, useAuthGuard } from "@/lib/uiShared";
 
 export { B, PIE_COLS, fmt, fmtM, pCol, pSign, groupBy, pMet, FKey, BPanel };
 
@@ -58,10 +59,16 @@ const batchRefresh = (symbols) => srvBatch({ data: { symbols } });
 const fetchMarketStatus = (exchanges?:string[]) => srvMarketStatus({ data: { exchanges } });
 const fetchHistoricalPrice = (symbol, date) => srvHistorical({ data: { symbol, date } });
 const fetchSecFundamentals = (symbol:string) => srvSecFundamentals({ data: { symbol } });
+const fetchAnalystConsensus = (symbol:string) => srvAnalystConsensus({ data: { symbol } });
 const fetchMarketNews = (category) => srvMarketNews({ data: { category } });
 const fetchAllMarketNews = () => srvAllMarketNews();
 const fetchCompanyNews = (symbol, days=14) => srvCompanyNews({ data: { symbol, days } });
 const fetchPortfolioNews = (tickers:string[]) => srvPortfolioNews({ data: { tickers } });
+
+// Same field keys fetchSecFundamentals returns in its `items` map — kept
+// here just to iterate them in a stable, sensible display order (Income
+// Statement → Balance Sheet → Cash Flow) rather than object-key order.
+const SEC_FIELD_ORDER = ["revenue", "netIncome", "totalAssets", "totalLiabilities", "stockholdersEquity", "operatingCashFlow", "cash"];
 
 const CATEGORY_TABS = [
   { id: undefined, label: "ALL" },
@@ -1309,16 +1316,21 @@ useEffect(()=>{
   );
 }
 
-// "Stock Scan" — a dedicated, read-only research view for one security at
-// a time (as opposed to SearchPage, which is built around "find something
-// to add to my portfolio"). Every non-AI panel is real data this app
-// already fetches elsewhere (fetchQuote, PricePerformancePanel, Yahoo
-// look-through via holdingWeights/sectorWeights) — nothing here is
-// invented. The one AI step on top is a short educational synthesis of
-// that same real data, gated behind sign-in at the page-switch level (see
-// the `page==="scan"` render) since it spends real Groq/Gemini tokens.
-function StockScanPage() {
+// "Stock Scan" — the "give me a verdict on this ticker" page, distinct from
+// SearchPage (which is built around "find something to add to my
+// portfolio"). Every panel is real data: fetchQuote/PricePerformancePanel
+// (existing), SEC EDGAR fundamentals with an actual multi-year chart,
+// Finnhub's real Wall Street analyst consensus (never this app's own
+// buy/sell/hold opinion — the AI here is never allowed to issue one, see
+// SAFETY_PREAMBLE in ai.functions.ts), and a "Portfolio Fit" panel that
+// simulates adding this position to the user's OWN current holdings and
+// shows the real before/after risk-score impact (same computeRiskScore/HHI
+// math as Analysis's What-If simulator). The whole page is gated behind
+// sign-in at the page-switch level since fundamentals + consensus + AI all
+// spend real API/token budget.
+function StockScanPage({ holdings }: { holdings: any[] }) {
   const isMobile = useIsMobile();
+  const FONT = "'Courier New',monospace";
   const [q, setQ] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -1326,6 +1338,15 @@ function StockScanPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const debounce = useRef<any>(null);
+
+  const [secData, setSecData] = useState<any>(null);
+  const [secLoading, setSecLoading] = useState(false);
+  const [secPeriod, setSecPeriod] = useState<"annual"|"quarterly">("annual");
+
+  const [consensus, setConsensus] = useState<any>(null);
+  const [consensusLoading, setConsensusLoading] = useState(false);
+
+  const [fitAmount, setFitAmount] = useState("1000");
 
   const [aiReport, setAiReport] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
@@ -1375,12 +1396,91 @@ function StockScanPage() {
     setDetail(null); setError(""); setAiReport(""); setAiError("");
   };
 
+  // SEC fundamentals, analyst consensus and the quote itself all load
+  // independently — a slow/unavailable source (e.g. a non-US ticker with no
+  // SEC filings) should never hold up the others.
+  useEffect(() => {
+    const ticker = detail?.ticker;
+    if (!ticker) { setSecData(null); return; }
+    let alive = true;
+    setSecLoading(true);
+    fetchSecFundamentals(ticker)
+      .then((r) => { if (alive) setSecData(r); })
+      .catch((e: any) => { if (alive) setSecData({ available: false, reason: `Fundamentals lookup failed: ${e.message}` }); })
+      .finally(() => { if (alive) setSecLoading(false); });
+    return () => { alive = false; };
+  }, [detail?.ticker]);
+
+  useEffect(() => {
+    const ticker = detail?.ticker;
+    if (!ticker) { setConsensus(null); return; }
+    let alive = true;
+    setConsensusLoading(true);
+    fetchAnalystConsensus(ticker)
+      .then((r) => { if (alive) setConsensus(r); })
+      .catch((e: any) => { if (alive) setConsensus({ available: false, reason: `Analyst consensus lookup failed: ${e.message}` }); })
+      .finally(() => { if (alive) setConsensusLoading(false); });
+    return () => { alive = false; };
+  }, [detail?.ticker]);
+
+  // Default hypothetical position size for the Portfolio Fit panel: 5% of
+  // the user's actual current total when they have one, otherwise a flat
+  // round number — never derived from anything about the scanned security
+  // itself (e.g. its price), just a sensible starting point the user can
+  // freely override.
+  useEffect(() => {
+    if (!detail?.ticker) return;
+    const total = (holdings || []).reduce((s: number, h: any) => s + h.value, 0);
+    setFitAmount(total > 0 ? String(Math.round(total * 0.05)) : "1000");
+  }, [detail?.ticker]);
+
   const sortedHoldings = detail?.holdingWeights
     ? Object.entries(detail.holdingWeights).sort((a: any, b: any) => b[1] - a[1])
     : [];
   const sortedSectors = detail?.sectorWeights
     ? Object.entries(detail.sectorWeights).sort((a: any, b: any) => b[1] - a[1])
     : [];
+
+  // Revenue + Net Income merged by period end into one chart-ready array —
+  // both series come from the same company filings, so their period ends
+  // line up, but they're matched by date rather than assumed to be the same
+  // length/order in case one concept has a gap the other doesn't.
+  const secChartData = (() => {
+    if (!secData?.available) return [];
+    const revHist = secData.items?.revenue?.[secPeriod === "annual" ? "annualHistory" : "quarterlyHistory"] || [];
+    const niHist = secData.items?.netIncome?.[secPeriod === "annual" ? "annualHistory" : "quarterlyHistory"] || [];
+    const byEnd = new Map<string, any>();
+    const labelFor = (p: any) => secPeriod === "annual" ? `FY${p.fy ?? p.end.slice(0, 4)}` : `${p.fp || ""} ${p.end.slice(2)}`;
+    revHist.forEach((p: any) => byEnd.set(p.end, { period: labelFor(p), revenue: p.value }));
+    niHist.forEach((p: any) => {
+      const cur = byEnd.get(p.end) || { period: labelFor(p) };
+      cur.netIncome = p.value;
+      byEnd.set(p.end, cur);
+    });
+    return Array.from(byEnd.keys()).sort().map((k) => byEnd.get(k));
+  })();
+
+  // Portfolio Fit — simulates adding `fitAmount` of this security to the
+  // user's OWN current holdings and compares the real risk score (same
+  // computeRiskScore/HHI/sector-concentration math as Analysis's What-If
+  // simulator) before vs after. With no existing holdings there's no
+  // "before" to compare against — the after-only numbers describe what a
+  // portfolio made up entirely of this one security would look like.
+  const fitAmountNum = parseFloat(fitAmount) || 0;
+  const currentTotal = (holdings || []).reduce((s: number, h: any) => s + h.value, 0);
+  const hasCurrentHoldings = currentTotal > 0;
+  const sectorEligible = (hs: any[]) => hs.filter((h: any) => !["BOND", "COMMODITY", "CRYPTO", "FX", "CASH"].includes(h.asset.category));
+  const beforeM = hasCurrentHoldings ? pMet(holdings) : null;
+  const beforeTopSectorPct = beforeM ? (groupBySectorLookThrough(sectorEligible(holdings), beforeM.total)[0]?.pct ?? 0) : 0;
+  const beforeRiskScore = beforeM ? computeRiskScore(beforeM.hhi, beforeTopSectorPct, beforeM.wVol, beforeM.wBeta) : null;
+
+  const hypotheticalHoldings = detail && fitAmountNum > 0 ? [...(holdings || []), { asset: detail, value: fitAmountNum }] : null;
+  const afterM = hypotheticalHoldings ? pMet(hypotheticalHoldings) : null;
+  const afterTopSectorPct = afterM ? (groupBySectorLookThrough(sectorEligible(hypotheticalHoldings!), afterM.total)[0]?.pct ?? 0) : null;
+  const afterRiskScore = afterM ? computeRiskScore(afterM.hhi, afterTopSectorPct ?? 0, afterM.wVol, afterM.wBeta) : null;
+  const newPositionWeight = afterM && fitAmountNum > 0 ? (fitAmountNum / afterM.total) * 100 : null;
+  const riskLabelFor = (score: number) => score >= 70 ? "HIGH RISK" : score >= 40 ? "MODERATE RISK" : "LOW RISK";
+  const riskColorFor = (score: number) => score >= 70 ? B.red : score >= 40 ? B.yellow : B.green;
 
   const runAiScan = async () => {
     if (!detail) return;
@@ -1392,6 +1492,20 @@ function StockScanPage() {
       const topSectors = sortedSectors.length
         ? sortedSectors.slice(0, 8).map(([s, w]: any) => `${s} ${(w * 100).toFixed(1)}%`).join(", ")
         : null;
+      const secLine = (fieldKey: string) => {
+        const item = secData?.items?.[fieldKey];
+        if (!item?.annual) return null;
+        const pct = item.annualPrior && item.annualPrior.value !== 0
+          ? (((item.annual.value - item.annualPrior.value) / Math.abs(item.annualPrior.value)) * 100).toFixed(1) + "%"
+          : null;
+        return `${item.label} (FY${item.annual.fy ?? item.annual.end.slice(0,4)}): $${item.annual.value.toLocaleString()}${pct ? ` (${pct} vs prior year)` : ""}`;
+      };
+      const secLines = secData?.available
+        ? SEC_FIELD_ORDER.map(secLine).filter(Boolean)
+        : [];
+      const consensusLine = consensus?.available
+        ? `Wall Street analyst consensus (${consensus.period}): ${consensus.label} — strongBuy ${consensus.counts.strongBuy}, buy ${consensus.counts.buy}, hold ${consensus.counts.hold}, sell ${consensus.counts.sell}, strongSell ${consensus.counts.strongSell}`
+        : null;
       const lines = [
         `TICKER: ${detail.ticker} — ${detail.shortName}`,
         `Category: ${detail.category || "—"} | Sector/Industry: ${detail.sector || detail.industry || "—"} | Geography: ${detail.geo || "—"} | Exchange: ${detail.exchange || "—"} | Currency: ${detail.currency || "—"}`,
@@ -1399,17 +1513,21 @@ function StockScanPage() {
         `Market Cap: ${detail.marketCap ?? "—"} | P/E (TTM): ${detail.pe ?? "—"} | Dividend Yield: ${detail.dividendYield != null ? detail.dividendYield + "%" : "—"} | Beta (vs market): ${detail.beta ?? "—"} | Ann. Volatility (proxy): ${detail.vol != null ? detail.vol + "%" : "—"}`,
         topSectors ? `Look-through sector breakdown (fund basket): ${topSectors}` : null,
         topHoldings ? `Look-through top holdings (fund basket, Yahoo top ~10 only — may be incomplete): ${topHoldings}` : null,
+        ...secLines,
+        consensusLine,
       ].filter(Boolean).join("\n");
 
-      const system = `You are generating a "Stock Scan" educational report for one single security inside a portfolio-analytics terminal. You are given a fixed block of REAL data below — this is the ONLY data you have access to. Never invent, estimate, or guess any number not present in it (no price targets, no analyst ratings, no earnings/balance-sheet figures, no peer comps). If something a full research report would normally cover isn't in this data, say plainly that it isn't available here.
+      const system = `You are generating a "Stock Scan" educational report for one single security inside a portfolio-analytics terminal. You are given a fixed block of REAL data below — this is the ONLY data you have access to. Never invent, estimate, or guess any number not present in it (no price targets, no figures beyond what's listed, no peer comps). If something a full research report would normally cover isn't in this data, say plainly that it isn't available here.
+
+CRITICAL: you must NEVER issue your own buy/sell/hold call or price target, even though real Wall Street analyst consensus data may be given below — that consensus is a fact to report (e.g. "analysts are split, with X buy vs Y sell ratings"), not something you should second-guess, endorse, or restate as your own recommendation.
 
 Structure the reply in these four short sections, plain text with the header in capitals followed by a colon (no markdown tables, no bullet characters):
 OVERVIEW: what kind of instrument this is and its basic profile, in plain language.
-VALUATION CONTEXT: what the available multiples (P/E, dividend yield, market cap) suggest, only qualitatively — never a price target or fair-value estimate.
-RISK & VOLATILITY: read on beta/volatility, and — only if this is a fund with look-through data above — what its visible sector/holdings breakdown says about concentration.
-WHAT THIS SCAN DOESN'T COVER: name what a full research report would normally include that isn't available here (earnings history, analyst estimates, balance sheet/cash flow, DCF, peer comparables).
+FUNDAMENTALS & VALUATION: what the available SEC financials (revenue/net income trend, balance sheet) and multiples (P/E, dividend yield, market cap) show, only qualitatively — never a price target or fair-value estimate.
+RISK & ANALYST VIEW: read on beta/volatility, look-through concentration if this is a fund, and — only as a factual report, never your own opinion — what the real analyst consensus counts say.
+WHAT THIS SCAN DOESN'T COVER: name what a full research report would still additionally include that isn't available here (full financial statements beyond the line items above, DCF, formal peer comparables, price targets).
 
-Keep the whole reply under 220 words, dense and concrete. This is never a recommendation to buy, sell or hold.
+Keep the whole reply under 240 words, dense and concrete. This is never a recommendation to buy, sell or hold, regardless of what the analyst consensus data says.
 
 DATA:
 ${lines}`;
@@ -1489,9 +1607,10 @@ ${lines}`;
 
       <div style={{flex:1,overflowY:"auto",padding:14,paddingBottom:80}}>
         {!detail && !loading && (
-          <div style={{padding:"60px 20px",textAlign:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:14,lineHeight:1.6}}>
-            Search a ticker, ISIN or name above to run a full scan — real fundamentals, price history, volatility and
-            (if applicable) fund look-through data, plus an optional AI-generated educational synthesis of that data.
+          <div style={{padding:"60px 20px",textAlign:"center",color:B.gray3,fontFamily:FONT,fontSize:14,lineHeight:1.6}}>
+            Search a ticker, ISIN or name above for a full verdict-oriented scan — real SEC financials with a trend
+            chart, Wall Street analyst consensus, how it'd affect your portfolio's risk score, and an optional
+            AI-generated educational synthesis on top of all of it.
           </div>
         )}
 
@@ -1502,20 +1621,43 @@ ${lines}`;
               display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"center",gap:12}}>
               <div>
                 <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-                  <span style={{fontSize:24,fontWeight:700,color:B.blue,fontFamily:"'Courier New',monospace"}}>{detail.ticker}</span>
-                  <span style={{fontSize:16,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{detail.shortName}</span>
+                  <span style={{fontSize:24,fontWeight:700,color:B.blue,fontFamily:FONT}}>{detail.ticker}</span>
+                  <span style={{fontSize:16,color:B.gray1,fontFamily:FONT}}>{detail.shortName}</span>
                 </div>
-                <div style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",marginTop:2}}>
+                <div style={{fontSize:13,color:B.gray3,fontFamily:FONT,marginTop:2}}>
                   {detail.exchange || "—"} · {detail.sector || detail.industry || "—"} · {detail.category || "—"} · {detail.currency || "USD"}
                 </div>
               </div>
               <div style={{textAlign:"right"}}>
-                <div style={{fontSize:26,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>
+                <div style={{fontSize:26,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
                   {detail.price!=null?detail.price.toFixed(2):"---"}
                 </div>
-                <div style={{fontSize:14,fontWeight:700,color:pCol(detail.dayChangePct),fontFamily:"'Courier New',monospace"}}>
+                <div style={{fontSize:14,fontWeight:700,color:pCol(detail.dayChangePct),fontFamily:FONT}}>
                   {detail.dayChangePct!=null?`${pSign(fmt(detail.dayChangePct,2))}%`:"---"}
                 </div>
+              </div>
+            </div>
+
+            {/* Verdict strip — the real, external Wall Street consensus is
+                the headline of this page (never this app's own opinion,
+                which the AI section below is explicitly barred from
+                giving — see SAFETY_PREAMBLE in ai.functions.ts). */}
+            <div style={{background:B.panel,border:`1px solid ${
+              consensus?.available ? (consensus.label==="Buy"?B.green:consensus.label==="Sell"?B.red:B.yellow) : B.border
+            }`,borderRadius:12,padding:"14px 18px",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+              <div>
+                <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",letterSpacing:"0.06em"}}>Wall Street Analyst Consensus</div>
+                <div style={{fontSize:30,fontWeight:700,fontFamily:FONT,
+                  color: consensusLoading ? B.gray3 : consensus?.available ? (consensus.label==="Buy"?B.green:consensus.label==="Sell"?B.red:B.yellow) : B.gray3}}>
+                  {consensusLoading ? "…" : consensus?.available ? consensus.label!.toUpperCase() : "N/A"}
+                </div>
+              </div>
+              <div style={{fontSize:13,color:B.gray3,fontFamily:FONT,lineHeight:1.5,flex:1,minWidth:200}}>
+                {consensusLoading
+                  ? "Loading analyst data..."
+                  : consensus?.available
+                    ? `Based on ${consensus.counts.strongBuy+consensus.counts.buy+consensus.counts.hold+consensus.counts.sell+consensus.counts.strongSell} analyst ratings for ${consensus.period}. Full breakdown below — this is Wall Street's own view, not Strategic Markets'.`
+                    : (consensus?.reason || "Analyst consensus not available for this ticker.")}
               </div>
             </div>
 
@@ -1524,7 +1666,7 @@ ${lines}`;
 
               <div style={{display:"flex",flexDirection:"column",gap:14}}>
                 <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
-                  <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
+                  <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:FONT,marginBottom:10}}>
                     KEY METRICS
                   </div>
                   {[
@@ -1534,14 +1676,14 @@ ${lines}`;
                   ].map((k,i,arr)=>(
                     <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",
                       borderBottom: i<arr.length-1?`1px solid ${B.border}`:"none"}}>
-                      <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{k.l}</span>
-                      <span style={{fontSize:14,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{k.v}</span>
+                      <span style={{fontSize:13,color:B.gray3,fontFamily:FONT}}>{k.l}</span>
+                      <span style={{fontSize:14,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{k.v}</span>
                     </div>
                   ))}
                 </div>
 
                 <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
-                  <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace",marginBottom:10}}>
+                  <div style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:FONT,marginBottom:10}}>
                     RISK &amp; RETURN
                   </div>
                   {[
@@ -1551,17 +1693,215 @@ ${lines}`;
                   ].map((k:any,i,arr)=>(
                     <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",
                       borderBottom: i<arr.length-1?`1px solid ${B.border}`:"none"}}>
-                      <span style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{k.l}</span>
-                      <span style={{fontSize:14,fontWeight:700,color:k.color||B.gray1,fontFamily:"'Courier New',monospace"}}>{k.v}</span>
+                      <span style={{fontSize:13,color:B.gray3,fontFamily:FONT}}>{k.l}</span>
+                      <span style={{fontSize:14,fontWeight:700,color:k.color||B.gray1,fontFamily:FONT}}>{k.v}</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
+            {/* Fundamentals — real SEC EDGAR XBRL filings, with an actual
+                multi-year Revenue/Net Income chart (not just a list). */}
+            <BPanel title="FUNDAMENTALS (SEC EDGAR)">
+              <div style={{padding:"10px 18px 16px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:10}}>
+                  <div style={{fontSize:11,color:B.gray3,fontFamily:FONT}}>
+                    {secData?.available ? `${secData.companyName} · CIK ${secData.cik}` : "Company financial statements, as filed with the SEC"}
+                  </div>
+                  {secData?.available && (
+                    <div style={{display:"flex",border:`1px solid ${B.border}`,borderRadius:6,overflow:"hidden"}}>
+                      {([{id:"annual",l:"ANNUAL"},{id:"quarterly",l:"QUARTERLY"}] as const).map(m=>(
+                        <button key={m.id} onClick={()=>setSecPeriod(m.id)} style={{
+                          background: secPeriod===m.id ? B.blue : "transparent", color: secPeriod===m.id ? B.white : B.gray2,
+                          border:"none", padding:"4px 10px", cursor:"pointer",
+                          fontFamily:FONT, fontSize:12, fontWeight:700, letterSpacing:"0.03em",
+                        }}>{m.l}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {secLoading ? (
+                  <div style={{padding:"18px 0",textAlign:"center",color:B.gray3,fontFamily:FONT,fontSize:13}}>LOADING SEC FILINGS...</div>
+                ) : !secData?.available ? (
+                  <div style={{padding:"6px 0 4px",color:B.gray3,fontFamily:FONT,fontSize:13,lineHeight:1.6}}>
+                    {secData?.reason || "Fundamentals data is only available for US-listed companies filing with the SEC."}
+                  </div>
+                ) : (
+                  <>
+                    {secChartData.length>0 ? (
+                      <div style={{marginBottom:14}}>
+                        <div style={{height:200}}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={secChartData}>
+                              <XAxis dataKey="period" tick={{fontSize:11,fill:B.gray3}}/>
+                              <YAxis tick={{fontSize:11,fill:B.gray3}} tickFormatter={(v:number)=>`$${fmtM(v)}`}/>
+                              <Tooltip formatter={(v:any)=>`$${fmtM(v)}`} contentStyle={{fontFamily:FONT,fontSize:13,background:B.panel,border:`1px solid ${B.border}`}}/>
+                              <Bar dataKey="revenue" fill={B.blue} name="Revenue" radius={[3,3,0,0]}/>
+                              <Bar dataKey="netIncome" fill={B.green} name="Net Income" radius={[3,3,0,0]}/>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div style={{display:"flex",gap:14,marginTop:4,fontSize:11,color:B.gray3,fontFamily:FONT}}>
+                          <span><span style={{display:"inline-block",width:8,height:8,background:B.blue,borderRadius:2,marginRight:4}}/>Revenue</span>
+                          <span><span style={{display:"inline-block",width:8,height:8,background:B.green,borderRadius:2,marginRight:4}}/>Net Income</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{padding:"6px 0 14px",color:B.gray3,fontFamily:FONT,fontSize:12,fontStyle:"italic"}}>
+                        No Revenue/Net Income history found in this company's SEC filings to chart.
+                      </div>
+                    )}
+
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4, 1fr)",gap:0}}>
+                      {SEC_FIELD_ORDER.map((field) => {
+                        const item = secData.items?.[field];
+                        const point = secPeriod==="annual" ? item?.annual : item?.quarterly;
+                        const prior = secPeriod==="annual" ? item?.annualPrior : item?.quarterlyPrior;
+                        const pct = point && prior && prior.value !== 0 ? ((point.value - prior.value)/Math.abs(prior.value))*100 : null;
+                        return (
+                          <div key={field} style={{padding:"8px 10px",borderTop:`1px solid ${B.border}`}}>
+                            <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{item?.label}</div>
+                            <div style={{fontSize:15,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
+                              {point!=null ? `${point.value<0?"-":""}$${fmtM(Math.abs(point.value))}` : "—"}
+                            </div>
+                            {pct!=null && (
+                              <div style={{fontSize:11,fontWeight:700,color:pCol(pct),fontFamily:FONT}}>
+                                {pSign(fmt(pct,1))}% vs prior {secPeriod==="annual"?"year":"quarter"}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p style={{fontSize:11,color:B.gray3,marginTop:10,fontStyle:"italic",fontFamily:FONT}}>
+                      Source: SEC EDGAR XBRL company facts, as filed by the company — not restated or adjusted by Strategic Markets.
+                    </p>
+                  </>
+                )}
+              </div>
+            </BPanel>
+
+            {/* Wall Street Analyst Consensus — full breakdown behind the
+                headline verdict strip above. */}
+            <BPanel title="ANALYST CONSENSUS BREAKDOWN">
+              <div style={{padding:"10px 18px 16px"}}>
+                {consensusLoading ? (
+                  <div style={{padding:"18px 0",textAlign:"center",color:B.gray3,fontFamily:FONT,fontSize:13}}>LOADING ANALYST DATA...</div>
+                ) : !consensus?.available ? (
+                  <div style={{padding:"6px 0 4px",color:B.gray3,fontFamily:FONT,fontSize:13,lineHeight:1.6}}>
+                    {consensus?.reason || "Analyst consensus not available for this ticker."}
+                  </div>
+                ) : (() => {
+                  const segs = [
+                    {k:"strongSell", label:"Strong Sell", v:consensus.counts.strongSell, color:B.red, op:1},
+                    {k:"sell", label:"Sell", v:consensus.counts.sell, color:B.red, op:0.55},
+                    {k:"hold", label:"Hold", v:consensus.counts.hold, color:B.gray3, op:1},
+                    {k:"buy", label:"Buy", v:consensus.counts.buy, color:B.green, op:0.55},
+                    {k:"strongBuy", label:"Strong Buy", v:consensus.counts.strongBuy, color:B.green, op:1},
+                  ];
+                  return (
+                    <>
+                      <div style={{display:"flex",height:16,borderRadius:6,overflow:"hidden",marginBottom:10,background:B.panel2}}>
+                        {segs.map(s => s.v>0 && (
+                          <div key={s.k} title={`${s.label}: ${s.v}`} style={{flex:s.v, background:s.color, opacity:s.op}}/>
+                        ))}
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(5, 1fr)",gap:6}}>
+                        {segs.map(s=>(
+                          <div key={s.k} style={{textAlign:"center"}}>
+                            <div style={{fontSize:16,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{s.v}</div>
+                            <div style={{fontSize:10,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>{s.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <p style={{fontSize:11,color:B.gray3,marginTop:12,fontStyle:"italic",fontFamily:FONT}}>
+                        Source: Finnhub aggregated Wall Street analyst ratings — real third-party opinions, not
+                        Strategic Markets' own view. Price targets aren't shown here (that endpoint requires a paid
+                        Finnhub plan not enabled on this deployment).
+                      </p>
+                    </>
+                  );
+                })()}
+              </div>
+            </BPanel>
+
+            {/* Portfolio Fit — simulates adding this position to the user's
+                OWN current holdings, same risk-score math as Analysis's
+                What-If simulator. */}
+            <BPanel title="PORTFOLIO FIT — RISK IMPACT" accent>
+              <div style={{padding:"10px 18px 16px"}}>
+                <p style={{fontSize:13,color:B.gray2,lineHeight:1.5,margin:"0 0 12px"}}>
+                  Simulates adding this position to your current portfolio and compares the real risk score before vs
+                  after — the same concentration/sector/volatility/beta scoring used in Analysis's Risk tab.
+                </p>
+                <div style={{display:"flex",alignItems:"flex-end",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+                  <div>
+                    <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,marginBottom:4,textTransform:"uppercase"}}>Hypothetical Investment</div>
+                    <div style={{display:"flex",alignItems:"center",gap:4}}>
+                      <span style={{fontSize:14,color:B.gray3,fontFamily:FONT}}>{ccySymbol(detail.currency)}</span>
+                      <input value={fitAmount} onChange={e=>setFitAmount(e.target.value)} type="number" min="0" step="any"
+                        style={{width:120,background:B.panel2,border:`1px solid ${B.borderB}`,color:B.gray1,borderRadius:6,
+                          padding:"6px 8px",fontSize:14,fontFamily:FONT,outline:"none"}}/>
+                    </div>
+                  </div>
+                  {hasCurrentHoldings && [0.05,0.10,0.25].map(pct=>(
+                    <button key={pct} onClick={()=>setFitAmount(String(Math.round(currentTotal*pct)))} style={{
+                      background:"transparent",border:`1px solid ${B.borderB}`,color:B.gray2,borderRadius:6,
+                      padding:"6px 10px",cursor:"pointer",fontFamily:FONT,fontSize:12,fontWeight:700}}>
+                      {(pct*100).toFixed(0)}% of portfolio
+                    </button>
+                  ))}
+                </div>
+
+                {!hasCurrentHoldings && (
+                  <div style={{background:B.panel2,borderRadius:8,padding:"10px 12px",marginBottom:12,fontSize:13,color:B.gray2,fontFamily:FONT,lineHeight:1.5}}>
+                    You have no positions yet — this shows what a portfolio made up entirely of {detail.ticker} would
+                    look like, not a before/after comparison.
+                  </div>
+                )}
+
+                {afterRiskScore!=null ? (
+                  <div style={{display:"grid",gridTemplateColumns:hasCurrentHoldings?"1fr auto 1fr":"1fr",gap:14,alignItems:"center"}}>
+                    {hasCurrentHoldings && (
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>Before</div>
+                        <div style={{fontSize:30,fontWeight:700,color:riskColorFor(beforeRiskScore!),fontFamily:FONT}}>{beforeRiskScore}</div>
+                        <div style={{fontSize:11,color:riskColorFor(beforeRiskScore!),fontFamily:FONT,fontWeight:700}}>{riskLabelFor(beforeRiskScore!)}</div>
+                      </div>
+                    )}
+                    {hasCurrentHoldings && <div style={{fontSize:20,color:B.gray3,textAlign:"center"}}>→</div>}
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase",marginBottom:4}}>After</div>
+                      <div style={{fontSize:30,fontWeight:700,color:riskColorFor(afterRiskScore),fontFamily:FONT}}>{afterRiskScore}</div>
+                      <div style={{fontSize:11,color:riskColorFor(afterRiskScore),fontFamily:FONT,fontWeight:700}}>{riskLabelFor(afterRiskScore)}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{padding:"10px 0",color:B.gray3,fontFamily:FONT,fontSize:13}}>Enter a hypothetical investment amount above to see the impact.</div>
+                )}
+
+                {afterM && (
+                  <div style={{marginTop:14,display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(2,1fr)",gap:10}}>
+                    <div style={{background:B.panel2,borderRadius:8,padding:"8px 12px"}}>
+                      <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>New Position Weight</div>
+                      <div style={{fontSize:16,fontWeight:700,color:B.gray1,fontFamily:FONT}}>{fmt(newPositionWeight ?? 0,2)}%</div>
+                    </div>
+                    <div style={{background:B.panel2,borderRadius:8,padding:"8px 12px"}}>
+                      <div style={{fontSize:11,color:B.gray3,fontFamily:FONT,textTransform:"uppercase"}}>Top Sector Concentration</div>
+                      <div style={{fontSize:16,fontWeight:700,color:B.gray1,fontFamily:FONT}}>
+                        {hasCurrentHoldings ? `${fmt(beforeTopSectorPct,1)}% → ` : ""}{fmt(afterTopSectorPct ?? 0,1)}%
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </BPanel>
+
             {/* Overview — company/fund/instrument description, same copy source as SearchPage */}
             <BPanel title={(OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).label}>
-              <div style={{padding:"10px 18px 16px",fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace",lineHeight:1.6,maxHeight:260,overflowY:"auto"}}>
+              <div style={{padding:"10px 18px 16px",fontSize:13,color:B.gray3,fontFamily:FONT,lineHeight:1.6,maxHeight:260,overflowY:"auto"}}>
                 {overviewParagraphs(detail.description || (OVERVIEW_COPY[detail.category as string] || OVERVIEW_COPY.STOCK).fallback)
                   .map((para,i)=><p key={i} style={{margin: i===0 ? 0 : "10px 0 0"}}>{para}</p>)}
               </div>
@@ -1573,49 +1913,51 @@ ${lines}`;
                 <div style={{padding:12,display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16}}>
                   {sortedSectors.length>0 && (
                     <div>
-                      <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:6,textTransform:"uppercase"}}>Sector Breakdown</div>
+                      <div style={{fontSize:12,color:B.gray3,fontFamily:FONT,marginBottom:6,textTransform:"uppercase"}}>Sector Breakdown</div>
                       {sortedSectors.map(([s,w]:any)=>(
                         <div key={s} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${B.border}`}}>
-                          <span style={{fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace"}}>{s}</span>
-                          <span style={{fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700}}>{(w*100).toFixed(1)}%</span>
+                          <span style={{fontSize:13,color:B.gray1,fontFamily:FONT}}>{s}</span>
+                          <span style={{fontSize:13,color:B.gray1,fontFamily:FONT,fontWeight:700}}>{(w*100).toFixed(1)}%</span>
                         </div>
                       ))}
                     </div>
                   )}
                   {sortedHoldings.length>0 && (
                     <div>
-                      <div style={{fontSize:12,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:6,textTransform:"uppercase"}}>Top Holdings</div>
+                      <div style={{fontSize:12,color:B.gray3,fontFamily:FONT,marginBottom:6,textTransform:"uppercase"}}>Top Holdings</div>
                       {sortedHoldings.map(([t,w]:any)=>(
                         <div key={t} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${B.border}`}}>
-                          <span style={{fontSize:13,color:B.blue,fontFamily:"'Courier New',monospace",fontWeight:700}}>{t}</span>
-                          <span style={{fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace",fontWeight:700}}>{(w*100).toFixed(1)}%</span>
+                          <span style={{fontSize:13,color:B.blue,fontFamily:FONT,fontWeight:700}}>{t}</span>
+                          <span style={{fontSize:13,color:B.gray1,fontFamily:FONT,fontWeight:700}}>{(w*100).toFixed(1)}%</span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-                <div style={{padding:"0 12px 12px",fontSize:11,color:B.gray3,fontStyle:"italic",fontFamily:"'Courier New',monospace"}}>
+                <div style={{padding:"0 12px 12px",fontSize:11,color:B.gray3,fontStyle:"italic",fontFamily:FONT}}>
                   Reflects Yahoo's published top ~10 constituents/sectors — not the fund's full portfolio, so it may understate real diversification or concentration.
                 </div>
               </BPanel>
             )}
 
-            {/* AI Educational Scan */}
-            <BPanel title="AI EDUCATIONAL SCAN" accent>
+            {/* AI Educational Scan — secondary: a short synthesis of everything
+                real shown above, never its own buy/sell/hold call. */}
+            <BPanel title="AI EDUCATIONAL SCAN">
               <div style={{padding:"10px 18px 16px"}}>
                 <p style={{fontSize:13,color:B.gray2,lineHeight:1.5,margin:"0 0 12px"}}>
-                  Generates a short educational synthesis of the real data shown above — never a buy/sell/hold call,
-                  a price target, or a number that isn't already on this page.
+                  Generates a short educational synthesis of the fundamentals, valuation and analyst-consensus data
+                  shown above — never its own buy/sell/hold call, a price target, or a number that isn't already on
+                  this page.
                 </p>
                 <button onClick={runAiScan} disabled={aiBusy} style={{
                   background:B.blue,border:"none",color:B.white,padding:"9px 18px",borderRadius:8,
-                  cursor:aiBusy?"wait":"pointer",fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:700,marginBottom:12}}>
+                  cursor:aiBusy?"wait":"pointer",fontFamily:FONT,fontSize:14,fontWeight:700,marginBottom:12}}>
                   {aiBusy ? "ANALYZING..." : aiReport ? "REGENERATE AI SCAN" : "RUN AI SCAN"}
                 </button>
-                {aiError && <div style={{color:B.red,fontSize:13,fontFamily:"'Courier New',monospace",marginBottom:12}}>{aiError}</div>}
+                {aiError && <div style={{color:B.red,fontSize:13,fontFamily:FONT,marginBottom:12}}>{aiError}</div>}
                 {aiReport && (
                   <div style={{background:B.panel2,border:`1px solid ${B.border}`,borderRadius:8,padding:"12px 14px",
-                    fontSize:13,color:B.gray1,fontFamily:"'Courier New',monospace",lineHeight:1.6,whiteSpace:"pre-wrap"}}>
+                    fontSize:13,color:B.gray1,fontFamily:FONT,lineHeight:1.6,whiteSpace:"pre-wrap"}}>
                     {aiReport}
                   </div>
                 )}
@@ -4217,7 +4559,7 @@ export default function PortfolioTerminal({ onRetakeProfile }: { onRetakeProfile
               <div style={{flex:1,overflow: mobilePortfolioNaturalScroll ? "visible" : "hidden",display:"flex",flexDirection:"column"}}>
                 {page==="home"       && <HomePage     holdings={displayHoldings} transactions={transactions} setPage={setPage} onRefresh={refreshPrices} refreshing={refreshing}/>}
                 {page==="search"     && <SearchPage   onAdd={addToPortfolio} portfolio={displayHoldings} onWatchlistChange={loadWatchlist}/>}
-                {page==="scan"       && <RequireAuth user={user} reason="run a Stock Scan">{()=><StockScanPage/>}</RequireAuth>}
+                {page==="scan"       && <RequireAuth user={user} reason="run a Stock Scan">{()=><StockScanPage holdings={displayHoldings}/>}</RequireAuth>}
                 {page==="portfolio"  && <PortfolioPage holdings={holdings} onRemove={removeFromPortfolio} onUpdate={updateHolding} onSell={sellFromPortfolio} onLoadPortfolio={setHoldings} onAddCash={addToPortfolio} setPage={setPage}/>}
                 {page==="analysis"   && <AnalysisPage  holdings={displayHoldings} setPage={setPage}/>}
                 {page==="ai"         && <RequireAuth user={user} reason="use the AI Advisor">{()=><AIAdvisorPage holdings={displayHoldings} setPage={setPage}/>}</RequireAuth>}
