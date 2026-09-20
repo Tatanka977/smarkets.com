@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, Fragment } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Legend } from "recharts";
 import {
-  B, fmt, fmtM, pCol, pSign, groupBy, groupBySectorLookThrough, computeSingleNameExposure, computeOverlapExposure, pMet, PIE_COLS,
+  B, fmt, fmtM, pCol, pSign, groupBy, groupBySectorLookThrough, computeSingleNameExposure, computeOverlapExposure, computeEffectivePositions, pMet, PIE_COLS,
   BPanel, FKey, computeAlerts, computeRiskScore, SEV_STYLE, RequireAuth,
 } from "@/lib/uiShared";
 import { aiChatAsUser } from "@/lib/ai.functions";
@@ -31,16 +31,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   STOCK: "Stocks", ETF: "ETFs", BOND: "Bonds", COMMODITY: "Commodities",
   CRYPTO: "Crypto", REIT: "REITs", FX: "Forex", CASH: "Cash", OTHER: "Other",
 };
-
-function KpiCard({ label, value, sub, subColor }: any) {
-  return (
-    <div style={{ background: B.panel, border: `1px solid ${B.border}`, borderRadius: 12, padding: "14px 16px", flex: 1, minWidth: 150 }}>
-      <div style={{ fontSize: 11, color: B.gray3, letterSpacing: "0.08em", fontFamily: FONT, textTransform: "uppercase", marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: B.gray1, fontFamily: FONT }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: subColor || B.gray3, fontFamily: FONT, marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
-}
 
 function AllocationPanel({ title, data }: { title: string; data: { name: string; value: number; pct: string }[] }) {
   return (
@@ -546,7 +536,7 @@ export default function AnalysisPage({ holdings, setPage }: any) {
   const { user } = useUser();
   const m = useMemo(() => pMet(holdings), [holdings]);
   const isMobile = useIsMobile();
-  const [sub, setSub] = useState<"alloc" | "overlap" | "risk" | "perf">("alloc");
+  const [sub, setSub] = useState<"alloc" | "risk" | "perf">("alloc");
   const [aiExplain, setAiExplain] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [whatIfTicker, setWhatIfTicker] = useState("");
@@ -716,7 +706,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ display: "flex", gap: 2, padding: "3px 4px", borderBottom: `1px solid ${B.border}`, background: B.panel2, flexShrink: 0 }}>
-        {[{ id: "alloc", l: "ALLOCATION" }, { id: "overlap", l: "OVERLAP" }, { id: "risk", l: `RISK${highCount+medCount>0?` (${highCount+medCount})`:""}` }, { id: "perf", l: "PERFORMANCE" }].map(t => (
+        {[{ id: "alloc", l: "ALLOCATION" }, { id: "risk", l: `RISK${highCount+medCount>0?` (${highCount+medCount})`:""}` }, { id: "perf", l: "PERFORMANCE" }].map(t => (
           <FKey key={t.id} label={t.l} active={sub === t.id} onClick={() => setSub(t.id as any)} />
         ))}
       </div>
@@ -724,15 +714,6 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 80, padding: 12 }}>
         {sub === "alloc" && (
           <>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
-              <KpiCard label="Total Portfolio Value" value={`$${fmtM(m.total)}`} sub="Market value" />
-              <KpiCard label="Total Holdings" value={holdings.length} sub="Securities" />
-              <KpiCard label="Largest Sector" value={sD[0]?.name || "N/A"} sub={sD[0] ? `${sD[0].pct}%` : ""} subColor={B.blue} />
-              <KpiCard label="Main Geography" value={gD[0]?.name || "N/A"} sub={gD[0] ? `${gD[0].pct}%` : ""} subColor={B.blue} />
-              <KpiCard label="Main Asset Class" value={tD[0]?.name || "N/A"} sub={tD[0] ? `${tD[0].pct}%` : ""} subColor={B.blue} />
-              <KpiCard label="Day Change" value={`${pSign(fmt(m.wDay,2))}%`} sub="Since prev. close" subColor={pCol(m.wDay)} />
-            </div>
-
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, marginBottom: 10 }}>
               <AllocationPanel title="SECTOR ALLOCATION" data={sD} />
               <AllocationPanel title="GEOGRAPHIC EXPOSURE" data={gD} />
@@ -768,11 +749,8 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                 </ResponsiveContainer>
               </div>
             </BPanel>
-          </>
-        )}
 
-        {sub === "overlap" && (
-          <BPanel title="OVERLAP CHECKER — TRUE EXPOSURE">
+            <BPanel title="OVERLAP CHECKER — TRUE EXPOSURE">
             <div style={{ padding: 12 }}>
               <p style={{ fontSize: 13, color: B.gray2, lineHeight: 1.5, margin: "0 0 12px" }}>
                 Shows how much of your real exposure to a single name is hidden inside the ETFs you hold, on top of
@@ -858,7 +836,8 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
                 </>
               )}
             </div>
-          </BPanel>
+            </BPanel>
+          </>
         )}
 
         {sub === "risk" && <RequireAuth user={user} reason="view Risk analysis">{() => {
@@ -885,6 +864,9 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           const topSectorPct = sDRisk[0]?.pct ?? 0;
           const topGeoPct = gD[0]?.pct ?? 0;
           const nHoldings = holdings.length;
+          // ETFs are baskets of many underlying names, so raw position count
+          // understates real diversification — see computeEffectivePositions.
+          const effectivePositions = computeEffectivePositions(holdings);
           const maxDD = m.wVol * 2.5; // rough educational proxy, not real tracked drawdown
 
           // Educational risk score (0-100) — formula lives in uiShared.tsx's
@@ -908,7 +890,9 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           const drivers = [
             { l:"SINGLE NAME RISK", v:`${topHPct.toFixed(1)}%`, sub:topSingleName?.ticker||"—", sev: topHPct>40?"HIGH":topHPct>25?"MED":"OK" },
             { l:"SECTOR RISK", v:`${topSectorPct}%`, sub:sDRisk[0]?.name||"—", sev: topSectorPct>50?"HIGH":topSectorPct>35?"MED":"OK" },
-            { l:"DIVERSIFICATION RISK", v:`${nHoldings}`, sub:"Positions", sev: nHoldings<5?"HIGH":nHoldings<10?"MED":"OK" },
+            { l:"DIVERSIFICATION RISK", v:`${nHoldings}`,
+              sub: effectivePositions === nHoldings ? "Positions" : `Positions (≈${effectivePositions} incl. ETF look-through)`,
+              sev: effectivePositions<5?"HIGH":effectivePositions<10?"MED":"OK" },
             { l:"GEOGRAPHIC RISK", v:`${topGeoPct}%`, sub:gD[0]?.name||"—", sev: topGeoPct>80?"MED":"OK" },
           ];
 
@@ -928,6 +912,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           const hypTopSectorPct = hypSDRisk?.[0]?.pct ?? null;
           const hypTopGeoPct = hypGD?.[0]?.pct ?? null;
           const hypNHoldings = hypHoldings ? hypHoldings.length : null;
+          const hypEffectivePositions = hypHoldings ? computeEffectivePositions(hypHoldings) : null;
           const hypMaxDD = hypM ? hypM.wVol * 2.5 : null;
           // Same computeRiskScore as riskScore above, guaranteed identical
           // since it's the same shared function — the What-If "before vs
@@ -941,7 +926,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
             { l: "Single Name Risk", before: topHPct, after: hypTopHPct, dp: 1, suffix: "%", worse: "higher" },
             { l: `Sector Risk (${hypSDRisk?.[0]?.name || sDRisk[0]?.name || "—"})`, before: topSectorPct, after: hypTopSectorPct, dp: 0, suffix: "%", worse: "higher" },
             { l: "Geographic Risk", before: topGeoPct, after: hypTopGeoPct, dp: 0, suffix: "%", worse: "higher" },
-            { l: "Diversification (Positions)", before: nHoldings, after: hypNHoldings, dp: 0, suffix: "", worse: "lower" },
+            { l: "Diversification (Effective Positions)", before: effectivePositions, after: hypEffectivePositions, dp: 0, suffix: "", worse: "lower" },
             { l: "Volatility (Ann.)", before: m.wVol, after: hypM?.wVol, dp: 1, suffix: "%", worse: "higher" },
             { l: "Max Drawdown (est.)", before: maxDD, after: hypMaxDD, dp: 1, suffix: "%", worse: "higher", negate: true },
             { l: "Sharpe Ratio", before: m.sharpe, after: hypM?.sharpe, dp: 2, suffix: "", worse: "lower" },
@@ -1027,15 +1012,19 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
               arrow: "up",
             },
             {
-              key: "positions", icon: <IconLayers/>, label: "Total Positions", sub: "More positions, more diversification",
+              // Raw count alone overstates the diversification benefit of
+              // adding a single stock and understates an ETF's (a basket of
+              // many underlying names) — see computeEffectivePositions.
+              key: "positions", icon: <IconLayers/>, label: "Total Positions",
+              sub: whatIfQuote?.category === "ETF" ? "ETF adds a basket of underlying holdings" : "A single stock adds one name",
               before: nHoldings, after: hypNHoldings,
               fmtValue: (v) => `${Math.round(v)}`,
               barPct: (v) => clampPct((v / 20) * 100),
               impactText: hypNHoldings != null
                 ? `${pSign(fmt(hypNHoldings - nHoldings, 0))} (${pSign(fmt(((hypNHoldings - nHoldings) / Math.max(nHoldings, 1)) * 100, 0))}%)`
                 : "—",
-              impactLabel: "More diversified",
-              impactColor: B.green,
+              impactLabel: whatIfQuote?.category === "ETF" ? "More diversified" : "Marginally more diversified",
+              impactColor: whatIfQuote?.category === "ETF" ? B.green : B.gray2,
               arrow: "up",
             },
             ...riskDeltaRows.map(buildDeltaRowSpec),

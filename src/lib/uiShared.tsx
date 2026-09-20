@@ -320,6 +320,20 @@ export function computeRiskScore(hhi: number, topSectorPct: number, wVol: number
   ));
 }
 
+// Raw holdings.length treats "2 ETFs" the same as "2 single stocks", which
+// understates real diversification: a broad-market ETF is itself a basket
+// of many names, even when we only have (or have none of) its top-10
+// look-through breakdown. Each ETF position counts toward an "effective"
+// position count as if it were several distinct names, instead of
+// penalizing the portfolio for holding funds rather than a long list of
+// individual stocks. This is a floor, not a verified count — real funds
+// typically hold far more.
+export const ETF_EFFECTIVE_POSITIONS = 15;
+export function computeEffectivePositions(holdings: any[]): number {
+  return holdings.reduce((n: number, h: any) =>
+    n + (h.asset.category === "ETF" ? ETF_EFFECTIVE_POSITIONS : 1), 0);
+}
+
 export function computeAlerts(holdings:any[], m:any) {
   const alerts: {sev:"HIGH"|"MED"|"LOW"|"OK", title:string, detail:string, metric:string}[] = [];
   if (!holdings.length) return alerts;
@@ -351,16 +365,22 @@ export function computeAlerts(holdings:any[], m:any) {
   else if (topSector && topSector.pct > 35) alerts.push({sev:"MED", title:"SECTOR EXPOSURE", metric:`${topSector.pct.toFixed(1)}%`,
     detail:`${topSector.k} is >35% of portfolio. Consider spreading across additional sectors.`});
 
-  // 3. Geographic concentration
+  // 3. Geographic concentration — "WORLD" is excluded from the flagged
+  // total on purpose: it means a holding is already spread across many
+  // regions (e.g. a global/all-world index fund), which is the opposite
+  // of geographic concentration, not a single-region bet. Flagging 100%
+  // "WORLD" as concentrated risk was actively wrong, not just noisy.
   const geoMap = new Map<string,number>();
   holdings.forEach((h:any) => {
     const g = h.asset.geo || "US";
     geoMap.set(g, (geoMap.get(g)||0) + h.value);
   });
-  const geoArr = Array.from(geoMap.entries()).map(([k,v]) => ({k, pct: v/m.total*100})).sort((a,b)=>b.pct-a.pct);
+  const geoArr = Array.from(geoMap.entries())
+    .filter(([k]) => k !== "WORLD")
+    .map(([k,v]) => ({k, pct: v/m.total*100})).sort((a,b)=>b.pct-a.pct);
   const topGeo = geoArr[0];
   if (topGeo && topGeo.pct > 80) alerts.push({sev:"MED", title:"GEOGRAPHIC EXPOSURE", metric:`${topGeo.pct.toFixed(1)}%`,
-    detail:`${topGeo.k} accounts for most of the book. Currency/political risk elevated.`});
+    detail:`${topGeo.k} accounts for most of the book (excluding globally-diversified "WORLD" holdings). Currency/political risk elevated.`});
 
   // 4. Volatility
   if (m.wVol > 30) alerts.push({sev:"HIGH", title:"HIGH VOLATILITY", metric:`${m.wVol.toFixed(1)}%`,
@@ -384,11 +404,12 @@ export function computeAlerts(holdings:any[], m:any) {
   else if (m.hhi > 1800) alerts.push({sev:"MED", title:"HHI MODERATE CONCENTRATION", metric:m.hhi.toFixed(0),
     detail:`HHI 1800-3000 signals moderate concentration.`});
 
-  // 8. Under-diversification
-  if (holdings.length < 5) alerts.push({sev:"MED", title:"UNDER-DIVERSIFIED", metric:`${holdings.length} names`,
-    detail:`Fewer than 5 positions. Academic literature suggests ~15-20 uncorrelated names for effective diversification.`});
-  else if (holdings.length < 10) alerts.push({sev:"LOW", title:"LIMITED DIVERSIFICATION", metric:`${holdings.length} names`,
-    detail:`5-9 positions. Adding uncorrelated assets could improve diversification.`});
+  // 8. Under-diversification — see computeEffectivePositions above.
+  const effectivePositions = computeEffectivePositions(holdings);
+  if (effectivePositions < 5) alerts.push({sev:"MED", title:"UNDER-DIVERSIFIED", metric:`${holdings.length} names`,
+    detail:`Fewer than 5 effective positions (ETFs count as multiple, since each is a basket of holdings). Academic literature suggests ~15-20 uncorrelated names for effective diversification.`});
+  else if (effectivePositions < 10) alerts.push({sev:"LOW", title:"LIMITED DIVERSIFICATION", metric:`${holdings.length} names`,
+    detail:`Still relatively concentrated even after counting each ETF as a basket of holdings. Adding uncorrelated assets could improve diversification.`});
 
   // 9. All green — nothing to warn
   if (alerts.length === 0) alerts.push({sev:"OK", title:"NO SIGNIFICANT ALERTS", metric:"✓",
