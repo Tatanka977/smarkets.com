@@ -1688,6 +1688,13 @@ const addCash = () => {
   // several currencies together.
   const kpiValueByKey = new Map<string, number>();
   kpiHoldings.forEach((h:any) => kpiValueByKey.set(h.isin || h.asset.ticker, h.value));
+  // Full FX-converted holding (value/costBasis/costPrice already in
+  // baseCcy, see kpiHoldings above) — used so the Holdings table's VALUE
+  // and P&L columns actually change when the USD/EUR toggle is flipped,
+  // instead of always showing each asset's own native currency regardless
+  // of the selected base currency.
+  const kpiHoldingByKey = new Map<string, any>();
+  kpiHoldings.forEach((h:any) => kpiHoldingByKey.set(h.isin || h.asset.ticker, h));
   // Category subtotals in the selected base currency (kpiHoldings — same
   // conversion the KPI row above uses): summing each holding's raw native
   // value directly here would silently add e.g. USD + EUR as if they were
@@ -1704,17 +1711,19 @@ const addCash = () => {
   });
 
   const renderHoldingRow = (h:any) => {
-    const w = dm.total>0 ? ((kpiValueByKey.get(h.isin || h.asset.ticker) ?? h.value)/dm.total*100) : 0;
-    const cb = h.costBasis ?? (h.costPrice!=null ? h.costPrice*h.qty : null);
-    const pl = cb!=null ? h.value-cb : null;
+    const key = h.isin || h.asset.ticker;
+    // FX-converted to the selected base currency (kpiHoldings above) —
+    // VALUE/P&L now follow the USD/EUR toggle instead of always staying
+    // in the asset's own native currency regardless of it.
+    const hc = kpiHoldingByKey.get(key) ?? h;
+    const w = dm.total>0 ? ((kpiValueByKey.get(key) ?? h.value)/dm.total*100) : 0;
+    const cb = hc.costBasis ?? (hc.costPrice!=null ? hc.costPrice*hc.qty : null);
+    const pl = cb!=null ? hc.value-cb : null;
     const plPct = (cb!=null && cb>0) ? (pl!/cb*100) : null;
     return (
-      <tr key={h.isin||h.asset.ticker} style={{borderTop:`1px solid ${B.border}`}}>
+      <tr key={key} style={{borderTop:`1px solid ${B.border}`}}>
         <td style={{padding:"9px 8px",color:B.blue,fontWeight:700}}>
           {h.asset.ticker}
-          {h.asset.currency && h.asset.currency!=="USD" && (
-            <span style={{fontSize:11,color:B.gray3,fontWeight:400,marginLeft:4}} title="Values in this row are in the asset's native currency, not converted">{h.asset.currency}</span>
-          )}
         </td>
         <td style={{padding:"9px 8px",color:B.gray1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:160}}>{h.asset.shortName||h.asset.ticker}</td>
         <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>{h.asset.price!=null?h.asset.price.toFixed(2):"—"}</td>
@@ -1722,9 +1731,9 @@ const addCash = () => {
           {h.asset.dayChangePct!=null?`${pSign(fmt(h.asset.dayChangePct,2))}%`:"—"}
         </td>
         <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>{w.toFixed(1)}%</td>
-        <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>{ccySymbol(h.asset.currency)}{fmtM(h.value)}</td>
+        <td style={{padding:"9px 8px",textAlign:"right",color:B.gray1}}>{ccySym}{fmtM(hc.value)}</td>
         <td style={{padding:"9px 8px",textAlign:"right",color:pl!=null?pCol(pl):B.gray3}}>
-          {pl!=null?`${pl>=0?"+":"−"}${ccySymbol(h.asset.currency)}${fmtM(Math.abs(pl))}`:"—"}
+          {pl!=null?`${pl>=0?"+":"−"}${ccySym}${fmtM(Math.abs(pl))}`:"—"}
         </td>
         <td style={{padding:"9px 8px",textAlign:"right",color:plPct!=null?pCol(plPct):B.gray3}}>
           {plPct!=null?`${pSign(fmt(plPct,1))}%`:"—"}
