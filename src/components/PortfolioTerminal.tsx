@@ -24,6 +24,7 @@ import {
   fetchHistoricalPrice as srvHistorical,
   fetchFxRates as srvFx,
   fetchPriceHistory as srvPriceHistory,
+  fetchSecFundamentals as srvSecFundamentals,
 } from "@/lib/finance.functions";
 import { aiChatAsUser } from "@/lib/ai.functions";
 import {
@@ -56,6 +57,7 @@ const fetchQuote = (sym, isin?) => srvQuote({ data: { symbol: sym, isin } });
 const batchRefresh = (symbols) => srvBatch({ data: { symbols } });
 const fetchMarketStatus = (exchanges?:string[]) => srvMarketStatus({ data: { exchanges } });
 const fetchHistoricalPrice = (symbol, date) => srvHistorical({ data: { symbol, date } });
+const fetchSecFundamentals = (symbol:string) => srvSecFundamentals({ data: { symbol } });
 const fetchMarketNews = (category) => srvMarketNews({ data: { category } });
 const fetchAllMarketNews = () => srvAllMarketNews();
 const fetchCompanyNews = (symbol, days=14) => srvCompanyNews({ data: { symbol, days } });
@@ -811,6 +813,9 @@ function SearchPage({onAdd,portfolio,onWatchlistChange}:any) {
   const [buyDt,setBuyDt] = usePersistentState<string>("search_buyDt", new Date().toISOString().slice(0,10));
   const [cat,setCat]     = usePersistentState<any>("search_cat", undefined);
   const debounce         = useRef<any>(null);
+  const [fundamentals, setFundamentals] = useState<any>(null);
+  const [fundLoading, setFundLoading] = useState(false);
+  const [fundPeriod, setFundPeriod] = useState<"annual"|"quarterly">("annual");
 
   const doSearch = useCallback(async (val, category) => {
     setSrch(true); setError("");
@@ -861,6 +866,21 @@ useEffect(()=>{
       setError(`QUOTE ERROR: ${e.message}`);
     } finally { setLoad(false); }
   };
+
+  // SEC EDGAR fundamentals load independently of the quote itself — a slow
+  // or unavailable SEC response should never hold up price/quote data the
+  // user is already looking at, and vice versa.
+  useEffect(() => {
+    const ticker = detail?.ticker;
+    if (!ticker) { setFundamentals(null); return; }
+    let alive = true;
+    setFundLoading(true);
+    fetchSecFundamentals(ticker)
+      .then((r) => { if (alive) setFundamentals(r); })
+      .catch((e: any) => { if (alive) setFundamentals({ available: false, reason: `Fundamentals lookup failed: ${e.message}`, fetchedAt: Date.now() }); })
+      .finally(() => { if (alive) setFundLoading(false); });
+    return () => { alive = false; };
+  }, [detail?.ticker]);
 
   const { user } = useUser();
   const [watchMsg, setWatchMsg] = useState("");
@@ -1059,6 +1079,75 @@ useEffect(()=>{
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Fundamentals — real SEC EDGAR XBRL filings (US-listed companies
+          only; see fetchSecFundamentals in finance.functions.ts). Never
+          shown empty/silent: a non-US ticker gets an explicit explanation
+          instead of a blank or missing panel. */}
+      <div style={{background:B.panel,border:`1px solid ${B.border}`,borderRadius:12,padding:"16px 18px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:10}}>
+          <span style={{fontSize:14,fontWeight:700,color:B.blue,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>
+            FUNDAMENTALS (SEC EDGAR)
+          </span>
+          {fundamentals?.available && (
+            <div style={{display:"flex",border:`1px solid ${B.border}`,borderRadius:6,overflow:"hidden"}}>
+              {([{id:"annual",l:"ANNUAL"},{id:"quarterly",l:"QUARTERLY"}] as const).map(m=>(
+                <button key={m.id} onClick={()=>setFundPeriod(m.id)} style={{
+                  background: fundPeriod===m.id ? B.blue : "transparent", color: fundPeriod===m.id ? B.white : B.gray2,
+                  border:"none", padding:"4px 10px", cursor:"pointer",
+                  fontFamily:"'Courier New',monospace", fontSize:12, fontWeight:700, letterSpacing:"0.03em",
+                }}>{m.l}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {fundLoading ? (
+          <div style={{padding:"18px 0",textAlign:"center",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:13}}>
+            LOADING SEC FILINGS...
+          </div>
+        ) : !fundamentals?.available ? (
+          <div style={{padding:"6px 0 4px",color:B.gray3,fontFamily:"'Courier New',monospace",fontSize:13,lineHeight:1.6}}>
+            {fundamentals?.reason || "Fundamentals data is only available for US-listed companies filing with the SEC."}
+          </div>
+        ) : (
+          <>
+            <div style={{fontSize:11,color:B.gray3,fontFamily:"'Courier New',monospace",marginBottom:8}}>
+              {fundamentals.companyName} · CIK {fundamentals.cik}
+            </div>
+            {Object.values(fundamentals.items || {}).map((item: any, i: number, arr: any[]) => {
+              const point = fundPeriod==="annual" ? item.annual : item.quarterly;
+              const prior = fundPeriod==="annual" ? item.annualPrior : item.quarterlyPrior;
+              const pct = point && prior && prior.value !== 0 ? ((point.value - prior.value) / Math.abs(prior.value)) * 100 : null;
+              const periodLabel = point
+                ? (fundPeriod==="annual" ? `FY${point.fy ?? point.end.slice(0,4)}` : `${point.fp || ""} · ${point.end}`.trim())
+                : null;
+              return (
+                <div key={item.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",
+                  borderBottom: i<arr.length-1?`1px solid ${B.border}`:"none"}}>
+                  <div>
+                    <div style={{fontSize:13,color:B.gray3,fontFamily:"'Courier New',monospace"}}>{item.label}</div>
+                    {periodLabel && <div style={{fontSize:10,color:B.gray3,fontFamily:"'Courier New',monospace",opacity:0.7}}>{periodLabel}</div>}
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:14,fontWeight:700,color:B.gray1,fontFamily:"'Courier New',monospace"}}>
+                      {point!=null ? `${point.value<0?"-":""}$${fmtM(Math.abs(point.value))}` : "—"}
+                    </div>
+                    {pct!=null && (
+                      <div style={{fontSize:11,fontWeight:700,color:pCol(pct),fontFamily:"'Courier New',monospace"}}>
+                        {pSign(fmt(pct,1))}% vs prior {fundPeriod==="annual"?"year":"quarter"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <p style={{fontSize:11,color:B.gray3,marginTop:10,fontStyle:"italic",fontFamily:"'Courier New',monospace"}}>
+              Source: SEC EDGAR XBRL company facts, as filed by the company — not restated or adjusted by Strategic Markets.
+            </p>
+          </>
+        )}
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1.2fr",gap:14}}>

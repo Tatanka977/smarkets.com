@@ -1009,3 +1009,247 @@ export const fetchPriceHistory = createServerFn({ method: "GET" })
       return [];
     }
   });
+
+// ---------------------------------------------------------------------------
+// SEC EDGAR fundamentals (Income Statement / Balance Sheet / Cash Flow) — the
+// SEC's own free, no-key API. Two calls: a one-time ticker→CIK map, then the
+// company's full XBRL fact set. The SEC requires a real contact in the
+// User-Agent on every request to *.sec.gov — this is their access policy, not
+// a technical rate limit, so it's sent as a literal constant rather than
+// something a caller can override.
+// ---------------------------------------------------------------------------
+const SEC_USER_AGENT = "Strategic Markets contact@s-markets.com";
+
+export interface SecFundamentalPoint {
+  value: number;
+  end: string;         // period end date, YYYY-MM-DD
+  start?: string;       // period start date — present for flow concepts (revenue, cash flow), absent for instant/balance-sheet concepts
+  form: string;         // "10-K" | "10-Q"
+  fy?: number;
+  fp?: string;          // "FY", "Q1", "Q2", "Q3"
+  filed: string;        // date this value was actually filed (picks the latest, e.g. a restatement, over an older filing of the same period)
+}
+
+export interface SecLineItem {
+  label: string;
+  concept: string | null;               // which XBRL tag actually matched one of the candidates, or null if the company has none of them
+  annual: SecFundamentalPoint | null;
+  annualPrior: SecFundamentalPoint | null;
+  quarterly: SecFundamentalPoint | null;
+  quarterlyPrior: SecFundamentalPoint | null;
+}
+
+export interface SecFundamentalsResult {
+  available: boolean;
+  // Set whenever `available` is false, or the whole company-facts fetch
+  // failed — never invented, always a plain explanation of what happened.
+  reason?: string;
+  cik?: string;
+  companyName?: string;
+  items?: Record<string, SecLineItem>;
+  fetchedAt: number;
+}
+
+// Each entry: our internal field name → XBRL us-gaap tag candidates in
+// priority order (different filers tag the same line item differently).
+// The first candidate present in the company's own facts wins.
+const SEC_CONCEPTS: Record<string, string[]> = {
+  revenue:            ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet"],
+  netIncome:          ["NetIncomeLoss", "ProfitLoss"],
+  totalAssets:        ["Assets"],
+  totalLiabilities:   ["Liabilities"],
+  stockholdersEquity: ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
+  operatingCashFlow:  ["NetCashProvidedByUsedInOperatingActivities"],
+  cash:               ["CashAndCashEquivalentsAtCarryingValue"],
+};
+const SEC_LABELS: Record<string, string> = {
+  revenue:            "Revenue",
+  netIncome:          "Net Income",
+  totalAssets:        "Total Assets",
+  totalLiabilities:   "Total Liabilities",
+  stockholdersEquity: "Stockholders Equity",
+  operatingCashFlow:  "Operating Cash Flow",
+  cash:               "Cash and Equivalents",
+};
+
+// The full ticker→CIK map is one ~1MB JSON file covering every SEC filer,
+// refreshed by the SEC only occasionally — cached in memory process-wide
+// (same pattern as yahooCrumbCache above) instead of refetched per lookup.
+let secTickerMapCache: { map: Map<string, string>; fetchedAt: number } | null = null;
+const SEC_TICKER_MAP_TTL_MS = 24 * 60 * 60 * 1000;
+
+async function getSecTickerMap(): Promise<Map<string, string>> {
+  if (secTickerMapCache && Date.now() - secTickerMapCache.fetchedAt < SEC_TICKER_MAP_TTL_MS) {
+    return secTickerMapCache.map;
+  }
+  try {
+    const r = await fetch("https://www.sec.gov/files/company_tickers.json", {
+      headers: { "user-agent": SEC_USER_AGENT },
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = (await r.json()) as Record<string, { cik_str: number; ticker: string; title: string }>;
+    const map = new Map<string, string>();
+    for (const entry of Object.values(j)) {
+      if (entry?.ticker && entry.cik_str != null) {
+        map.set(entry.ticker.toUpperCase(), String(entry.cik_str).padStart(10, "0"));
+      }
+    }
+    secTickerMapCache = { map, fetchedAt: Date.now() };
+    return map;
+  } catch (e) {
+    console.warn("[SEC ticker map]", (e as Error).message);
+    // A transient fetch failure shouldn't wipe out a map we already had —
+    // serve the stale copy rather than telling every caller "not a US company".
+    if (secTickerMapCache) return secTickerMapCache.map;
+    throw e;
+  }
+}
+
+// Tries each XBRL tag candidate in order and returns the first one the
+// company's own `us-gaap` facts actually contain, along with its raw value
+// history. Most concepts are reported in USD; a small number of filers use a
+// different unit key, so this falls back to whatever unit is present rather
+// than assuming USD and coming back empty.
+function findSecConceptSeries(
+  usGaap: Record<string, { units?: Record<string, any[]> }> | undefined,
+  candidates: string[],
+): { concept: string; entries: any[] } | null {
+  if (!usGaap) return null;
+  for (const name of candidates) {
+    const units = usGaap[name]?.units;
+    if (!units) continue;
+    const unitKey = units.USD ? "USD" : Object.keys(units)[0];
+    const entries = unitKey ? units[unitKey] : null;
+    if (Array.isArray(entries) && entries.length) {
+      return { concept: name, entries };
+    }
+  }
+  return null;
+}
+
+// Picks the latest and second-latest DISTINCT reporting periods for a given
+// form ("10-K" for annual, "10-Q" for quarterly). Companies often report the
+// same period end multiple times (originally filed, then restated in a later
+// filing) — grouping by `end` and keeping the entry with the latest `filed`
+// date per group ensures the most recently reported figure wins, and that
+// "latest" vs "prior" are genuinely two different periods, not the same
+// period filed twice.
+function pickSecPeriods(entries: any[], form: string): { latest: any | null; prior: any | null } {
+  const filtered = entries.filter((e) => e?.form === form && typeof e?.val === "number" && e?.end);
+  if (!filtered.length) return { latest: null, prior: null };
+  const byEnd = new Map<string, any>();
+  for (const e of filtered) {
+    const cur = byEnd.get(e.end);
+    if (!cur || (e.filed || "") > (cur.filed || "")) byEnd.set(e.end, e);
+  }
+  const distinctEnds = Array.from(byEnd.keys()).sort().reverse(); // ISO dates sort lexicographically
+  return {
+    latest: distinctEnds[0] ? byEnd.get(distinctEnds[0]) : null,
+    prior: distinctEnds[1] ? byEnd.get(distinctEnds[1]) : null,
+  };
+}
+
+function toSecPoint(e: any): SecFundamentalPoint | null {
+  if (!e) return null;
+  return { value: e.val, end: e.end, start: e.start, form: e.form, fy: e.fy, fp: e.fp, filed: e.filed };
+}
+
+// Per-symbol result cache — financial statements only change quarterly, so
+// there's no reason to hit data.sec.gov again for the same ticker within a
+// few hours (and it keeps this app well inside the SEC's fair-use policy).
+const secFundamentalsCache = new Map<string, { result: SecFundamentalsResult; fetchedAt: number }>();
+const SEC_FUNDAMENTALS_TTL_MS = 4 * 60 * 60 * 1000;
+
+export const fetchSecFundamentals = createServerFn({ method: "GET" })
+  .inputValidator((d: { symbol: string }) => d)
+  .handler(async ({ data }): Promise<SecFundamentalsResult> => {
+    const symbol = (data.symbol || "").trim().toUpperCase();
+    if (!symbol) return { available: false, reason: "No symbol provided.", fetchedAt: Date.now() };
+
+    const cached = secFundamentalsCache.get(symbol);
+    if (cached && Date.now() - cached.fetchedAt < SEC_FUNDAMENTALS_TTL_MS) {
+      return cached.result;
+    }
+
+    let cik: string | undefined;
+    try {
+      cik = (await getSecTickerMap()).get(symbol);
+    } catch (e) {
+      // The map itself couldn't be fetched at all (no prior cache to fall
+      // back on) — this is a transient/network problem, not evidence the
+      // company isn't SEC-registered, so say so instead of the "not a US
+      // company" message below.
+      console.warn("[SEC fundamentals] ticker map unavailable:", (e as Error).message);
+      return { available: false, reason: "SEC EDGAR lookup is temporarily unavailable — please try again later.", fetchedAt: Date.now() };
+    }
+
+    if (!cik) {
+      // Genuinely not in the SEC's own filer list — most commonly a non-US
+      // listing (e.g. a .MI/.PA/.TO ticker) that has no SEC filing obligation
+      // at all, not a bug or a missing/unsupported US company.
+      const result: SecFundamentalsResult = {
+        available: false,
+        reason: "Fundamentals data is only available for US-listed companies filing with the SEC.",
+        fetchedAt: Date.now(),
+      };
+      secFundamentalsCache.set(symbol, { result, fetchedAt: Date.now() });
+      return result;
+    }
+
+    try {
+      const r = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, {
+        headers: { "user-agent": SEC_USER_AGENT },
+      });
+      if (!r.ok) {
+        const result: SecFundamentalsResult = {
+          available: false,
+          cik,
+          reason: r.status === 404
+            ? "No SEC XBRL filings found for this company."
+            : `SEC EDGAR request failed (HTTP ${r.status}).`,
+          fetchedAt: Date.now(),
+        };
+        // A transient HTTP failure isn't cached for the full TTL — only a
+        // resolved (positive or genuinely-unavailable) result is, so the
+        // next request gets a fresh chance instead of repeating the error.
+        return result;
+      }
+      const j = (await r.json()) as { entityName?: string; facts?: { "us-gaap"?: Record<string, any> } };
+      const usGaap = j.facts?.["us-gaap"];
+
+      const items: Record<string, SecLineItem> = {};
+      for (const [field, candidates] of Object.entries(SEC_CONCEPTS)) {
+        const series = findSecConceptSeries(usGaap, candidates);
+        if (!series) {
+          // This specific line item isn't in the company's facts under any
+          // candidate tag — leave it null so the UI shows "—", but every
+          // other item found still comes back normally.
+          items[field] = { label: SEC_LABELS[field], concept: null, annual: null, annualPrior: null, quarterly: null, quarterlyPrior: null };
+          continue;
+        }
+        const annualPick = pickSecPeriods(series.entries, "10-K");
+        const quarterlyPick = pickSecPeriods(series.entries, "10-Q");
+        items[field] = {
+          label: SEC_LABELS[field],
+          concept: series.concept,
+          annual: toSecPoint(annualPick.latest),
+          annualPrior: toSecPoint(annualPick.prior),
+          quarterly: toSecPoint(quarterlyPick.latest),
+          quarterlyPrior: toSecPoint(quarterlyPick.prior),
+        };
+      }
+
+      const result: SecFundamentalsResult = {
+        available: true,
+        cik,
+        companyName: j.entityName,
+        items,
+        fetchedAt: Date.now(),
+      };
+      secFundamentalsCache.set(symbol, { result, fetchedAt: Date.now() });
+      return result;
+    } catch (e) {
+      console.warn("[SEC fundamentals]", symbol, (e as Error).message);
+      return { available: false, cik, reason: "SEC EDGAR request failed — please try again later.", fetchedAt: Date.now() };
+    }
+  });
