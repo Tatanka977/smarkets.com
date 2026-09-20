@@ -2964,7 +2964,13 @@ Max 180 words. Respond in ENGLISH.`;
   const renderColumnFeatured = (n:any) => (
     <a href={n.url && n.url !== "#" ? n.url : undefined} target="_blank" rel="noreferrer noopener" data-testid="news-column-featured"
        style={{display:"block",textDecoration:"none",marginBottom:10,cursor:n.url && n.url !== "#" ? "pointer" : "default"}}>
-      <div style={{aspectRatio:"16/9",borderRadius:8,overflow:"hidden",background:B.panel2,marginBottom:8,
+      {/* Fixed height (not aspect-ratio) on purpose: with the grid below
+          now letting a column grow with the window, a width-driven 16/9
+          box would turn a lone wide column into an enormous, mostly-empty
+          box around a small logo. A fixed height keeps this a sensibly-
+          sized banner at any column width — wider columns just get a
+          proportionally wider (not taller) image strip. */}
+      <div style={{height:180,borderRadius:8,overflow:"hidden",background:B.panel2,marginBottom:8,
                    position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
         <LogoIcon size={48}/>
         {n.image && (
@@ -2998,11 +3004,18 @@ Max 180 words. Respond in ENGLISH.`;
     if (!col.items.length) return null;
     const [featured, ...rest] = col.items;
     return (
-      // maxWidth keeps a column a sane width even when it's the only one
-      // of the three with data — without it, flex:1 alone stretches a
-      // lone column to the full row (~1000px+), which turns the featured
-      // item's 16:9 image box into a huge, mostly-empty-looking rectangle.
-      <div style={{flex:"1 1 0",minWidth:0,maxWidth: isMobile ? undefined : 420}}>
+      // No maxWidth here on purpose — this used to cap every column at a
+      // fixed 420px so a lone column wouldn't stretch to the full row and
+      // blow up the featured item's 16:9 image box. That fixed a real bug
+      // but introduced another: on a wide/ultra-wide monitor the column
+      // area (grid-auto-fit'd by the parent, see below) never grows past
+      // 3×420px either, leaving a growing dead strip of unused width the
+      // wider the window gets. The parent's `repeat(auto-fit,
+      // minmax(280px,1fr))` grid solves the original oversized-lone-column
+      // problem itself (auto-fit collapses unused tracks and splits the
+      // real width evenly among however many columns actually render),
+      // so no per-column cap is needed on top of it.
+      <div style={{minWidth:0}}>
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${B.border}`}}>
           <span style={{fontSize:13,fontWeight:700,color:B.gray1,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>{col.label}</span>
           <span style={{color:B.blue,fontSize:14,fontWeight:700}}>›</span>
@@ -3013,8 +3026,14 @@ Max 180 words. Respond in ENGLISH.`;
     );
   };
 
+  // Popular stays a fixed, comfortably-readable width rather than growing
+  // with the window — it's a plain text headline list, so extra width on
+  // an ultra-wide monitor wouldn't add any real value the way it does for
+  // the image-led columns, and matches how sidebars like this behave on
+  // real news sites. Widened slightly (260→300) since it now sits next to
+  // a fluid (not artificially capped) column area.
   const renderPopularSidebar = (items:any[]) => (
-    <div style={{width: isMobile ? "100%" : 260,flexShrink:0}}>
+    <div style={{width: isMobile ? "100%" : 300,flexShrink:0}}>
       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${B.border}`}}>
         <span style={{fontSize:13,fontWeight:700,color:B.gray1,letterSpacing:"0.06em",fontFamily:"'Courier New',monospace"}}>POPULAR</span>
       </div>
@@ -3231,7 +3250,15 @@ Max 180 words. Respond in ENGLISH.`;
           <div>
             {magazine.hero && renderHero(magazine.hero)}
             <div style={{display:"flex",flexDirection: isMobile ? "column" : "row",gap:24}}>
-              <div style={{display:"flex",flexDirection: isMobile ? "column" : "row",gap:24,flex:1,minWidth:0}}>
+              {/* auto-fit + minmax means this scales with the window instead
+                  of topping out at a fixed per-column width: with 1-3
+                  columns actually present, they split whatever space is
+                  available roughly evenly (auto-fit collapses tracks for
+                  columns that returned null), so the layout keeps filling
+                  wide/ultra-wide screens instead of leaving dead space to
+                  the right of a narrower fixed-width block. */}
+              <div style={{display: isMobile ? "flex" : "grid",flexDirection: isMobile ? "column" : undefined,
+                gridTemplateColumns: isMobile ? undefined : "repeat(auto-fit, minmax(280px, 1fr))",gap:24,flex:1,minWidth:0}}>
                 {renderColumn(magazine.topStories)}
                 {renderColumn(magazine.markets)}
                 {renderColumn(magazine.portfolio)}
