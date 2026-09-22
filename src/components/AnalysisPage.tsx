@@ -1028,7 +1028,7 @@ Max 250 words. Respond in ENGLISH.${profileText}`;
           ].filter(Boolean).join(" ") : "";
 
           return (
-          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:12}}>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
 
               {/* Risk Summary */}
